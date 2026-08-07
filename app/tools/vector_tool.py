@@ -6,7 +6,7 @@ from pymongo import MongoClient
 from langchain_core.tools import tool
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from core.config import DB, DB_NAME
+from core.config import DB, DB_NAME, GOOGLE
 from core.collections import VECTORES, SUBAREAS
 
 
@@ -24,13 +24,12 @@ def get_db():
 
 
 def get_embedding_model() -> GoogleGenerativeAIEmbeddings:
-    """Instancia el modelo de embeddings de Google Gemini (text-embedding-004 de 768 dimensiones)."""
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        raise ValueError("GOOGLE_API_KEY no está configurada en .env.")
+    """Instancia el modelo oficial de embeddings de Google Gemini (text-embedding-004 de 768 dimensiones)."""
+    if not GOOGLE:
+        raise ValueError("La clave de API GOOGLE_API_KEY (GOOGLE en core.config) no está configurada en .env.")
     return GoogleGenerativeAIEmbeddings(
         model="models/text-embedding-004",
-        google_api_key=api_key
+        google_api_key=GOOGLE
     )
 
 

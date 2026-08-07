@@ -3,7 +3,7 @@ from langchain_deepseek import ChatDeepSeek
 from core.config import DEEPSEEK
 
 if not DEEPSEEK:
-    raise ValueError("La variable de entorno DEEPSEEK_API_KEY no está configurada.")
+    raise ValueError("La variable de entorno DEEPSEEK_API_KEY no está configurada en .env.")
 
 llm = ChatDeepSeek(
     model="deepseek-v4-flash",

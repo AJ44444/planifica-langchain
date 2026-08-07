@@ -2,7 +2,7 @@
 Módulo core de configuración, modelo de lenguaje (LLM), colecciones e interfaces de datos Pydantic.
 """
 
-from .config import DEEPSEEK, DB, DB_NAME, SERPER, GOOGLE_CLIENT_ID
+from .config import DEEPSEEK, GOOGLE, DB, DB_NAME, SERPER, GOOGLE_CLIENT_ID
 from .llm import llm
 from .collections import (
     AREAS,
@@ -28,6 +28,7 @@ from .response_formats import (
 
 __all__ = [
     "DEEPSEEK",
+    "GOOGLE",
     "DB",
     "DB_NAME",
     "SERPER",
