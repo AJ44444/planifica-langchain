@@ -5,6 +5,9 @@
     "supervisor": "./app/graph.py:supervisor_graph"
   },
   "env": ".env",
+  "dockerfile_lines": [
+    "RUN apt-get update && apt-get install -y --no-install-recommends build-essential curl && rm -rf /var/lib/apt/lists/*"
+  ],
   "auth": {
     "path": "./app/auth/auth_handler.py:auth",
     "openapi": {
