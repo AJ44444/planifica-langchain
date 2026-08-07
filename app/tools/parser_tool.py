@@ -1,24 +1,47 @@
-from markitdown import MarkItDown
-from langchain_core.tools import tool
+import io
 import re
-from typing import List, Dict
+import base64
+from typing import List, Dict, Union, Any
+from markitdown import MarkItDown, StreamInfo
+from langchain_core.tools import tool
 
-def convert_pdf_to_markdown(pdf_path: str) -> str:
+
+def convert_pdf_to_markdown(pdf_input: Union[bytes, io.BufferedIOBase, str, Any]) -> str:
     """
-    Convierte un archivo PDF a Markdown utilizando la clase MarkItDown.
+    Convierte un documento PDF recibido en memoria a Markdown utilizando MarkItDown.
+    No admite ni procesa rutas de archivos en disco; la entrada debe ser un buffer de bytes en memoria (io.BytesIO / bytes)
+    o una cadena codificada en base64.
 
     Args:
-        pdf_path (str): La ruta del archivo PDF a convertir.
+        pdf_input: Bytes en memoria, buffer en memoria (io.BytesIO) o representación en Base64 / texto Markdown.
 
     Returns:
-        str: El contenido convertido a Markdown.
+        str: El contenido procesado y convertido a Markdown.
     """
     md = MarkItDown()
 
-    if pdf_path.lower().endswith(".pdf"):
-        result = md.convert(pdf_path)
+    if isinstance(pdf_input, bytes):
+        stream = io.BytesIO(pdf_input)
+        result = md.convert(stream, stream_info=StreamInfo(mimetype="application/pdf", extension=".pdf"))
+
+    elif isinstance(pdf_input, io.BufferedIOBase) or hasattr(pdf_input, "read"):
+        result = md.convert(pdf_input, stream_info=StreamInfo(mimetype="application/pdf", extension=".pdf"))
+
+    elif isinstance(pdf_input, str):
+        # Procesar datos recibidos en Base64 exclusivamente en memoria
+        if pdf_input.startswith("data:application/pdf;base64,") or len(pdf_input) > 200:
+            clean_b64 = pdf_input.split(",")[-1]
+            try:
+                pdf_bytes = base64.b64decode(clean_b64)
+                stream = io.BytesIO(pdf_bytes)
+                result = md.convert(stream, stream_info=StreamInfo(mimetype="application/pdf", extension=".pdf"))
+            except Exception:
+                # Si la cadena es texto markdown directo en memoria
+                return pdf_input
+        else:
+            return pdf_input
     else:
-        print("El archivo no es un PDF. Por favor, ingrese un archivo con extensión .pdf.")
+        raise ValueError("El parámetro pdf_input debe ser un objeto de bytes en memoria (bytes / io.BytesIO) o una cadena en Base64. No se admiten rutas de archivo en disco.")
 
     return result.text_content
 
@@ -28,7 +51,7 @@ def extract_career_name(document: str) -> str:
     Extrae dinámicamente el nombre de la carrera o programa de estudios.
     
     Args:
-        content (str): El contenido a procesar.
+        document (str): El contenido Markdown a procesar.
 
     Returns:
         str: El nombre de la carrera u opción por defecto: No identificada.
@@ -45,19 +68,20 @@ def extract_career_name(document: str) -> str:
 
     return "No identificada"
 
+
 @tool
-def parse_curricular_areas(pdf_path: str) -> List[Dict[str, str]]:
+def parse_curricular_areas(pdf_source: Union[bytes, io.BufferedIOBase, str, Any]) -> List[Dict[str, str]]:
     """
-    Analiza dinámicamente los límites de las áreas curriculares. Cada elemento contiene metadatos y el contenido completo, 
-    con el nombre de la carrera insertado en el encabezado.
+    Analiza dinámicamente las áreas curriculares de un documento PDF recibido exclusivamente en memoria.
+    No admite rutas de disco. Procesa el contenido en memoria y retorna las áreas curriculares con su contenido Markdown.
     
     Args:
-        content (str): El contenido a procesar.
+        pdf_source: Bytes en memoria, buffer io.BytesIO o string Base64 del PDF.
     
     Returns:
-        str: Una lista/matriz de áreas.
+        List[Dict[str, str]]: Lista de áreas curriculares procesadas con su contenido Markdown.
     """
-    content = convert_pdf_to_markdown(pdf_path)
+    content = convert_pdf_to_markdown(pdf_source)
 
     career_name = extract_career_name(content)
 
@@ -161,4 +185,3 @@ def parse_curricular_areas(pdf_path: str) -> List[Dict[str, str]]:
         })
 
     return areas_list
-    

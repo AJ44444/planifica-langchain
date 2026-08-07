@@ -1,6 +1,7 @@
 import pytest
 import os
 import sys
+import io
 from markitdown import MarkItDown
 
 # Asegurar que el paquete app esté accesible en sys.path
@@ -56,3 +57,22 @@ def test_parse_curricular_areas():
     assert any("Comunicación y Lenguaje" in a for a in areas_found), "Falta el Área Curricular de Comunicación y Lenguaje."
     assert any("Matemáticas" in a for a in areas_found), "Falta el Área Curricular de Matemáticas."
     assert any("Contabilidad" in a for a in areas_found), "Falta el Área Curricular de Contabilidad."
+
+
+def test_in_memory_pdf_processing():
+    """
+    1.4 Procesar PDF: Verificar que el parser_tool admite flujos de bytes en memoria (io.BytesIO / bytes) sin escribir en disco.
+    """
+    assert os.path.exists(REAL_CNB_FILE), f"El archivo de prueba real {REAL_CNB_FILE} no existe."
+
+    with open(REAL_CNB_FILE, "rb") as f:
+        raw_bytes = f.read()
+
+    # Prueba con stream de bytes en memoria
+    stream = io.BytesIO(raw_bytes)
+    result_stream = convert_pdf_to_markdown(stream)
+    assert len(result_stream) > 0, "El resultado de la conversión por stream de memoria está vacío."
+
+    # Prueba con objeto bytes en memoria directamente
+    result_bytes = convert_pdf_to_markdown(raw_bytes)
+    assert len(result_bytes) > 0, "El resultado de la conversión por bytes en memoria está vacío."
