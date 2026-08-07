@@ -1,0 +1,24 @@
+{
+  "$schema": "https://langgra.ph/schema.json",
+  "dependencies": ["."],
+  "graphs": {
+    "supervisor": "./app/graph.py:supervisor_graph"
+  },
+  "env": ".env",
+  "auth": {
+    "path": "./app/auth/auth_handler.py:auth",
+    "openapi": {
+      "securitySchemes": {
+        "googleBearerAuth": {
+          "type": "http",
+          "scheme": "bearer",
+          "bearerFormat": "JWT",
+          "description": "Token ID de Google OAuth emitido para cualquier cliente (Web, Android, iOS, Flutter, React Native)"
+        }
+      },
+      "security": [
+        { "googleBearerAuth": [] }
+      ]
+    }
+  }
+}
