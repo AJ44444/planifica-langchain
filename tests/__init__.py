@@ -1,1 +1,3 @@
-# Módulo de pruebas unitarias para el sistema multiagente Planifica
+"""
+Módulo de Pruebas Unitarias e Integración para el Sistema Multiagente Planifica.
+"""
