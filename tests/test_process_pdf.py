@@ -12,15 +12,26 @@ from tools.parser_tool import convert_pdf_to_markdown, extract_career_name, pars
 
 TEST_FILES_DIR = os.path.join(os.path.dirname(__file__), "test_files")
 REAL_CNB_FILE = os.path.join(TEST_FILES_DIR, "cnb.md")
+PYPROJECT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "pyproject.toml"))
 
 
 def test_markitdown_presence():
     """
-    1.1 Procesar PDF: Verificar la presencia e inicialización de la librería MarkItDown de Microsoft.
+    1.1 Procesar PDF: Verificar la presencia e inicialización de la librería MarkItDown de Microsoft
+    y la correcta configuración de la dependencia 'markitdown[pdf]' en pyproject.toml.
     """
     md = MarkItDown()
     assert md is not None, "MarkItDown no pudo ser instanciado."
     assert callable(getattr(md, "convert", None)), "MarkItDown no contiene el método 'convert'."
+
+    # Verificar que markitdown[pdf] esté declarada en pyproject.toml
+    assert os.path.exists(PYPROJECT_PATH), f"No se encontró pyproject.toml en {PYPROJECT_PATH}."
+    with open(PYPROJECT_PATH, "r", encoding="utf-8") as f:
+        pyproject_content = f.read()
+    
+    assert "markitdown[pdf]" in pyproject_content, (
+        "La dependencia 'markitdown[pdf]' con soporte para PDF no está configurada en pyproject.toml."
+    )
 
 
 def test_extract_career_name():

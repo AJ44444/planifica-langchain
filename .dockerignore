@@ -1,0 +1,33 @@
+# Entorno virtual y caché de Python
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Git y configuración de control de versiones
+.git/
+.gitignore
+
+# Archivos de entorno sensibles (se administran como variables de contenedor)
+.env
+.env.*
+
+# Script ejecutable de desarrollo local (excluido en producción)
+main.py
+
+# Logs, archivos temporales e IDE
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.gemini/
+.system_generated/
+brain/
+
+# Suite de pruebas unitarias
+tests/
