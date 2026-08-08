@@ -6,21 +6,24 @@ from pymongo import MongoClient
 from langchain_core.tools import tool
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from core.config import DB, DB_NAME, GOOGLE
+from core.config import MONGODB_URI, DB_NAME, GOOGLE
 from core.collections import VECTORES, SUBAREAS
 
 
 def get_db():
-    """Retorna la base de datos de MongoDB."""
-    if not DB:
-        raise ValueError("La variable MONGODB_URI (DB en core.config) no está configurada.")
-    client = MongoClient(DB)
-    db_name = DB_NAME or "planifica_db"
+    """Retorna la base de datos de MongoDB a partir de DB_NAME o la base por defecto de MONGODB_URI."""
+    if not MONGODB_URI:
+        raise ValueError("La variable MONGODB_URI no está configurada.")
+    client = MongoClient(MONGODB_URI)
+    if DB_NAME:
+        return client[DB_NAME]
     try:
-        db = client[db_name]
+        db = client.get_default_database()
+        if db is not None:
+            return db
     except Exception:
-        db = client["planifica_db"]
-    return db
+        pass
+    raise ValueError("No se especificó la base de datos de MongoDB. Configura DB_NAME en .env o inclúyela en la MONGODB_URI.")
 
 
 def get_embedding_model() -> GoogleGenerativeAIEmbeddings:

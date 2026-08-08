@@ -46,12 +46,15 @@ services:
     env_file:
       - .env
     environment:
-      REDIS_URI: redis://langgraph-redis:6379
-      DATABASE_URI: postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable
+      REDIS_URI: ${REDIS_URI:-redis://langgraph-redis:6379}
+      POSTGRES_URI: ${POSTGRES_URI:-postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable}
+      DATABASE_URI: ${POSTGRES_URI:-postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       MONGODB_URI: ${MONGODB_URI}
-      DB_NAME: ${DB_NAME:-planifica_db}
+      DB_NAME: ${DB_NAME}
       SERPER_API_KEY: ${SERPER_API_KEY}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      LANGGRAPH_AUTH: ${LANGGRAPH_AUTH}
+      LANGSERVE_GRAPHS: ${LANGSERVE_GRAPHS}
     restart: unless-stopped

@@ -5,7 +5,13 @@ load_dotenv()
 
 DEEPSEEK = os.getenv("DEEPSEEK_API_KEY")
 GOOGLE = os.getenv("GOOGLE_API_KEY")
-DB = os.getenv("DB_URI")
-DB_NAME = os.getenv("DB_NAME", "planifica_db")
+MONGODB_URI = os.getenv("MONGODB_URI")
+DB_NAME = os.getenv("DB_NAME")
 SERPER = os.getenv("SERPER_API_KEY")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+
+# Variables de entorno de producción para PostgreSQL, Redis y LangGraph Server
+POSTGRES_URI = os.getenv("POSTGRES_URI")
+REDIS_URI = os.getenv("REDIS_URI")
+LANGGRAPH_AUTH = os.getenv("LANGGRAPH_AUTH")
+LANGSERVE_GRAPHS = os.getenv("LANGSERVE_GRAPHS")

@@ -8,26 +8,28 @@ from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
-from core.config import DB
+from core.config import MONGODB_URI, DB_NAME
 
 
 def get_mongo_client() -> MongoClient:
     """Retorna una instancia de MongoClient utilizando la URI configurada."""
-    if not DB:
-        raise ValueError("La variable MONGODB_URI (DB en core.config) no está configurada en .env.")
-    return MongoClient(DB)
+    if not MONGODB_URI:
+        raise ValueError("La variable MONGODB_URI no está configurada en .env.")
+    return MongoClient(MONGODB_URI)
 
 
 def get_db():
-    """Retorna la base de datos de MongoDB."""
+    """Retorna la base de datos de MongoDB a partir de DB_NAME o la base por defecto de MONGODB_URI."""
     client = get_mongo_client()
+    if DB_NAME:
+        return client[DB_NAME]
     try:
         db = client.get_default_database()
-        if db is None:
-            db = client["planifica_db"]
+        if db is not None:
+            return db
     except Exception:
-        db = client["planifica_db"]
-    return db
+        pass
+    raise ValueError("No se especificó la base de datos de MongoDB. Configura DB_NAME en .env o inclúyela en la MONGODB_URI.")
 
 
 def extract_user_id_from_config(config: Optional[Any] = None) -> str:

@@ -82,10 +82,14 @@ Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
 ```bash
 DEEPSEEK_API_KEY="sk-tu-api-key-de-deepseek"
 GOOGLE_API_KEY="tu-google-api-key-para-embeddings-768d"
-DB_URI="mongodb+srv://usuario:password@cluster.mongodb.net"
+MONGODB_URI="mongodb+srv://usuario:password@cluster.mongodb.net"
 DB_NAME="planifica_db"
 SERPER_API_KEY="tu-serper-api-key"
 GOOGLE_CLIENT_ID="tu-google-client-id.apps.googleusercontent.com"
+POSTGRES_URI="postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable"
+REDIS_URI="redis://langgraph-redis:6379"
+LANGGRAPH_AUTH='{"path": "/deps/planifica-langchain/app/auth/auth_handler.py:auth", "openapi": {"securitySchemes": {"googleBearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}}, "security": [{"googleBearerAuth": []}]}}'
+LANGSERVE_GRAPHS='{"supervisor": "/deps/planifica-langchain/app/graph.py:supervisor_graph"}'
 ```
 
 ---
