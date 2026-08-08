@@ -111,20 +111,18 @@ id_actividad: integer
 tipo: string (lista_cotejo | rubrica | escala_rango)
 titulo: string
 instrumento_generado:
-  instrucciones: string
-  criterios:
-    - id_criterio: integer
-      nombre: string
-      descripcion: string
-      ponderacion: float
-  escala_calificacion:
+  escala:
     - string
+  criterios:
+    - nombre: string
+      definiciones:
+        - string
 
 OBJETIVO Y REGLAS DE DISEÑO:
 1. Tipos válidos: 'lista_cotejo', 'rubrica' o 'escala_rango'.
 2. Selección del instrumento según la complejidad de la actividad.
-3. Escala y Criterios tipados con descriptores claros.
-4. Regla de comillas obligatoria: Todos los valores string deben estar estrictamente entre comillas dobles.
+3. Escala ('escala') y Criterios ('criterios' únicamente con los campos 'nombre' y 'definiciones' como arreglo de textos) tipados con descriptores claros.
+4. Regla de comillas obligatoria: Todos los valores string deben estar strictly entre comillas dobles.
 5. Restricción del título: NO repetir el tipo de instrumento en el título.
 """
 

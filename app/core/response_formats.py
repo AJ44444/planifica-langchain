@@ -86,16 +86,13 @@ SchoolLessonPlanResponse = PlanificacionClase
 # ==============================================================================
 
 class CriterioEvaluacion(BaseModel):
-    id_criterio: int
     nombre: str
-    descripcion: str
-    ponderacion: Optional[float] = None
+    definiciones: List[str]
 
 
 class InstrumentoGeneradoDetail(BaseModel):
+    escala: List[str]
     criterios: List[CriterioEvaluacion]
-    escala_calificacion: List[str]
-    instrucciones: str = ""
 
 
 class InstrumentoEvaluacion(BaseModel):
