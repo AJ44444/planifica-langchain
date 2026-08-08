@@ -47,8 +47,7 @@ services:
       - .env
     environment:
       REDIS_URI: ${REDIS_URI:-redis://langgraph-redis:6379}
-      POSTGRES_URI: ${POSTGRES_URI:-postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable}
-      DATABASE_URI: ${POSTGRES_URI:-postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable}
+      DATABASE_URI: ${DATABASE_URI:-postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       MONGODB_URI: ${MONGODB_URI}
