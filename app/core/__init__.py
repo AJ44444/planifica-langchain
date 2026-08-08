@@ -13,6 +13,11 @@ from .config import (
     REDIS_URI,
     LANGGRAPH_AUTH,
     LANGSERVE_GRAPHS,
+    LANGSMITH_TRACING,
+    LANGSMITH_ENDPOINT,
+    LANGSMITH_API_KEY,
+    LANGSMITH_PROJECT,
+    LANGGRAPH_CLOUD_LICENSE_KEY,
 )
 from .db_setup import ensure_redis_connection
 from .llm import llm
@@ -47,6 +52,11 @@ __all__ = [
     "REDIS_URI",
     "LANGGRAPH_AUTH",
     "LANGSERVE_GRAPHS",
+    "LANGSMITH_TRACING",
+    "LANGSMITH_ENDPOINT",
+    "LANGSMITH_API_KEY",
+    "LANGSMITH_PROJECT",
+    "LANGGRAPH_CLOUD_LICENSE_KEY",
     "ensure_redis_connection",
     "llm",
     "AREAS",

@@ -74,9 +74,9 @@ planifica-langchain/
 
 ---
 
-## 🛠️ Variables de Entorno de Producción (`.env`)
+## 🛠️ Variables de Entorno (`.env`)
 
-Para desplegar el contenedor en cualquier infraestructura de producción (Kubernetes, Cloud Run, AWS ECS, Docker Container), se deben inyectar las siguientes variables de entorno:
+Para desplegar el contenedor en cualquier infraestructura (Kubernetes, Cloud Run, AWS ECS, Docker), inyecta las siguientes variables de entorno:
 
 ```bash
 # === Conexiones a Bases de Datos y Cachening ===
@@ -85,7 +85,19 @@ REDIS_URI="redis://host_redis:6379"
 MONGODB_URI="mongodb+srv://usuario:password@cluster.mongodb.net/planifica_db"
 DB_NAME="planifica_db"
 
-# === Autenticación y Runtime de LangGraph Server ===
+# === Licencia y Autenticación del Servidor ===
+# Para Producción Self-Hosted:
+LANGGRAPH_CLOUD_LICENSE_KEY="tu-licencia-oficial-de-langgraph-cloud"
+
+# Para Desarrollo / Pruebas Locales (alternativa):
+LANGSMITH_API_KEY="lsv2_pt_tu_api_key_de_langsmith"
+
+# === Tracing y Observabilidad (LangSmith) ===
+LANGSMITH_TRACING=true
+LANGSMITH_ENDPOINT="https://api.smith.langchain.com"
+LANGSMITH_PROJECT="Planifica"
+
+# === Autenticación de Usuarios y Runtime ===
 GOOGLE_CLIENT_ID="tu-google-client-id.apps.googleusercontent.com"
 LANGGRAPH_AUTH='{"path": "/deps/planifica-langchain/app/auth/auth_handler.py:auth", "openapi": {"securitySchemes": {"googleBearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}}, "security": [{"googleBearerAuth": []}]}}'
 LANGSERVE_GRAPHS='{"supervisor": "/deps/planifica-langchain/app/graph.py:supervisor_graph"}'
