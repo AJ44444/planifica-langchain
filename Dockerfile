@@ -2,6 +2,8 @@ FROM langchain/langgraph-api:3.11
 
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential curl && rm -rf /var/lib/apt/lists/*
 
+ENV PYTHONPATH="/deps/planifica-langchain/app:/deps/planifica-langchain"
+
 # -- Adding local package . --
 ADD . /deps/planifica-langchain
 # -- End of local package . --

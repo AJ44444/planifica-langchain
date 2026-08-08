@@ -6,7 +6,8 @@
   },
   "env": ".env",
   "dockerfile_lines": [
-    "RUN apt-get update && apt-get install -y --no-install-recommends build-essential curl && rm -rf /var/lib/apt/lists/*"
+    "RUN apt-get update && apt-get install -y --no-install-recommends build-essential curl && rm -rf /var/lib/apt/lists/*",
+    "ENV PYTHONPATH=\"/deps/planifica-langchain/app:/deps/planifica-langchain\""
   ],
   "auth": {
     "path": "./app/auth/auth_handler.py:auth",
