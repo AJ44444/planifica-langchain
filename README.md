@@ -1,6 +1,6 @@
 # Sistema Multiagente Educativo "Planifica" 🚀
 
-**Planifica** es una plataforma educativa inteligente impulsada por un arquitectura **Multiagente con LangGraph Server (LangChain)**. Diseñada para automatizar la extracción curricular, la elaboración de planificaciones docentes y el diseño de instrumentos de evaluación alineados al **Currículum Nacional Base (CNB) de Guatemala**.
+**Planifica** es una plataforma educativa inteligente impulsada por una arquitectura **Multiagente con LangGraph Server (LangChain)**. Diseñada para automatizar la extracción curricular, la elaboración de planificaciones docentes y el diseño de instrumentos de evaluación alineados al **Currículum Nacional Base (CNB) de Guatemala**.
 
 ---
 
@@ -10,7 +10,7 @@
 * **Procesamiento de PDF en Memoria**: Extracción y análisis de documentos PDF del CNB directamente en memoria mediante `MarkItDown[pdf]`, sin persistencia temporal en disco.
 * **Búsqueda Vectorial Semántica de 768 Dimensiones**: Búsqueda sobre el CNB implementada con `$vectorSearch` de **MongoDB Atlas Search** utilizando el modelo oficial **Google Gemini `text-embedding-004`**.
 * **Autenticación Nativa de Producción (Google OAuth)**: Middleware integrado en LangGraph Server que valida el token de ID de Google y registra automáticamente al usuario en MongoDB por su `google_id`.
-* **Modelos de Respuesta Estructurada (Pydantic / DTO)**: Garantía de salidas estrictamente tipadas en formato YAML para planificaciones, rubricas, listas de cotejo y recursos multimodales.
+* **Modelos de Respuesta Estructurada (Pydantic / DTO)**: Garantía de salidas estrictamente tipadas en formato YAML para planificaciones, rúbricas, listas de cotejo y recursos multimodales.
 * **Seguridad y Privacidad de Datos**: Aislamiento estricto de sesiones y documentos por `user_id` del docente autenticado.
 
 ---
@@ -57,7 +57,7 @@ planifica-langchain/
 │   ├── agents/                 # Subagentes y Agente Supervisor
 │   ├── auth/                   # Handler de autenticación Google OAuth (langgraph_sdk.Auth)
 │   ├── core/                   # Configuración, LLM (DeepSeek), colecciones y DTOs Pydantic
-│   ├── memory/                 # Persistencia MongoDBSaver e índices automáticos
+│   ├── memory/                 # Persistencia PostgresSaver y MongoDBSaver
 │   ├── prompts/                # Prompts de sistema para cada agente
 │   └── tools/                  # Herramientas (Parser, Vector Search, Web Search, Persistencia)
 ├── tests/                      # Suite de pruebas unitarias
@@ -67,65 +67,62 @@ planifica-langchain/
 │   ├── test_lesson_plans.py    # Pruebas de búsqueda vectorial
 │   └── test_multimodal_resources.py # Pruebas de búsqueda web
 ├── Dockerfile                  # Contenedor de producción para LangGraph Server
-├── docker-compose.yml          # Orquestación de contenedores
 ├── langgraph.json              # Configuración oficial de LangGraph Server
-├── pyproject.toml              # Dependencias del proyecto (markitdown[pdf], langgraph, etc.)
+├── pyproject.toml              # Dependencias del proyecto
 └── main.py                     # Runner CLI de desarrollo local
 ```
 
 ---
 
-## 🛠️ Variables de Entorno (`.env`)
+## 🛠️ Variables de Entorno de Producción (`.env`)
 
-Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
+Para desplegar el contenedor en cualquier infraestructura de producción (Kubernetes, Cloud Run, AWS ECS, Docker Container), se deben inyectar las siguientes variables de entorno:
 
 ```bash
-DEEPSEEK_API_KEY="sk-tu-api-key-de-deepseek"
-GOOGLE_API_KEY="tu-google-api-key-para-embeddings-768d"
-MONGODB_URI="mongodb+srv://usuario:password@cluster.mongodb.net"
+# === Conexiones a Bases de Datos y Cachening ===
+DATABASE_URI="postgres://usuario:password@host_postgres:5432/db_name?sslmode=require"
+REDIS_URI="redis://host_redis:6379"
+MONGODB_URI="mongodb+srv://usuario:password@cluster.mongodb.net/planifica_db"
 DB_NAME="planifica_db"
-SERPER_API_KEY="tu-serper-api-key"
+
+# === Autenticación y Runtime de LangGraph Server ===
 GOOGLE_CLIENT_ID="tu-google-client-id.apps.googleusercontent.com"
-DATABASE_URI="postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable"
-REDIS_URI="redis://langgraph-redis:6379"
 LANGGRAPH_AUTH='{"path": "/deps/planifica-langchain/app/auth/auth_handler.py:auth", "openapi": {"securitySchemes": {"googleBearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}}, "security": [{"googleBearerAuth": []}]}}'
 LANGSERVE_GRAPHS='{"supervisor": "/deps/planifica-langchain/app/graph.py:supervisor_graph"}'
+
+# === Llaves de APIs Externas ===
+DEEPSEEK_API_KEY="sk-tu-api-key-de-deepseek"
+GOOGLE_API_KEY="tu-google-api-key-para-embeddings-768d"
+SERPER_API_KEY="tu-serper-api-key"
 ```
 
 ---
 
-## 🚀 Instalación y Ejecución
+## 🚀 Construcción y Despliegue en Producción
 
-### 1. Desarrollo Local
-
-```bash
-# Clonar e instalar dependencias en entorno virtual
-python -m venv .venv
-.venv\Scripts\activate  # En Windows
-pip install -e .
-
-# Verificar compilación del grafo y servicios
-python main.py
-
-# Iniciar servidor de desarrollo de LangGraph CLI
-langgraph dev --host 0.0.0.0 --port 2024
-```
-
-### 2. Despliegue con Docker Compose (Producción)
+### 1. Construir la Imagen de Producción con LangGraph CLI
 
 ```bash
-# Construir y levantar el contenedor de produccion
-docker-compose up --build -d
+# Construir la imagen Docker optimizada para producción
+langgraph build -t planifica-langgraph-server:latest
 ```
 
-El servidor quedará disponible en `http://localhost:2024` procesando solicitudes con encabezado HTTP:
+### 2. Ejecutar el Contenedor de Producción
+
+```bash
+docker run -d \
+  --name planifica-langgraph-server \
+  -p 8000:8000 \
+  --env-file .env \
+  planifica-langgraph-server:latest
+```
+
+El servidor estará listo para recibir solicitudes con el encabezado de autenticación HTTP:
 `Authorization: Bearer <ID_TOKEN_GOOGLE_OAUTH>`
 
 ---
 
 ## 🧪 Ejecución de Pruebas Unitarias
-
-Para ejecutar el conjunto completo de pruebas automatizadas:
 
 ```bash
 python -m pytest tests/ -v
