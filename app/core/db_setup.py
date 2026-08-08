@@ -1,6 +1,6 @@
-import os
 import logging
 from typing import Optional
+import redis
 from .config import REDIS_URI
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,6 @@ def ensure_redis_connection(redis_uri: Optional[str] = None) -> bool:
         return False
 
     try:
-        import redis
         client = redis.Redis.from_url(uri, socket_connect_timeout=3)
         client.ping()
         _redis_initialized = True

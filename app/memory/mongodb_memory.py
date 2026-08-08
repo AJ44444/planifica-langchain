@@ -2,6 +2,10 @@ import logging
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import MemorySaver
 from core.config import DATABASE_URI
+from psycopg_pool import ConnectionPool
+from psycopg.rows import dict_row
+from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.store.postgres import PostgresStore
 
 logger = logging.getLogger(__name__)
 
@@ -14,16 +18,20 @@ def get_checkpointer() -> BaseCheckpointSaver:
     """
     if DATABASE_URI:
         try:
-            from langgraph.checkpoint.postgres import PostgresSaver
-            from langgraph.store.postgres import PostgresStore
+            # Crear pool de conexiones persistente para PostgreSQL
+            pool = ConnectionPool(
+                conninfo=DATABASE_URI,
+                max_size=20,
+                kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row}
+            )
 
             # Inicialización de tablas de checkpointing (checkpoints, checkpoint_blobs, checkpoint_writes, checkpoint_migrations)
-            checkpointer = PostgresSaver.from_conn_string(DATABASE_URI)
+            checkpointer = PostgresSaver(pool)
             checkpointer.setup()
 
             # Inicialización de tablas de almacenamiento y vectores (store, store_vectors, store_migrations)
             try:
-                store = PostgresStore.from_conn_string(DATABASE_URI)
+                store = PostgresStore(pool)
                 store.setup()
             except Exception as store_err:
                 logger.warning(f"Advertencia al inicializar PostgresStore: {store_err}")
