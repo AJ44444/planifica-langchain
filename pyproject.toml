@@ -11,6 +11,9 @@ requires-python = ">=3.10"
 dependencies = [
     "langgraph>=0.2.0",
     "langgraph-cli[inmem]>=0.1.0",
+    "langgraph-checkpoint-postgres>=2.0.0",
+    "psycopg[binary]>=3.1.0",
+    "redis>=5.0.0",
     "langgraph-sdk>=0.1.0",
     "langchain-core>=0.3.0",
     "langchain-deepseek>=0.1.0",

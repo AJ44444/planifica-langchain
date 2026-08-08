@@ -2,6 +2,11 @@ import json
 from typing import Dict, Any, Generator, Optional
 from langchain_core.messages import HumanMessage, AIMessage
 from agents.main_agent import main_agent, checkpointer
+from core.db_setup import ensure_postgres_tables, ensure_redis_connection
+
+# Inicialización y verificación preventiva de PostgreSQL y Redis al cargar el módulo en producción
+ensure_postgres_tables()
+ensure_redis_connection()
 
 # Grafo Supervisor Principal Compilado con Checkpointer en main_agent.py
 supervisor_graph = main_agent

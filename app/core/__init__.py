@@ -14,6 +14,7 @@ from .config import (
     LANGGRAPH_AUTH,
     LANGSERVE_GRAPHS,
 )
+from .db_setup import ensure_postgres_tables, ensure_redis_connection
 from .llm import llm
 from .collections import (
     AREAS,
@@ -46,6 +47,8 @@ __all__ = [
     "REDIS_URI",
     "LANGGRAPH_AUTH",
     "LANGSERVE_GRAPHS",
+    "ensure_postgres_tables",
+    "ensure_redis_connection",
     "llm",
     "AREAS",
     "SUBAREAS",
