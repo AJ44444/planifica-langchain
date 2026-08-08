@@ -1,4 +1,35 @@
+volumes:
+  langgraph-postgres-data:
+    driver: local
+
 services:
+  langgraph-redis:
+    image: redis:6-alpine
+    container_name: planifica_langgraph_redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  langgraph-postgres:
+    image: postgres:16-alpine
+    container_name: planifica_langgraph_postgres
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - langgraph-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      start_period: 10s
+      timeout: 3s
+      retries: 5
+      interval: 5s
+    restart: unless-stopped
+
   planifica-agent-server:
     build:
       context: .
@@ -6,14 +37,21 @@ services:
     image: planifica-langgraph-server:latest
     container_name: planifica_langgraph_server
     ports:
-      - "2024:2024"
+      - "2024:8000"
+    depends_on:
+      langgraph-redis:
+        condition: service_healthy
+      langgraph-postgres:
+        condition: service_healthy
     env_file:
       - .env
     environment:
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - MONGODB_URI=${MONGODB_URI}
-      - DB_NAME=${DB_NAME:-planifica_db}
-      - SERPER_API_KEY=${SERPER_API_KEY}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      REDIS_URI: redis://langgraph-redis:6379
+      DATABASE_URI: postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      MONGODB_URI: ${MONGODB_URI}
+      DB_NAME: ${DB_NAME:-planifica_db}
+      SERPER_API_KEY: ${SERPER_API_KEY}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
     restart: unless-stopped

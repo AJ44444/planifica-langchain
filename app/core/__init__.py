@@ -12,8 +12,6 @@ from .collections import (
     EVALUACION,
     RECURSOS,
     USUARIOS,
-    CHECKPOINTS,
-    CHECKPOINT_WRITES,
 )
 from .response_formats import (
     EstructuraCurricular,
@@ -41,8 +39,6 @@ __all__ = [
     "EVALUACION",
     "RECURSOS",
     "USUARIOS",
-    "CHECKPOINTS",
-    "CHECKPOINT_WRITES",
     "EstructuraCurricular",
     "ProcessPDFResponse",
     "PlanificacionClase",
