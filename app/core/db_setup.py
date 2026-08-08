@@ -1,37 +1,11 @@
 import os
 import logging
 from typing import Optional
-from .config import DATABASE_URI, REDIS_URI
+from .config import REDIS_URI
 
 logger = logging.getLogger(__name__)
 
-_tables_initialized: bool = False
 _redis_initialized: bool = False
-
-
-def ensure_postgres_tables(db_uri: Optional[str] = None) -> bool:
-    """
-    Verifica e inicializa automáticamente una única vez por ciclo de vida del contenedor
-    las tablas de PostgreSQL requeridas por LangGraph Server.
-    """
-    global _tables_initialized
-    if _tables_initialized:
-        return True
-
-    uri = db_uri or DATABASE_URI
-    if not uri:
-        return False
-
-    try:
-        from langgraph.checkpoint.postgres import PostgresSaver
-        with PostgresSaver.from_conn_string(uri) as checkpointer:
-            checkpointer.setup()
-        _tables_initialized = True
-        logger.info("Tablas de PostgreSQL para LangGraph Server inicializadas correctamente.")
-        return True
-    except Exception as e:
-        logger.warning(f"No se pudieron inicializar las tablas de PostgreSQL automáticamente: {e}")
-        return False
 
 
 def ensure_redis_connection(redis_uri: Optional[str] = None) -> bool:
