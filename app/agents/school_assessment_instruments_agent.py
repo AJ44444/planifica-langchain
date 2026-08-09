@@ -1,4 +1,5 @@
 from langchain.agents import create_agent
+from langchain.agents.structured_output import ToolStrategy
 from core.llm import llm
 from core.response_formats import InstrumentoEvaluacion
 from tools.persistence_tool import (
@@ -18,5 +19,5 @@ agent = create_agent(
         delete_assessment_instrument
     ],
     system_prompt=SYSTEM_PROMPT_SCHOOL_ASSESSMENT_INSTRUMENTS,
-    response_format=InstrumentoEvaluacion
+    response_format=ToolStrategy(InstrumentoEvaluacion)
 )
