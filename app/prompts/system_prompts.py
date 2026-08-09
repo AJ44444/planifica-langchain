@@ -76,14 +76,14 @@ desarrollo_curricular:
         contenidos:
           - string
     actividades_aprendizaje:
-      - id_actividad: integer
+      - id_actividad: string (ObjectId de 24 caracteres de MongoDB)
         fase: string (inicio | desarrollo | cierre)
         descripcion: string
 
 REGLAS DE PLANIFICACIÓN:
 1. Competencias: Incluir en 'desarrollo_curricular' las competencias recibidas o encontradas en el CNB, sin omitir ninguna.
 2. Actividades: Redactar las actividades de aprendizaje de forma impersonal (verbos en infinitivo: 'Presentar...', 'Analizar...', 'Desarrollar...').
-3. Regla de comillas obligatoria: Todos los valores de tipo string (centro_educativo, lugar, grado, seccion, nombre_docente, competencia, indicador, contenidos y descripcion) deben estar estrictamente encerrados entre comillas dobles.
+3. Regla de comillas obligatoria: Todos los valores de tipo string (centro_educativo, lugar, grado, seccion, nombre_docente, competencia, indicador, contenidos, id_actividad y descripcion) deben estar estrictamente encerrados entre comillas dobles.
 4. Duración y enfoque de las actividades:
     - Duración 1 (Un día): Clase estructurada en 'inicio', 'desarrollo' y 'cierre'.
     - Duración 2 (Una semana): Actividades semanales secuenciales. El campo 'fase' indica el orden lógico ('inicio', 'desarrollo', 'cierre').
@@ -105,9 +105,9 @@ REGLA DE SEGURIDAD Y PRIVACIDAD DE DATOS: Ningún usuario puede consultar, modif
 FORMATO DE RESPUESTA ESTRUCTURADO:
 Estructurar el instrumento única y exclusivamente en un documento YAML con el siguiente formato:
 
-id_planificacion: string
+id_planificacion: string (ObjectId de 24 caracteres)
 id_fila_curricular: integer
-id_actividad: integer
+id_actividad: string (ObjectId de 24 caracteres de la actividad)
 tipo: string (lista_cotejo | rubrica | escala_rango)
 titulo: string
 instrumento_generado:
@@ -122,7 +122,7 @@ OBJETIVO Y REGLAS DE DISEÑO:
 1. Tipos válidos: 'lista_cotejo', 'rubrica' o 'escala_rango'.
 2. Selección del instrumento según la complejidad de la actividad.
 3. Escala ('escala') y Criterios ('criterios' únicamente con los campos 'nombre' y 'definiciones' como arreglo de textos) tipados con descriptores claros.
-4. Regla de comillas obligatoria: Todos los valores string deben estar strictly entre comillas dobles.
+4. Regla de comillas obligatoria: Todos los valores string deben estar estrictamente entre comillas dobles.
 5. Restricción del título: NO repetir el tipo de instrumento en el título.
 """
 
@@ -142,9 +142,9 @@ REGLA DE SEGURIDAD Y PRIVACIDAD DE DATOS: Ningún usuario puede consultar, modif
 FORMATO DE RESPUESTA ESTRUCTURADO:
 Estructurar la sugerencia de recurso única y exclusivamente en un documento YAML con el siguiente formato:
 
-id_planificacion: string
+id_planificacion: string (ObjectId de 24 caracteres)
 id_fila_curricular: integer
-id_actividad: integer
+id_actividad: string (ObjectId de 24 caracteres de la actividad)
 tipo: string (video | imagen | audio | documento | sitio_web)
 titulo: string
 url: string

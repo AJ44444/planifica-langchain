@@ -55,7 +55,7 @@ class EncabezadoPlan(BaseModel):
 
 
 class ActividadAprendizaje(BaseModel):
-    id_actividad: int
+    id_actividad: Optional[str] = None
     fase: Literal["inicio", "desarrollo", "cierre"]
     descripcion: str
 
@@ -98,7 +98,7 @@ class InstrumentoGeneradoDetail(BaseModel):
 class InstrumentoEvaluacion(BaseModel):
     id_planificacion: str
     id_fila_curricular: int = 1
-    id_actividad: int = 1
+    id_actividad: str = ""
     tipo: Literal["lista_cotejo", "rubrica", "escala_rango"]
     titulo: str
     instrumento_generado: InstrumentoGeneradoDetail
@@ -115,7 +115,7 @@ SchoolAssessmentInstrumentResponse = InstrumentoEvaluacion
 class RecursoMultimodal(BaseModel):
     id_planificacion: str
     id_fila_curricular: int = 1
-    id_actividad: int = 1
+    id_actividad: str = ""
     tipo: Literal["video", "imagen", "audio", "documento", "sitio_web"]
     titulo: str
     url: str

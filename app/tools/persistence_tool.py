@@ -118,7 +118,7 @@ def _clean_updates(updates: dict) -> dict:
     clean = dict(updates)
     if "_id" in clean:
         del clean["_id"]
-    for key in ["id_area", "id_subarea_relacionada", "id_usuario", "id_planificacion"]:
+    for key in ["id_area", "id_subarea_relacionada", "id_usuario", "id_planificacion", "id_actividad"]:
         if key in clean and isinstance(clean[key], str) and len(clean[key].strip()) == 24:
             try:
                 clean[key] = ObjectId(clean[key].strip())
@@ -309,6 +309,26 @@ def save_lesson_plan(data: str) -> str:
             "estado": metadatos_in.get("estado", "finalizado")
         }
 
+        desarrollo = parsed_data.get("desarrollo_curricular", [])
+        formatted_desarrollo = []
+        for fila in desarrollo:
+            if isinstance(fila, dict):
+                fila_copy = dict(fila)
+                acts = fila_copy.get("actividades_aprendizaje", [])
+                formatted_acts = []
+                for act in acts:
+                    if isinstance(act, dict):
+                        act_copy = dict(act)
+                        act_id_val = act_copy.get("id_actividad")
+                        act_copy["id_actividad"] = _ensure_object_id(act_id_val) if act_id_val else ObjectId()
+                        formatted_acts.append(act_copy)
+                    else:
+                        formatted_acts.append(act)
+                fila_copy["actividades_aprendizaje"] = formatted_acts
+                formatted_desarrollo.append(fila_copy)
+            else:
+                formatted_desarrollo.append(fila)
+
         doc = {
             "id_usuario": id_usuario,
             "metadatos": metadatos,
@@ -320,7 +340,7 @@ def save_lesson_plan(data: str) -> str:
                 "nombre_docente": str(encabezado.get("nombre_docente", "")),
                 "duracion": int(encabezado.get("duracion", 1))
             },
-            "desarrollo_curricular": parsed_data.get("desarrollo_curricular", [])
+            "desarrollo_curricular": formatted_desarrollo
         }
 
         res = db["planificaciones_generadas"].insert_one(doc)
@@ -628,10 +648,13 @@ def save_assessment_instrument(data: str) -> str:
         id_planificacion_val = parsed_data.get("id_planificacion")
         id_planificacion = _ensure_object_id(id_planificacion_val) if id_planificacion_val else ObjectId()
 
+        id_actividad_val = parsed_data.get("id_actividad")
+        id_actividad = _ensure_object_id(id_actividad_val) if id_actividad_val else ObjectId()
+
         doc = {
             "id_planificacion": id_planificacion,
             "id_fila_curricular": int(parsed_data.get("id_fila_curricular", 1)),
-            "id_actividad": int(parsed_data.get("id_actividad", 1)),
+            "id_actividad": id_actividad,
             "tipo": str(parsed_data.get("tipo", "lista_cotejo")),
             "titulo": str(parsed_data.get("titulo", "")),
             "instrumento_generado": parsed_data.get("instrumento_generado", {})
@@ -712,10 +735,13 @@ def save_multimodal_resource(data: str) -> str:
         id_planificacion_val = parsed_data.get("id_planificacion")
         id_planificacion = _ensure_object_id(id_planificacion_val) if id_planificacion_val else ObjectId()
 
+        id_actividad_val = parsed_data.get("id_actividad")
+        id_actividad = _ensure_object_id(id_actividad_val) if id_actividad_val else ObjectId()
+
         doc = {
             "id_planificacion": id_planificacion,
             "id_fila_curricular": int(parsed_data.get("id_fila_curricular", 1)),
-            "id_actividad": int(parsed_data.get("id_actividad", 1)),
+            "id_actividad": id_actividad,
             "tipo": str(parsed_data.get("tipo", "sitio_web")),
             "titulo": str(parsed_data.get("titulo", "")),
             "url": str(parsed_data.get("url", ""))
