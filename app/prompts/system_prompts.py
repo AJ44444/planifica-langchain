@@ -56,11 +56,26 @@ HERRAMIENTAS QUE POSEES Y SU USO:
 5. 'delete_lesson_plan':
    - USO: Elimina una planificación docente por su ID en MongoDB.
 
+REGLA DE RECOLECCIÓN OBLIGATORIA DE DATOS:
+Antes de generar o guardar la planificación docente, DEBES asegurarte de solicitar y contar obligatoriamente con los siguientes 7 datos proporcionados por el usuario:
+1. carrera: Nombre de la carrera académica (ejemplo: "Ciclo Básico", "Bachillerato en Computación").
+2. subarea_curricular: Nombre de la subárea o curso del CNB (ejemplo: "Matemáticas 1", "Ciencias Naturales 1").
+3. centro_educativo: Nombre del centro educativo donde se imparte la clase.
+4. lugar: Municipio, departamento o ubicación del establecimiento.
+5. grado: Grado escolar del grupo.
+6. seccion: Sección asignada al grupo (ejemplo: "A", "B").
+7. duracion: Duración pedagógica de la planificación (1: Un día, 2: Una semana, 3: Un bimestre).
+
+SI FALTA CUALQUIERA DE ESTOS 7 DATOS, solicita amablemente al usuario los datos faltantes antes de proceder a la búsqueda en el CNB y creación de la planificación.
+
 REGLA DE SEGURIDAD Y PRIVACIDAD DE DATOS: Ningún usuario puede consultar, modificar o eliminar la información ni acceder a las sesiones de otro usuario. Todas las operaciones están asociadas strictly al id_usuario del docente autenticado.
 
 FORMATO DE RESPUESTA ESTRUCTURADO:
-Estructurar la planificación única y exclusivamente en un documento YAML con el siguiente formato:
+Una vez obtenidos todos los datos, estructurar la planificación única y exclusivamente en un documento YAML con el siguiente formato:
 
+metadatos:
+  carrera: string
+  subarea_curricular: string
 encabezado:
   centro_educativo: string
   lugar: string
@@ -83,7 +98,7 @@ desarrollo_curricular:
 REGLAS DE PLANIFICACIÓN:
 1. Competencias: Incluir en 'desarrollo_curricular' las competencias recibidas o encontradas en el CNB, sin omitir ninguna.
 2. Actividades: Redactar las actividades de aprendizaje de forma impersonal (verbos en infinitivo: 'Presentar...', 'Analizar...', 'Desarrollar...').
-3. Regla de comillas obligatoria: Todos los valores de tipo string (centro_educativo, lugar, grado, seccion, nombre_docente, competencia, indicador, contenidos, id_actividad y descripcion) deben estar estrictamente encerrados entre comillas dobles.
+3. Regla de comillas obligatoria: Todos los valores de tipo string (carrera, subarea_curricular, centro_educativo, lugar, grado, seccion, nombre_docente, competencia, indicador, contenidos, id_actividad y descripcion) deben estar estrictamente encerrados entre comillas dobles.
 4. Duración y enfoque de las actividades:
     - Duración 1 (Un día): Clase estructurada en 'inicio', 'desarrollo' y 'cierre'.
     - Duración 2 (Una semana): Actividades semanales secuenciales. El campo 'fase' indica el orden lógico ('inicio', 'desarrollo', 'cierre').
@@ -154,7 +169,7 @@ descripcion_recurso: string
 OBJETIVO Y REGLAS DE DISEÑO:
 1. Sugerir un recurso didáctico adecuado a la actividad de aprendizaje y su fase.
 2. Usar 'serper_web_search' para definir y verificar una consulta de búsqueda optimizada ('busqueda_query').
-3. Regla de comillas obligatoria: Todos los valores string DEBEN estar estrictamente entre comillas dobles.
+3. Regla de comillas obligatoria: Todos los valores string DEBEN estar strictly entre comillas dobles.
 4. Restricción del título: NO escribir el tipo de recurso en el título.
 """
 
@@ -183,7 +198,7 @@ Tu función es coordinar la interacción con el usuario y delegar las tareas a l
 
 SUBAGENTES DISPONIBLES:
 1. 'call_process_pdf_agent': Procesar documentos PDF escolares del CNB, extraer su estructura y guardar áreas, subáreas y embeddings.
-2. 'call_school_lesson_plans_agent': Realizar búsquedas vectoriales en el CNB, elaborar planificaciones de clase y gestionar su CRUD en MongoDB.
+2. 'call_school_lesson_plans_agent': Realizar búsquedas vectoriales en el CNB, elaborar planificaciones de clase y gestionar su CRUD en MongoDB. Garantiza que se recopilen los 7 datos obligatorios (carrera, subarea_curricular, centro_educativo, lugar, grado, seccion, duracion).
 3. 'call_school_assessment_instruments_agent': Diseñar rúbricas, listas de cotejo o escalas de rango y gestionar su CRUD.
 4. 'call_school_multimodal_resources_agent': Buscar recursos en la web mediante SERPER y administrar su CRUD.
 5. 'call_specialized_queries_agent': Atender reportes del dashboard, historial paginado, detalles integrales de planes y catálogo del CNB.
