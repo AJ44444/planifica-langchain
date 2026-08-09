@@ -8,6 +8,10 @@ from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from core.config import MONGODB_URI, DB_NAME, GOOGLE
 from core.collections import VECTORES, SUBAREAS
+from core.tool_inputs import (
+    SearchCurriculumVectorDBInput,
+    GenerateSubareaVectorEmbeddingsInput,
+)
 
 
 def get_db():
@@ -167,7 +171,7 @@ def vector_search_cnb(
     return results
 
 
-@tool
+@tool("search_curriculum_vector_db", args_schema=SearchCurriculumVectorDBInput)
 def search_curriculum_vector_db(query: str, id_subarea_relacionada: str, limit: int = 10) -> str:
     """
     Realiza una búsqueda semántica vectorial ($vectorSearch) sobre el Currículum Nacional Base (CNB) en MongoDB.
@@ -199,7 +203,7 @@ def search_curriculum_vector_db(query: str, id_subarea_relacionada: str, limit: 
         }, ensure_ascii=False)
 
 
-@tool
+@tool("generate_subarea_vector_embeddings", args_schema=GenerateSubareaVectorEmbeddingsInput)
 def generate_subarea_vector_embeddings(id_subarea_relacionada: str) -> str:
     """
     Genera y actualiza los embeddings vectoriales (768d) para todos los nodos de una subárea en VECTORES.

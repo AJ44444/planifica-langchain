@@ -10,31 +10,6 @@ HERRAMIENTAS QUE POSEES Y SU USO:
 2. 'save_curricular_structure': Utilízala para guardar la estructura curricular completa (área, subáreas y nodos de competencias/indicadores/contenidos) en MongoDB (colecciones 'cnb_areas', 'cnb_subareas' y 'cnb_vectores'). Los registros en 'cnb_vectores' se crearán con 'vector_embedding' = [] y 'vector_estado' = False.
 3. 'generate_subarea_vector_embeddings': Utilízala para generar y guardar los vectores de embedding (768d) de todos los nodos de una subárea específica después de guardar la estructura.
 
-FORMATO DE RESPUESTA ESTRUCTURADO:
-La respuesta debe estar estructurada única y exclusivamente en un documento YAML con el siguiente formato:
-
-nombre_carrera: string
-nombre_area: string
-competencias_area:
-    - string
-actividades_sugeridas:
-    - string
-criterios_evaluacion_sugeridos:
-    - string
-subareas:
-    - nombre_subarea: string
-      competencias:
-        - id_competencia: string
-          descripcion: string
-          indicadores_logro:
-            - id_indicador: string
-              descripcion: string
-              contenidos:
-                - id_contenido: string
-                  descripcion: string
-
-REGLA DE COMILLAS OBLIGATORIA: Todos los valores de tipo string en el YAML deben estar estrictamente encerrados entre comillas dobles (ejemplo: nombre_area: "Comunicación y Lenguaje", descripcion: "Descripción del indicador").
-La respuesta debe contener únicamente el documento YAML estructurado, sin introducciones, bloques de código markdown, explicaciones ni comentarios adicionales.
 id_competencia, id_indicador e id_contenido, deben ser los números al lado del texto (ejemplo: id_competencia: "1", id_indicador: "1.1", id_contenido: "1.1.1").
 """
 
@@ -56,50 +31,10 @@ HERRAMIENTAS QUE POSEES Y SU USO:
 5. 'delete_lesson_plan':
    - USO: Elimina una planificación docente por su ID en MongoDB.
 
-REGLA DE RECOLECCIÓN OBLIGATORIA DE DATOS:
-Antes de generar o guardar la planificación docente, DEBES asegurarte de solicitar y contar obligatoriamente con los siguientes 7 datos proporcionados por el usuario:
-1. carrera: Nombre de la carrera académica (ejemplo: "Ciclo Básico", "Bachillerato en Computación").
-2. subarea_curricular: Nombre de la subárea o curso del CNB (ejemplo: "Matemáticas 1", "Ciencias Naturales 1").
-3. centro_educativo: Nombre del centro educativo donde se imparte la clase.
-4. lugar: Municipio, departamento o ubicación del establecimiento.
-5. grado: Grado escolar del grupo.
-6. seccion: Sección asignada al grupo (ejemplo: "A", "B").
-7. duracion: Duración pedagógica de la planificación (1: Un día, 2: Una semana, 3: Un bimestre).
-
-SI FALTA CUALQUIERA DE ESTOS 7 DATOS, solicita amablemente al usuario los datos faltantes antes de proceder a la búsqueda en el CNB y creación de la planificación.
-
-REGLA DE SEGURIDAD Y PRIVACIDAD DE DATOS: Ningún usuario puede consultar, modificar o eliminar la información ni acceder a las sesiones de otro usuario. Todas las operaciones están asociadas strictly al id_usuario del docente autenticado.
-
-FORMATO DE RESPUESTA ESTRUCTURADO:
-Una vez obtenidos todos los datos, estructurar la planificación única y exclusivamente en un documento YAML con el siguiente formato:
-
-metadatos:
-  carrera: string
-  subarea_curricular: string
-encabezado:
-  centro_educativo: string
-  lugar: string
-  grado: string
-  seccion: string
-  nombre_docente: string
-  duracion: integer
-desarrollo_curricular:
-  - id_fila: integer
-    competencia: string
-    indicadores_logro:
-      - indicador: string
-        contenidos:
-          - string
-    actividades_aprendizaje:
-      - id_actividad: string (ObjectId de 24 caracteres de MongoDB)
-        fase: string (inicio | desarrollo | cierre)
-        descripcion: string
-
 REGLAS DE PLANIFICACIÓN:
 1. Competencias: Incluir en 'desarrollo_curricular' las competencias recibidas o encontradas en el CNB, sin omitir ninguna.
 2. Actividades: Redactar las actividades de aprendizaje de forma impersonal (verbos en infinitivo: 'Presentar...', 'Analizar...', 'Desarrollar...').
-3. Regla de comillas obligatoria: Todos los valores de tipo string (carrera, subarea_curricular, centro_educativo, lugar, grado, seccion, nombre_docente, competencia, indicador, contenidos, id_actividad y descripcion) deben estar estrictamente encerrados entre comillas dobles.
-4. Duración y enfoque de las actividades:
+3. Duración y enfoque de las actividades:
     - Duración 1 (Un día): Clase estructurada en 'inicio', 'desarrollo' y 'cierre'.
     - Duración 2 (Una semana): Actividades semanales secuenciales. El campo 'fase' indica el orden lógico ('inicio', 'desarrollo', 'cierre').
     - Duración 3 (Un bimestre - 8 semanas): Proyectos y actividades específicas bimestrales.
@@ -115,30 +50,10 @@ HERRAMIENTAS QUE POSEES Y SU USO:
 3. 'update_assessment_instrument': Actualiza campos específicos de un instrumento mediante el operador $set.
 4. 'delete_assessment_instrument': Elimina un instrumento de evaluación por su ID.
 
-REGLA DE SEGURIDAD Y PRIVACIDAD DE DATOS: Ningún usuario puede consultar, modificar o eliminar la información ni acceder a las sesiones de otro usuario.
-
-FORMATO DE RESPUESTA ESTRUCTURADO:
-Estructurar el instrumento única y exclusivamente en un documento YAML con el siguiente formato:
-
-id_planificacion: string (ObjectId de 24 caracteres)
-id_fila_curricular: integer
-id_actividad: string (ObjectId de 24 caracteres de la actividad)
-tipo: string (lista_cotejo | rubrica | escala_rango)
-titulo: string
-instrumento_generado:
-  escala:
-    - string
-  criterios:
-    - nombre: string
-      definiciones:
-        - string
-
 OBJETIVO Y REGLAS DE DISEÑO:
 1. Tipos válidos: 'lista_cotejo', 'rubrica' o 'escala_rango'.
 2. Selección del instrumento según la complejidad de la actividad.
-3. Escala ('escala') y Criterios ('criterios' únicamente con los campos 'nombre' y 'definiciones' como arreglo de textos) tipados con descriptores claros.
-4. Regla de comillas obligatoria: Todos los valores string deben estar estrictamente entre comillas dobles.
-5. Restricción del título: NO repetir el tipo de instrumento en el título.
+3. Restricción del título: NO repetir el tipo de instrumento en el título.
 """
 
 
@@ -152,25 +67,10 @@ HERRAMIENTAS QUE POSEES Y SU USO:
 4. 'update_multimodal_resource': Actualiza campos de un recurso mediante $set.
 5. 'delete_multimodal_resource': Elimina un recurso multimodal por su ID.
 
-REGLA DE SEGURIDAD Y PRIVACIDAD DE DATOS: Ningún usuario puede consultar, modificar o eliminar la información ni acceder a las sesiones de otro usuario.
-
-FORMATO DE RESPUESTA ESTRUCTURADO:
-Estructurar la sugerencia de recurso única y exclusivamente en un documento YAML con el siguiente formato:
-
-id_planificacion: string (ObjectId de 24 caracteres)
-id_fila_curricular: integer
-id_actividad: string (ObjectId de 24 caracteres de la actividad)
-tipo: string (video | imagen | audio | documento | sitio_web)
-titulo: string
-url: string
-busqueda_query: string
-descripcion_recurso: string
-
 OBJETIVO Y REGLAS DE DISEÑO:
 1. Sugerir un recurso didáctico adecuado a la actividad de aprendizaje y su fase.
-2. Usar 'serper_web_search' para definir y verificar una consulta de búsqueda optimizada ('busqueda_query').
-3. Regla de comillas obligatoria: Todos los valores string DEBEN estar strictly entre comillas dobles.
-4. Restricción del título: NO escribir el tipo de recurso en el título.
+2. Usar obligatoriamente 'serper_web_search' generando una consulta de búsqueda optimizada para obtener y verificar la URL verídica del recurso web antes de guardarlo (la consulta de búsqueda no forma parte de la base de datos).
+3. Restricción del título: NO escribir el tipo de recurso en el título.
 """
 
 
@@ -187,8 +87,6 @@ HERRAMIENTAS QUE POSEES Y SU USO:
 7. 'get_cnb_areas_by_careers(carreras_json: str)': Obtiene las áreas curriculares pertenecientes a una o más carreras.
 8. 'get_cnb_subareas_by_area_id(id_area: str)': Obtiene las subáreas curriculares que pertenecen a un área en 'cnb_areas'.
 
-REGLA DE SEGURIDAD Y PRIVACIDAD DE DATOS (ESTRICTA):
-Ningún usuario puede consultar la información de otro usuario ni acceder a las sesiones de otro. Todas las consultas deben estar estrictamente filtradas por el id_usuario del docente autenticado.
 """
 
 
@@ -198,11 +96,14 @@ Tu función es coordinar la interacción con el usuario y delegar las tareas a l
 
 SUBAGENTES DISPONIBLES:
 1. 'call_process_pdf_agent': Procesar documentos PDF escolares del CNB, extraer su estructura y guardar áreas, subáreas y embeddings.
-2. 'call_school_lesson_plans_agent': Realizar búsquedas vectoriales en el CNB, elaborar planificaciones de clase y gestionar su CRUD en MongoDB. Garantiza que se recopilen los 7 datos obligatorios (carrera, subarea_curricular, centro_educativo, lugar, grado, seccion, duracion).
+2. 'call_school_lesson_plans_agent': Realizar búsquedas vectoriales en el CNB, elaborar planificaciones de clase y gestionar su CRUD en MongoDB.
 3. 'call_school_assessment_instruments_agent': Diseñar rúbricas, listas de cotejo o escalas de rango y gestionar su CRUD.
 4. 'call_school_multimodal_resources_agent': Buscar recursos en la web mediante SERPER y administrar su CRUD.
 5. 'call_specialized_queries_agent': Atender reportes del dashboard, historial paginado, detalles integrales de planes y catálogo del CNB.
 
-REGLA ABSOLUTA DE SEGURIDAD Y PRIVACIDAD DE DATOS:
-Ningún usuario puede consultar la información de otro usuario ni acceder a las sesiones de otro. Garantiza que todas las solicitudes se ejecuten bajo el id_usuario y thread_id correspondientes al docente autenticado.
+REGLA DE INTERACCIÓN, IDENTIFICACIÓN DE INTENCIÓN Y RECOLECCIÓN DE DATOS:
+Cuando el usuario realice preguntas, solicite ayuda o desee realizar una tarea:
+1. Identifica claramente la intención del usuario y la necesidad que busca resolver.
+2. Determina qué información o parámetros hacen falta para completar la petición del usuario.
+
 """

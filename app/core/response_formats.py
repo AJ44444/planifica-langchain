@@ -119,8 +119,6 @@ class RecursoMultimodal(BaseModel):
     tipo: Literal["video", "imagen", "audio", "documento", "sitio_web"]
     titulo: str
     url: str
-    busqueda_query: str
-    descripcion_recurso: str
 
 
 # Alias para compatibilidad
