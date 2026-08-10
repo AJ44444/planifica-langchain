@@ -1,8 +1,10 @@
 import os
 import json
-from datetime import datetime
+import time
+from datetime import datetime, timezone
 from typing import Union, Dict, Any, List, Optional
 from bson import ObjectId
+from bson.timestamp import Timestamp
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 from langchain_core.tools import tool
@@ -37,6 +39,11 @@ from core.tool_inputs import (
     GetCNBAreasByCareersInput,
     GetCNBSubareasByAreaIdInput,
 )
+
+
+def _get_bson_timestamp() -> Timestamp:
+    """Genera un objeto BSON Timestamp de MongoDB."""
+    return Timestamp(int(time.time()), 1)
 
 
 def get_mongo_client() -> MongoClient:
@@ -92,10 +99,12 @@ def extract_user_id_from_config(config: Optional[Any] = None) -> str:
 
 
 class JSONEncoderCustom(json.JSONEncoder):
-    """Codificador de JSON personalizado para manejar ObjectId y datetime de MongoDB."""
+    """Codificador de JSON personalizado para manejar ObjectId, Timestamp y datetime de MongoDB."""
     def default(self, o):
         if isinstance(o, ObjectId):
             return str(o)
+        if isinstance(o, Timestamp):
+            return o.as_datetime().isoformat()
         if isinstance(o, datetime):
             return o.isoformat()
         return super().default(o)
@@ -344,7 +353,7 @@ def save_lesson_plan(
         metadatos_doc = {
             "carrera": str(meta_dict.get("carrera", "")),
             "subarea_curricular": str(meta_dict.get("subarea_curricular", "")),
-            "fecha_creacion": datetime.utcnow(),
+            "fecha_creacion": _get_bson_timestamp(),
             "estado": str(meta_dict.get("estado", "finalizado"))
         }
 
@@ -1058,7 +1067,7 @@ def create_user_doc(data: dict) -> dict:
 
         existing = db["usuarios"].find_one({"google_id": google_id})
         if existing:
-            db["usuarios"].update_one({"_id": existing["_id"]}, {"$set": {"ultimo_acceso": datetime.utcnow()}})
+            db["usuarios"].update_one({"_id": existing["_id"]}, {"$set": {"ultimo_acceso": _get_bson_timestamp()}})
             existing["_id"] = str(existing["_id"])
             return {"status": "info", "message": "Usuario existente.", "user": existing, "id_usuario": existing["_id"]}
 
@@ -1068,8 +1077,8 @@ def create_user_doc(data: dict) -> dict:
             "apellidos": str(data.get("apellidos", "")),
             "email": email,
             "estado": str(data.get("estado", "activo")),
-            "fecha_creacion": datetime.utcnow(),
-            "ultimo_acceso": datetime.utcnow(),
+            "fecha_creacion": _get_bson_timestamp(),
+            "ultimo_acceso": _get_bson_timestamp(),
             "foto_perfil": str(data.get("foto_perfil", "")),
             "rol": str(data.get("rol", "docente"))
         }
@@ -1118,7 +1127,7 @@ def update_user_profile_doc(id_usuario: str, update_data: dict) -> bool:
         db = get_db()
         obj_id = ObjectId(id_usuario.strip())
         updates = _clean_updates(update_data)
-        updates["ultimo_acceso"] = datetime.utcnow()
+        updates["ultimo_acceso"] = _get_bson_timestamp()
 
         res = db["usuarios"].update_one({"_id": obj_id}, {"$set": updates})
         return res.matched_count > 0
