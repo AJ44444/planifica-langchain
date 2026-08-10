@@ -338,6 +338,7 @@ def save_lesson_plan(
     metadatos: Union[dict, MetadatosPlanInput],
     encabezado: Union[dict, EncabezadoPlan],
     desarrollo_curricular: List[Union[dict, FilaCurricularPlan]],
+    config: RunnableConfig = None,
     id_usuario: str = ""
 ) -> str:
     """
@@ -345,7 +346,8 @@ def save_lesson_plan(
     """
     try:
         db = get_db()
-        user_obj_id = _ensure_object_id(id_usuario) if id_usuario else ObjectId()
+        effective_id = extract_user_id_from_config(config) or id_usuario
+        user_obj_id = _ensure_object_id(effective_id) if effective_id else ObjectId()
 
         meta_dict = _to_dict(metadatos)
         enc_dict = _to_dict(encabezado)
@@ -398,15 +400,16 @@ def save_lesson_plan(
 
 
 @tool("get_planification_by_id", args_schema=GetPlanificationByIdInput)
-def get_planification_by_id(id_planificacion: str, id_usuario: str = "") -> str:
+def get_planification_by_id(id_planificacion: str, config: RunnableConfig = None, id_usuario: str = "") -> str:
     """CRUD Read & Privacidad: Busca y recupera una planificación docente por su ID en MongoDB."""
     try:
         db = get_db()
         obj_id = ObjectId(id_planificacion.strip())
         
+        effective_id = extract_user_id_from_config(config) or id_usuario
         query = {"_id": obj_id}
-        if id_usuario and len(id_usuario.strip()) == 24:
-            query["id_usuario"] = ObjectId(id_usuario.strip())
+        if effective_id and len(effective_id.strip()) == 24:
+            query["id_usuario"] = ObjectId(effective_id.strip())
 
         plan = db["planificaciones_generadas"].find_one(query)
         if not plan:
@@ -422,7 +425,7 @@ def get_planification_by_id(id_planificacion: str, id_usuario: str = "") -> str:
 
 
 @tool("update_lesson_plan", args_schema=UpdateLessonPlanInput)
-def update_lesson_plan(id_planificacion: str, update_data: Dict[str, Any], id_usuario: str = "") -> str:
+def update_lesson_plan(id_planificacion: str, update_data: Dict[str, Any], config: RunnableConfig = None, id_usuario: str = "") -> str:
     """CRUD Update & Privacidad: Actualiza los campos solicitados mediante $set."""
     try:
         db = get_db()
@@ -432,9 +435,10 @@ def update_lesson_plan(id_planificacion: str, update_data: Dict[str, Any], id_us
         if not updates:
             return json.dumps({"status": "error", "message": "No se proporcionaron campos válidos para actualizar."})
 
+        effective_id = extract_user_id_from_config(config) or id_usuario
         query = {"_id": obj_id}
-        if id_usuario and len(id_usuario.strip()) == 24:
-            query["id_usuario"] = ObjectId(id_usuario.strip())
+        if effective_id and len(effective_id.strip()) == 24:
+            query["id_usuario"] = ObjectId(effective_id.strip())
 
         res = db["planificaciones_generadas"].update_one(query, {"$set": updates})
 
@@ -455,7 +459,7 @@ def update_lesson_plan(id_planificacion: str, update_data: Dict[str, Any], id_us
 
 
 @tool("delete_lesson_plan", args_schema=DeleteLessonPlanInput)
-def delete_lesson_plan(id_planificacion: str, id_usuario: str = "", confirm: bool = True) -> str:
+def delete_lesson_plan(id_planificacion: str, config: RunnableConfig = None, id_usuario: str = "", confirm: bool = True) -> str:
     """CRUD Delete & Privacidad: Elimina una planificación por su ID en MongoDB validando propiedad y confirmación."""
     try:
         if not confirm:
@@ -467,9 +471,10 @@ def delete_lesson_plan(id_planificacion: str, id_usuario: str = "", confirm: boo
         db = get_db()
         obj_id = ObjectId(id_planificacion.strip())
 
+        effective_id = extract_user_id_from_config(config) or id_usuario
         query = {"_id": obj_id}
-        if id_usuario and len(id_usuario.strip()) == 24:
-            query["id_usuario"] = ObjectId(id_usuario.strip())
+        if effective_id and len(effective_id.strip()) == 24:
+            query["id_usuario"] = ObjectId(effective_id.strip())
 
         res = db["planificaciones_generadas"].delete_one(query)
 

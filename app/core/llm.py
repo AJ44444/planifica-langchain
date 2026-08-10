@@ -8,8 +8,8 @@ if not DEEPSEEK:
 llm = ChatDeepSeek(
     model="deepseek-v4-flash",
     api_key=DEEPSEEK,
-    temperature=1,
-    max_tokens=None,
+    temperature=0.7,
+    max_tokens=4096,
     timeout=None,
     max_retries=3
 )
