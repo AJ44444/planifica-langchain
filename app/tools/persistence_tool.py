@@ -98,6 +98,49 @@ def extract_user_id_from_config(config: Optional[Any] = None) -> str:
     return ""
 
 
+def extract_teacher_name_from_config(config: Optional[Any] = None, user_id: str = "") -> str:
+    """
+    Extrae el nombre del docente autenticado del objeto RunnableConfig de LangGraph
+    o lo consulta directamente del perfil en MongoDB.
+    """
+    if config:
+        configurable = {}
+        if isinstance(config, dict):
+            configurable = config.get("configurable", {})
+        elif hasattr(config, "configurable"):
+            configurable = getattr(config, "configurable", {})
+        elif hasattr(config, "get"):
+            configurable = config.get("configurable", {})
+
+        auth_user = configurable.get("langgraph_auth_user")
+        if isinstance(auth_user, dict):
+            nombres = auth_user.get("nombres") or auth_user.get("name")
+            if nombres:
+                return str(nombres).strip()
+        elif hasattr(auth_user, "nombres"):
+            return str(getattr(auth_user, "nombres")).strip()
+
+        nombre_docente = configurable.get("nombre_docente")
+        if nombre_docente:
+            return str(nombre_docente).strip()
+
+    effective_id = extract_user_id_from_config(config) or user_id
+    if effective_id and len(effective_id.strip()) == 24:
+        try:
+            db = get_db()
+            user_doc = db["usuarios"].find_one({"_id": ObjectId(effective_id.strip())})
+            if user_doc:
+                nombres = str(user_doc.get("nombres", "")).strip()
+                apellidos = str(user_doc.get("apellidos", "")).strip()
+                full_name = f"{nombres} {apellidos}".strip()
+                if full_name:
+                    return full_name
+        except Exception:
+            pass
+
+    return ""
+
+
 class JSONEncoderCustom(json.JSONEncoder):
     """Codificador de JSON personalizado para manejar ObjectId, Timestamp y datetime de MongoDB."""
     def default(self, o):
@@ -373,6 +416,8 @@ def save_lesson_plan(
             fila_dict["actividades_aprendizaje"] = formatted_acts
             formatted_desarrollo.append(fila_dict)
 
+        teacher_name = str(enc_dict.get("nombre_docente", "")).strip() or extract_teacher_name_from_config(config, effective_id)
+
         doc = {
             "id_usuario": user_obj_id,
             "metadatos": metadatos_doc,
@@ -381,7 +426,7 @@ def save_lesson_plan(
                 "lugar": str(enc_dict.get("lugar", "")),
                 "grado": str(enc_dict.get("grado", "")),
                 "seccion": str(enc_dict.get("seccion", "")),
-                "nombre_docente": str(enc_dict.get("nombre_docente", "")),
+                "nombre_docente": teacher_name,
                 "duracion": int(enc_dict.get("duracion", 1))
             },
             "desarrollo_curricular": formatted_desarrollo
