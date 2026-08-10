@@ -1,7 +1,5 @@
 from langchain.agents import create_agent
-from langchain.agents.structured_output import ToolStrategy
 from core.llm import llm
-from core.response_formats import PlanificacionClase
 from tools.persistence_tool import (
     save_lesson_plan,
     get_planification_by_id,
@@ -20,6 +18,5 @@ agent = create_agent(
         update_lesson_plan,
         delete_lesson_plan
     ],
-    system_prompt=SYSTEM_PROMPT_SCHOOL_LESSON_PLANS,
-    response_format=ToolStrategy(PlanificacionClase)
+    system_prompt=SYSTEM_PROMPT_SCHOOL_LESSON_PLANS
 )

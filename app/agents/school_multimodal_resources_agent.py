@@ -1,7 +1,5 @@
 from langchain.agents import create_agent
-from langchain.agents.structured_output import ToolStrategy
 from core.llm import llm
-from core.response_formats import RecursoMultimodal
 from tools.web_search_tool import serper_web_search
 from tools.persistence_tool import (
     save_multimodal_resource,
@@ -20,6 +18,5 @@ agent = create_agent(
         update_multimodal_resource,
         delete_multimodal_resource
     ],
-    system_prompt=SYSTEM_PROMPT_SCHOOL_MULTIMODAL_RESOURCES,
-    response_format=ToolStrategy(RecursoMultimodal)
+    system_prompt=SYSTEM_PROMPT_SCHOOL_MULTIMODAL_RESOURCES
 )
