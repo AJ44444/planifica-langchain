@@ -4,7 +4,11 @@ from tools.persistence_tool import (
     save_assessment_instrument,
     get_assessment_instrument_by_id,
     update_assessment_instrument,
-    delete_assessment_instrument
+    delete_assessment_instrument,
+    get_recent_lesson_plans,
+    get_paginated_lesson_plans,
+    get_full_lesson_plan_details,
+    get_latest_plan_instruments_and_resources
 )
 from prompts.system_prompts import SYSTEM_PROMPT_SCHOOL_ASSESSMENT_INSTRUMENTS
 
@@ -14,7 +18,11 @@ agent = create_agent(
         save_assessment_instrument,
         get_assessment_instrument_by_id,
         update_assessment_instrument,
-        delete_assessment_instrument
+        delete_assessment_instrument,
+        get_recent_lesson_plans,
+        get_paginated_lesson_plans,
+        get_full_lesson_plan_details,
+        get_latest_plan_instruments_and_resources
     ],
     system_prompt=SYSTEM_PROMPT_SCHOOL_ASSESSMENT_INSTRUMENTS
 )
