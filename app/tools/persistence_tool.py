@@ -36,6 +36,7 @@ from core.tool_inputs import (
     GetLatestPlanInstrumentsAndResourcesInput,
     GetPaginatedLessonPlansInput,
     GetFullLessonPlanDetailsInput,
+    GetCNBAreasByCareerInput,
     GetCNBAreasByCareersInput,
     GetCNBSubareasByAreaIdInput,
 )
@@ -197,8 +198,8 @@ def _clean_updates(updates: dict) -> dict:
 def insert_cnb_area_doc(data: dict) -> ObjectId:
     """Función interna individual para insertar un área curricular en 'cnb_areas'."""
     db = get_db()
-    nombre_carrera = data.get("nombre_carrera", "Sin Carrera")
-    nombre_area = data.get("nombre_area", "Sin Área")
+    nombre_carrera = data.get("nombre_carrera")
+    nombre_area = data.get("nombre_area")
 
     def _format_items(items):
         if not items:
@@ -232,8 +233,7 @@ def insert_cnb_subarea_doc(data: dict) -> ObjectId:
 
     subarea_doc = {
         "id_area": id_area,
-        "nombre_carrera": data.get("nombre_carrera", ""),
-        "nombre_subarea": data.get("nombre_subarea", "Sin Subárea"),
+        "nombre_subarea": data.get("nombre_subarea"),
         "competencias": data.get("competencias", [])
     }
 
@@ -250,7 +250,7 @@ def insert_cnb_vector_doc(data: dict) -> ObjectId:
 
     doc = {
         "id_subarea_relacionada": id_subarea,
-        "nombre_subarea": data.get("nombre_subarea", ""),
+        "nombre_subarea": data.get("nombre_subarea"),
         "tipo_nodo": data.get("tipo_nodo", "competencia"),
         "referencia_jerarquica": data.get("referencia_jerarquica", []),
         "texto_a_buscar": data.get("texto_a_buscar", ""),
@@ -287,7 +287,6 @@ def save_curricular_structure(
             "competencias_area": competencias_area,
             "actividades_sugeridas": actividades_sugeridas,
             "criterios_evaluacion_sugeridos": criterios_evaluacion_sugeridos,
-            "subareas": subareas_dicts
         }
 
         area_id = insert_cnb_area_doc(area_data)
@@ -296,12 +295,11 @@ def save_curricular_structure(
         vectores_nodes_created = 0
 
         for sub in subareas_dicts:
-            nombre_subarea = sub.get("nombre_subarea", "Sin Subárea")
+            nombre_subarea = sub.get("nombre_subarea")
             competencias = sub.get("competencias", [])
 
             subarea_data = {
                 "id_area": area_id,
-                "nombre_carrera": nombre_carrera,
                 "nombre_subarea": nombre_subarea,
                 "competencias": competencias
             }
@@ -877,12 +875,12 @@ def delete_multimodal_resource(id_recurso: str, confirm: bool = True) -> str:
 
 
 # ==========================================
-# 8. HERRAMIENTAS DE CONSULTA Y SEGURIDAD (consultas_db.md)
+# 8. HERRAMIENTAS DE CONSULTA Y SEGURIDAD
 # ==========================================
 
 @tool("get_top_frequent_courses", args_schema=GetTopFrequentCoursesInput)
 def get_top_frequent_courses(config: RunnableConfig = None, id_usuario: str = "", limit: int = 4) -> str:
-    """1.A (consultas_db.md): Agrupa las planificaciones del usuario por subárea curricular y obtiene las más frecuentes."""
+    """Agrupa las planificaciones del usuario por subárea curricular y obtiene las más frecuentes."""
     try:
         db = get_db()
         effective_id = extract_user_id_from_config(config) or id_usuario
@@ -907,7 +905,7 @@ def get_top_frequent_courses(config: RunnableConfig = None, id_usuario: str = ""
 
 @tool("get_recent_lesson_plans", args_schema=GetRecentLessonPlansInput)
 def get_recent_lesson_plans(config: RunnableConfig = None, id_usuario: str = "", limit: int = 3) -> str:
-    """1.B (consultas_db.md): Recupera los datos del encabezado y metadatos de las últimas planificaciones creadas por el docente."""
+    """Recupera los datos del encabezado y metadatos de las últimas planificaciones creadas por el docente."""
     try:
         db = get_db()
         effective_id = extract_user_id_from_config(config) or id_usuario
@@ -940,7 +938,7 @@ def get_recent_lesson_plans(config: RunnableConfig = None, id_usuario: str = "",
 
 @tool("get_latest_plan_instruments_and_resources", args_schema=GetLatestPlanInstrumentsAndResourcesInput)
 def get_latest_plan_instruments_and_resources(config: RunnableConfig = None, id_usuario: str = "") -> str:
-    """1.C (consultas_db.md): Obtiene los últimos 3 instrumentos de evaluación y los últimos 3 recursos multimodales creados para las planificaciones del usuario."""
+    """Obtiene los últimos 3 instrumentos de evaluación y los últimos 3 recursos multimodales creados para las planificaciones del usuario."""
     try:
         db = get_db()
         effective_id = extract_user_id_from_config(config) or id_usuario
@@ -987,7 +985,7 @@ def get_latest_plan_instruments_and_resources(config: RunnableConfig = None, id_
 
 @tool("get_paginated_lesson_plans", args_schema=GetPaginatedLessonPlansInput)
 def get_paginated_lesson_plans(config: RunnableConfig = None, id_usuario: str = "", page: int = 1, limit: int = 10) -> str:
-    """2 (consultas_db.md): Obtiene la lista paginada de planificaciones pertenecientes al usuario con conteo total."""
+    """Obtiene la lista paginada de planificaciones pertenecientes al usuario con conteo total."""
     try:
         db = get_db()
         effective_id = extract_user_id_from_config(config) or id_usuario
@@ -1033,7 +1031,7 @@ def get_paginated_lesson_plans(config: RunnableConfig = None, id_usuario: str = 
 
 @tool("get_full_lesson_plan_details", args_schema=GetFullLessonPlanDetailsInput)
 def get_full_lesson_plan_details(id_planificacion: str, config: RunnableConfig = None, id_usuario: str = "") -> str:
-    """3 (consultas_db.md): Recupera el documento completo de una planificación junto a sus instrumentos y recursos asociados."""
+    """Recupera el documento completo de una planificación junto a sus instrumentos y recursos asociados."""
     try:
         db = get_db()
         plan_obj_id = ObjectId(id_planificacion.strip())
@@ -1063,35 +1061,87 @@ def get_full_lesson_plan_details(id_planificacion: str, config: RunnableConfig =
 
 @tool("get_cnb_careers_list")
 def get_cnb_careers_list() -> str:
-    """4.A (consultas_db.md): Recupera la lista única de nombres de carreras académicas registradas en el CNB."""
+    """Recupera la lista única de nombres de carreras académicas registradas en el CNB."""
     try:
         db = get_db()
-        careers = db["cnb_areas"].distinct("nombre_carrera")
-        return json.dumps({"status": "success", "carreras": careers}, ensure_ascii=False)
+        raw_careers = db["cnb_areas"].distinct("nombre_carrera")
+        career_names = [str(c).strip() for c in raw_careers if c and str(c).strip()]
+        return json.dumps({"status": "success", "carreras": career_names}, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error al obtener catálogo de carreras: {str(e)}"})
 
 
-@tool("get_cnb_areas_by_careers", args_schema=GetCNBAreasByCareersInput)
-def get_cnb_areas_by_careers(carreras: List[str]) -> str:
-    """4.B (consultas_db.md): Recupera las áreas curriculares pertenecientes a las carreras especificadas."""
+@tool("get_cnb_areas_by_career", args_schema=GetCNBAreasByCareerInput)
+def get_cnb_areas_by_career(carrera: str, page: int = 1, limit: int = 10) -> str:
+    """Recupera la lista paginada de áreas curriculares (id y nombre_area) pertenecientes a una carrera específica del CNB."""
     try:
         db = get_db()
+        query = {"nombre_carrera": carrera.strip()}
+        total_count = db["cnb_areas"].count_documents(query)
+        skip = (max(1, page) - 1) * limit
 
-        areas = list(db["cnb_areas"].find({"nombre_carrera": {"$in": carreras}}))
-        return json.dumps({"status": "success", "areas": areas}, cls=JSONEncoderCustom, ensure_ascii=False)
+        projection = {
+            "_id": 1,
+            "nombre_area": 1
+        }
+
+        areas_cursor = db["cnb_areas"].find(query, projection).skip(skip).limit(limit)
+        areas = []
+        for doc in areas_cursor:
+            areas.append({
+                "id_area": str(doc["_id"]),
+                "nombre_area": doc.get("nombre_area", "")
+            })
+
+        total_pages = (total_count + limit - 1) // limit if limit > 0 else 0
+
+        return json.dumps({
+            "status": "success",
+            "carrera": carrera,
+            "total_registros": total_count,
+            "total_paginas": total_pages,
+            "pagina_actual": page,
+            "registros_por_pagina": limit,
+            "areas": areas
+        }, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error al obtener áreas por carrera: {str(e)}"})
-
+        
 
 @tool("get_cnb_subareas_by_area_id", args_schema=GetCNBSubareasByAreaIdInput)
-def get_cnb_subareas_by_area_id(id_area: str) -> str:
-    """4.C (consultas_db.md): Recupera las subáreas pertenecientes a un área curricular específica de MongoDB."""
+def get_cnb_subareas_by_area_id(id_area: str, page: int = 1, limit: int = 10) -> str:
+    """Recupera la lista paginada de subáreas curriculares (id y nombre_subarea) pertenecientes a un área en 'cnb_subareas'."""
     try:
         db = get_db()
         area_obj_id = ObjectId(id_area.strip())
-        subareas = list(db["cnb_subareas"].find({"id_area": area_obj_id}))
-        return json.dumps({"status": "success", "id_area": id_area, "subareas": subareas}, cls=JSONEncoderCustom, ensure_ascii=False)
+        query = {"id_area": area_obj_id}
+        total_count = db["cnb_subareas"].count_documents(query)
+        skip = (max(1, page) - 1) * limit
+
+        projection = {
+            "_id": 1,
+            "nombre_subarea": 1
+        }
+
+        subareas_cursor = db["cnb_subareas"].find(query, projection).skip(skip).limit(limit)
+        subareas = []
+        for doc in subareas_cursor:
+            subareas.append({
+                "id_subarea": str(doc["_id"]),
+                "nombre_subarea": doc.get("nombre_subarea", "")
+            })
+
+        total_pages = (total_count + limit - 1) // limit if limit > 0 else 0
+
+        return json.dumps({
+            "status": "success",
+            "id_area": id_area,
+            "total_registros": total_count,
+            "total_paginas": total_pages,
+            "pagina_actual": page,
+            "registros_por_pagina": limit,
+            "subareas": subareas
+        }, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error al obtener subáreas: {str(e)}"})
 

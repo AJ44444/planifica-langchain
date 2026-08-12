@@ -6,9 +6,8 @@ from tools.persistence_tool import (
     update_lesson_plan,
     delete_lesson_plan,
     get_cnb_careers_list,
-    get_cnb_areas_by_careers,
+    get_cnb_areas_by_career,
     get_cnb_subareas_by_area_id,
-    get_recent_lesson_plans,
     get_paginated_lesson_plans
 )
 from tools.vector_tool import search_curriculum_vector_db
@@ -23,9 +22,8 @@ agent = create_agent(
         update_lesson_plan,
         delete_lesson_plan,
         get_cnb_careers_list,
-        get_cnb_areas_by_careers,
+        get_cnb_areas_by_career,
         get_cnb_subareas_by_area_id,
-        get_recent_lesson_plans,
         get_paginated_lesson_plans
     ],
     system_prompt=SYSTEM_PROMPT_SCHOOL_LESSON_PLANS

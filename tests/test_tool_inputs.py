@@ -126,3 +126,45 @@ def test_save_multimodal_resource_tool_schema_validation():
         res = json.loads(res_str)
         assert res.get("status") == "success"
         assert res.get("id_recurso") == "60d5ec49f1a2c81234567897"
+
+
+def test_cnb_catalog_query_tools():
+    """Verifica que las herramientas de consulta del CNB tengan las proyecciones y firmas correctas."""
+    from tools.persistence_tool import (
+        get_cnb_careers_list,
+        get_cnb_areas_by_career,
+        get_cnb_subareas_by_area_id,
+    )
+
+    mock_areas_coll = MagicMock()
+    mock_areas_coll.distinct.return_value = ["Ciclo Básico", "Bachillerato en Ciencias y Letras"]
+    mock_areas_coll.count_documents.return_value = 1
+    mock_area_doc = {"_id": ObjectId("60d5ec49f1a2c81234567811"), "nombre_area": "Matemáticas", "competencias_area": ["Comp 1"]}
+    mock_areas_coll.find.return_value.skip.return_value.limit.return_value = [mock_area_doc]
+
+    mock_subareas_coll = MagicMock()
+    mock_subareas_coll.count_documents.return_value = 1
+    mock_subarea_doc = {"_id": ObjectId("60d5ec49f1a2c81234567822"), "nombre_subarea": "Matemáticas 1", "competencias": []}
+    mock_subareas_coll.find.return_value.skip.return_value.limit.return_value = [mock_subarea_doc]
+
+    mock_db = {
+        "cnb_areas": mock_areas_coll,
+        "cnb_subareas": mock_subareas_coll
+    }
+
+    with patch("tools.persistence_tool.get_db", return_value=mock_db):
+        # 1. test get_cnb_careers_list
+        res_careers = json.loads(get_cnb_careers_list.invoke({}))
+        assert res_careers["status"] == "success"
+        assert res_careers["carreras"] == ["Ciclo Básico", "Bachillerato en Ciencias y Letras"]
+
+        # 2. test get_cnb_areas_by_career (single career, pagination, only id_area & nombre_area)
+        res_areas = json.loads(get_cnb_areas_by_career.invoke({"carrera": "Ciclo Básico", "page": 1, "limit": 10}))
+        assert res_areas["status"] == "success"
+        assert res_areas["areas"] == [{"id_area": "60d5ec49f1a2c81234567811", "nombre_area": "Matemáticas"}]
+
+        # 3. test get_cnb_subareas_by_area_id (pagination, only id_subarea & nombre_subarea)
+        res_subareas = json.loads(get_cnb_subareas_by_area_id.invoke({"id_area": "60d5ec49f1a2c81234567811", "page": 1, "limit": 10}))
+        assert res_subareas["status"] == "success"
+        assert res_subareas["subareas"] == [{"id_subarea": "60d5ec49f1a2c81234567822", "nombre_subarea": "Matemáticas 1"}]
+

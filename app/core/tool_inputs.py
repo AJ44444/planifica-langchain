@@ -137,14 +137,21 @@ class GetFullLessonPlanDetailsInput(BaseModel):
     id_usuario: Optional[str] = Field(default="", description="ID de MongoDB del docente autenticado.")
 
 
-class GetCNBAreasByCareersInput(BaseModel):
-    """Input para consultar las áreas por catálogo de carreras."""
-    carreras: List[str] = Field(..., description="Lista de nombres de carreras del CNB.")
+class GetCNBAreasByCareerInput(BaseModel):
+    """Input para consultar la lista paginada de áreas curriculares pertenecientes a una carrera."""
+    carrera: str = Field(..., description="Nombre de la carrera académica del CNB.")
+    page: int = Field(default=1, description="Número de página a consultar.")
+    limit: int = Field(default=10, description="Cantidad de registros por página.")
+
+
+GetCNBAreasByCareersInput = GetCNBAreasByCareerInput
 
 
 class GetCNBSubareasByAreaIdInput(BaseModel):
-    """Input para consultar subáreas por el ID del área."""
-    id_area: str = Field(..., description="ID de MongoDB (24 caracteres) del área curricular.")
+    """Input para consultar la lista paginada de subáreas pertenecientes a un área curricular."""
+    id_area: str = Field(..., description="ID de MongoDB (24 caracteres hex) del área curricular.")
+    page: int = Field(default=1, description="Número de página a consultar.")
+    limit: int = Field(default=10, description="Cantidad de registros por página.")
 
 
 class SearchCurriculumVectorDBInput(BaseModel):
