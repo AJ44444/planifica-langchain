@@ -25,7 +25,6 @@ from .persistence_tool import (
     get_full_lesson_plan_details,
     get_cnb_careers_list,
     get_cnb_areas_by_career,
-    get_cnb_areas_by_careers,
     get_cnb_subareas_by_area_id,
     extract_user_id_from_config,
 )
@@ -57,7 +56,6 @@ __all__ = [
     "get_full_lesson_plan_details",
     "get_cnb_careers_list",
     "get_cnb_areas_by_career",
-    "get_cnb_areas_by_careers",
     "get_cnb_subareas_by_area_id",
     "extract_user_id_from_config",
 ]
