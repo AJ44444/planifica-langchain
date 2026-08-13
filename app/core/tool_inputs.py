@@ -56,7 +56,7 @@ class DeleteLessonPlanInput(BaseModel):
 class SaveAssessmentInstrumentInput(BaseModel):
     """Input para guardar un instrumento de evaluación."""
     id_planificacion: str = Field(..., description="ID de MongoDB (24 caracteres) de la planificación vinculada.")
-    id_fila_curricular: int = Field(default=1, description="Fila curricular evaluada.")
+    id_fila: int = Field(default=1, description="Fila curricular evaluada.")
     id_actividad: str = Field(..., description="ID de MongoDB (24 caracteres) de la actividad evaluada.")
     tipo: Literal["lista_cotejo", "rubrica", "escala_rango"] = Field(..., description="Tipo de instrumento de evaluación.")
     titulo: str = Field(..., description="Título único del instrumento de evaluación.")
@@ -83,7 +83,7 @@ class DeleteAssessmentInstrumentInput(BaseModel):
 class SaveMultimodalResourceInput(BaseModel):
     """Input para guardar un recurso multimodal."""
     id_planificacion: str = Field(..., description="ID de MongoDB (24 caracteres) de la planificación vinculada.")
-    id_fila_curricular: int = Field(default=1, description="Fila curricular asociada.")
+    id_fila: int = Field(default=1, description="Fila curricular asociada.")
     id_actividad: str = Field(..., description="ID de MongoDB (24 caracteres) de la actividad asociada.")
     tipo: Literal["video", "imagen", "audio", "documento", "sitio_web"] = Field(..., description="Tipo de recurso multimodal.")
     titulo: str = Field(..., description="Título descriptivo del recurso.")

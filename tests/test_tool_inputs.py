@@ -80,7 +80,7 @@ def test_save_assessment_instrument_tool_schema_validation():
 
     sample_input = {
         "id_planificacion": "60d5ec49f1a2c81234567899",
-        "id_fila_curricular": 1,
+        "id_fila": 1,
         "id_actividad": "60d5ec49f1a2c8123456789a",
         "tipo": "rubrica",
         "titulo": "Rúbrica de Resolución de Problemas",
@@ -111,7 +111,7 @@ def test_save_multimodal_resource_tool_schema_validation():
 
     sample_input = {
         "id_planificacion": "60d5ec49f1a2c81234567899",
-        "id_fila_curricular": 1,
+        "id_fila": 1,
         "id_actividad": "60d5ec49f1a2c8123456789a",
         "tipo": "video",
         "titulo": "Video explicativo de álgebra",

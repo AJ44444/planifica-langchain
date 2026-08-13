@@ -702,7 +702,7 @@ def delete_cnb_vector(id_vector: str, confirm: bool = True) -> str:
 @tool("save_assessment_instrument", args_schema=SaveAssessmentInstrumentInput)
 def save_assessment_instrument(
     id_planificacion: str,
-    id_fila_curricular: int,
+    id_fila: int,
     id_actividad: str,
     tipo: str,
     titulo: str,
@@ -717,7 +717,7 @@ def save_assessment_instrument(
 
         doc = {
             "id_planificacion": plan_obj_id,
-            "id_fila_curricular": int(id_fila_curricular),
+            "id_fila": int(id_fila),
             "id_actividad": act_obj_id,
             "tipo": str(tipo),
             "titulo": str(titulo),
@@ -792,7 +792,7 @@ def delete_assessment_instrument(id_instrumento: str, confirm: bool = True) -> s
 @tool("save_multimodal_resource", args_schema=SaveMultimodalResourceInput)
 def save_multimodal_resource(
     id_planificacion: str,
-    id_fila_curricular: int,
+    id_fila: int,
     id_actividad: str,
     tipo: str,
     titulo: str,
@@ -806,7 +806,7 @@ def save_multimodal_resource(
 
         doc = {
             "id_planificacion": plan_obj_id,
-            "id_fila_curricular": int(id_fila_curricular),
+            "id_fila": int(id_fila),
             "id_actividad": act_obj_id,
             "tipo": str(tipo),
             "titulo": str(titulo),

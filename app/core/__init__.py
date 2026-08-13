@@ -19,7 +19,6 @@ from .config import (
     LANGSMITH_PROJECT,
     LANGGRAPH_CLOUD_LICENSE_KEY,
 )
-from .db_setup import ensure_redis_connection
 from .llm import llm
 from .collections import (
     AREAS,
@@ -57,7 +56,6 @@ __all__ = [
     "LANGSMITH_API_KEY",
     "LANGSMITH_PROJECT",
     "LANGGRAPH_CLOUD_LICENSE_KEY",
-    "ensure_redis_connection",
     "llm",
     "AREAS",
     "SUBAREAS",

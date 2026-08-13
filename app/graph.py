@@ -2,10 +2,6 @@ import json
 from typing import Dict, Any, Generator, Optional
 from langchain_core.messages import HumanMessage, AIMessage
 from agents.main_agent import main_agent, checkpointer
-from core.db_setup import ensure_redis_connection
-
-# Verificación preventiva de Redis para streaming en tiempo de ejecución
-ensure_redis_connection()
 
 # Grafo Supervisor Principal Compilado con Checkpointer en main_agent.py
 supervisor_graph = main_agent

@@ -97,7 +97,7 @@ class InstrumentoGeneradoDetail(BaseModel):
 
 class InstrumentoEvaluacion(BaseModel):
     id_planificacion: str
-    id_fila_curricular: int = 1
+    id_fila: int = 1
     id_actividad: str = ""
     tipo: Literal["lista_cotejo", "rubrica", "escala_rango"]
     titulo: str
@@ -114,7 +114,7 @@ SchoolAssessmentInstrumentResponse = InstrumentoEvaluacion
 
 class RecursoMultimodal(BaseModel):
     id_planificacion: str
-    id_fila_curricular: int = 1
+    id_fila: int = 1
     id_actividad: str = ""
     tipo: Literal["video", "imagen", "audio", "documento", "sitio_web"]
     titulo: str
