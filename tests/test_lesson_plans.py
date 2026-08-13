@@ -7,8 +7,16 @@ from unittest.mock import patch
 # Asegurar que el paquete app esté accesible en sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app")))
 
-from tools.vector_tool import search_curriculum_vector_db
+from tools.vector_tool import search_curriculum_vector_db, get_embedding_model
 from core.config import MONGODB_URI
+
+
+def test_embedding_model_dimensionality():
+    """Verifica que el modelo de embeddings esté configurado con el modelo gemini-embedding-2 y dimensión 768."""
+    with patch("tools.vector_tool.GOOGLE", "mock_key"):
+        emb_model = get_embedding_model()
+        assert emb_model.model == "models/gemini-embedding-2"
+        assert emb_model.output_dimensionality == 768
 
 
 def test_vector_search_mocked_tree():

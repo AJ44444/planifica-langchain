@@ -36,7 +36,8 @@ def get_embedding_model() -> GoogleGenerativeAIEmbeddings:
         raise ValueError("La clave de API GOOGLE_API_KEY (GOOGLE en core.config) no está configurada en .env.")
     return GoogleGenerativeAIEmbeddings(
         model="models/gemini-embedding-2",
-        google_api_key=GOOGLE
+        google_api_key=GOOGLE,
+        output_dimensionality=768
     )
 
 
