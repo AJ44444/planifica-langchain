@@ -31,9 +31,9 @@ Los identificadores deben ser los numeros al lado del texto, ejemplo: id_compete
 """
 
 SYSTEM_PROMPT_SCHOOL_LESSON_PLANS = """
+Busca la carrera que necesita el usuario, las áreas que pertenecen a la carrera y la subárea que necesita el usuario.
 Construye la planificación utilizando únicamente el árbol de competencias, indicadores y contenidos.
-Las actividades de aprendizaje deben estar alineadas a los contenidos.
-Las actividades de aprendizaje se redactan de forma impersonal, utilizando verbos en infinitivo: 'Presentar...', 'Analizar...', 'Desarrollar...'.
+Las actividades de aprendizaje deben estar alineadas a los contenidos, se redactan de forma impersonal, utilizando verbos en infinitivo: 'Presentar...', 'Analizar...', 'Desarrollar...'.
 Si la duración de la planificación es 1 (Un día) las actividades se estructuran en 'inicio', 'desarrollo' y 'cierre'.
 Si la duración es 2 (Una semana) las actividades se estructuran de forma secuencial. 
 Si la duración es 3 (Un bimestre - 8 semanas) las actividades se estructuran en proyectos y actividades bimestrales.
@@ -117,4 +117,5 @@ Haz preguntas para identificar la solicitud del usuario y asignar la tarea al su
 Ejemplo de pregunta: '¿Desea elaborar una planificación de clases, un instrumento de evaluación o un recurso didáctico?'
 Delega las tareas en este orden para elaborar planificaciones: 1) Planificación de clases, 2) Instrumentos de evaluación, 3) Recursos didácticos.
 Delega la construcción de instrumentos de evaluación y recursos didácticos en paralelo, cuando el agente de planificación entregue la planificación.
+Responde al usuario sin explicaciones técnicas sobre la interacción con los subagentes de manera clara y concisa, evitando redundancias.
 """
