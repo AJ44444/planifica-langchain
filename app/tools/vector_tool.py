@@ -117,7 +117,7 @@ def generate_and_store_subarea_embeddings(id_subarea_relacionada: str) -> Dict[s
 def vector_search_cnb(
     query: str,
     id_subarea_relacionada: str,
-    limit: int = 10
+    limit: int = 5
 ) -> List[Dict[str, Any]]:
     """
     Ejecuta el pipeline de agregación '$vectorSearch' en MongoDB Atlas Search sobre la colección VECTORES.
@@ -173,7 +173,7 @@ def vector_search_cnb(
 
 def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -> List[Dict[str, Any]]:
     """
-    Función 1: Recibe los resultados de la búsqueda de vectores.
+    Función 1: Recibe los resultados de la búsqueda de vectores (limit=5).
     Itera sobre cada elemento accediendo a id_subarea_relacionada, tipo_nodo y texto_a_buscar.
     Consulta la colección 'cnb_subareas' por _id: ObjectId(id_subarea_relacionada)
     para localizar los elementos (competencias, indicadores_logro, contenidos) por su 'descripcion'.
@@ -214,7 +214,8 @@ def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -
             "texto_a_buscar": texto_a_buscar,
             "competencia": None,
             "indicador": None,
-            "contenido": None
+            "contenido": None,
+            "all_contenidos_indicador": []
         }
 
         # Búsqueda en el documento cnb_subareas de MongoDB por id_subarea_relacionada, tipo_nodo y texto_a_buscar
@@ -244,6 +245,16 @@ def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -
                     ):
                         node_data["competencia"] = {"id_competencia": comp_id, "descripcion": comp_desc}
                         node_data["indicador"] = {"id_indicador": ind_id, "descripcion": ind_desc}
+                        cnts_list = []
+                        for c in ind.get("contenidos", []):
+                            if isinstance(c, dict):
+                                cnts_list.append({
+                                    "id_contenido": str(c.get("id_contenido", "")).strip(),
+                                    "descripcion": str(c.get("descripcion", "")).strip()
+                                })
+                            else:
+                                cnts_list.append({"id_contenido": "", "descripcion": str(c).strip()})
+                        node_data["all_contenidos_indicador"] = cnts_list
                         found = True
                         break
 
@@ -256,6 +267,7 @@ def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -
                             cnt_desc.lower() == texto_a_buscar.lower() or
                             cnt_full == texto_a_buscar.lower()
                         ):
+                            # Al devolver un contenido, SIEMPRE se agrega el indicador al que está vinculado y su competencia
                             node_data["competencia"] = {"id_competencia": comp_id, "descripcion": comp_desc}
                             node_data["indicador"] = {"id_indicador": ind_id, "descripcion": ind_desc}
                             node_data["contenido"] = {"id_contenido": cnt_id, "descripcion": cnt_desc}
@@ -284,6 +296,8 @@ def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[st
     """
     Función 2: Recibe los resultados de fetch_subarea_nodes_from_db y construye el árbol.
     Aplica MERGE a nivel de competencias, indicadores y contenidos para mantener un solo árbol unificado.
+    Si la búsqueda devuelve un indicador sin contenidos vinculados explícitos, se agregan todos sus contenidos.
+    Si devuelve un contenido, se agrega obligatoriamente el indicador al que está vinculado.
     """
     if not elements:
         return []
@@ -294,6 +308,7 @@ def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[st
         comp = elem.get("competencia")
         ind = elem.get("indicador")
         cnt = elem.get("contenido")
+        all_cnts = elem.get("all_contenidos_indicador", [])
 
         if not comp or not comp.get("descripcion"):
             continue
@@ -320,10 +335,14 @@ def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[st
                 competencias_map[comp_key]["indicadores"][ind_key] = {
                     "id_indicador": ind_id,
                     "indicador": ind_desc,
-                    "contenidos": []
+                    "contenidos": [],
+                    "all_contenidos_fallback": []
                 }
             elif ind_id and not competencias_map[comp_key]["indicadores"][ind_key]["id_indicador"]:
                 competencias_map[comp_key]["indicadores"][ind_key]["id_indicador"] = ind_id
+
+            if all_cnts and not competencias_map[comp_key]["indicadores"][ind_key]["all_contenidos_fallback"]:
+                competencias_map[comp_key]["indicadores"][ind_key]["all_contenidos_fallback"] = all_cnts
 
             if cnt and cnt.get("descripcion"):
                 cnt_desc = cnt["descripcion"].strip()
@@ -340,6 +359,12 @@ def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[st
                         "id_contenido": cnt_id,
                         "descripcion": cnt_desc
                     })
+
+    # Si la búsqueda devuelve un indicador sin contenidos explícitos, agregar todos los contenidos de dicho indicador
+    for comp_info in competencias_map.values():
+        for ind_info in comp_info["indicadores"].values():
+            if len(ind_info["contenidos"]) == 0 and ind_info.get("all_contenidos_fallback"):
+                ind_info["contenidos"] = ind_info["all_contenidos_fallback"]
 
     arbol_final = []
     for comp_info in competencias_map.values():
@@ -360,7 +385,7 @@ def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[st
 
 
 @tool("search_curriculum_vector_db", args_schema=SearchCurriculumVectorDBInput)
-def search_curriculum_vector_db(query: str, id_subarea_relacionada: str, limit: int = 10) -> str:
+def search_curriculum_vector_db(query: str, id_subarea_relacionada: str, limit: int = 5) -> str:
     """
     Realiza una búsqueda semántica vectorial ($vectorSearch) sobre el Currículum Nacional Base (CNB) en MongoDB.
     El parámetro 'id_subarea_relacionada' es OBLIGATORIO para delimitar la búsqueda a la subárea curricular correspondiente.
@@ -368,7 +393,7 @@ def search_curriculum_vector_db(query: str, id_subarea_relacionada: str, limit: 
     Args:
         query (str): Tema, competencia o contenido a buscar.
         id_subarea_relacionada (str): ID OBLIGATORIO de la subárea (ObjectId de 24 caracteres hexadecimales).
-        limit (int): Número máximo de resultados a retornar.
+        limit (int): Número máximo de resultados a retornar (por defecto 5).
         
     Returns:
         str: Cadena en formato JSON con el árbol curricular unificado (merged) y las coincidencias semánticas encontradas.
@@ -390,7 +415,7 @@ def search_curriculum_vector_db(query: str, id_subarea_relacionada: str, limit: 
             "query": query,
             "id_subarea_relacionada": id_subarea_relacionada.strip(),
             "arbol_curricular": arbol_curricular
-        }, ensure_ascii=False, indent=2)
+        }, ensure_ascii=False)
 
     except Exception as e:
         return json.dumps({

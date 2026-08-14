@@ -158,7 +158,7 @@ class SearchCurriculumVectorDBInput(BaseModel):
     """Input para realizar una búsqueda vectorial semántica en el CNB."""
     query: str = Field(..., description="Tema, competencia o contenido pedagógico a buscar.")
     id_subarea_relacionada: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la subárea curricular. Obligatorio.")
-    limit: int = Field(default=10, description="Cantidad máxima de resultados a retornar.")
+    limit: int = Field(default=5, description="Cantidad máxima de resultados a retornar.")
 
 
 class GenerateSubareaVectorEmbeddingsInput(BaseModel):
