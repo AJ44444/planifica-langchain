@@ -1,5 +1,4 @@
 import json
-from typing import Optional
 from langchain_community.utilities import GoogleSerperAPIWrapper
 from langchain_core.tools import tool
 from core.config import SERPER

@@ -1,6 +1,5 @@
-import os
 import json
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from bson import ObjectId
 from pymongo import MongoClient
 from langchain_core.tools import tool
@@ -172,6 +171,194 @@ def vector_search_cnb(
     return results
 
 
+def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -> List[Dict[str, Any]]:
+    """
+    Función 1: Recibe los resultados de la búsqueda de vectores.
+    Itera sobre cada elemento accediendo a id_subarea_relacionada, tipo_nodo y texto_a_buscar.
+    Consulta la colección 'cnb_subareas' por _id: ObjectId(id_subarea_relacionada)
+    para localizar los elementos (competencias, indicadores_logro, contenidos) por su 'descripcion'.
+    """
+    if not vector_results:
+        return []
+
+    if db is None:
+        try:
+            db = get_db()
+        except Exception:
+            db = None
+
+    matched_nodes = []
+    subarea_docs = {}
+
+    for item in vector_results:
+        sub_id_str = str(item.get("id_subarea_relacionada", "")).strip()
+        tipo_nodo = str(item.get("tipo_nodo", "")).strip().lower()
+        texto_a_buscar = str(item.get("texto_a_buscar", "")).strip()
+
+        subarea_doc = None
+        if db is not None and sub_id_str:
+            if sub_id_str not in subarea_docs:
+                try:
+                    obj_id = ObjectId(sub_id_str)
+                    doc = db[SUBAREAS].find_one({"_id": obj_id})
+                    if not doc:
+                        doc = db[SUBAREAS].find_one({"id_subarea": obj_id})
+                    subarea_docs[sub_id_str] = doc
+                except Exception:
+                    subarea_docs[sub_id_str] = None
+            subarea_doc = subarea_docs.get(sub_id_str)
+
+        node_data = {
+            "id_subarea_relacionada": sub_id_str,
+            "tipo_nodo": tipo_nodo,
+            "texto_a_buscar": texto_a_buscar,
+            "competencia": None,
+            "indicador": None,
+            "contenido": None
+        }
+
+        # Búsqueda en el documento cnb_subareas de MongoDB por id_subarea_relacionada, tipo_nodo y texto_a_buscar
+        if subarea_doc and "competencias" in subarea_doc:
+            found = False
+            for comp in subarea_doc.get("competencias", []):
+                comp_desc = str(comp.get("descripcion", "")).strip()
+                comp_id = str(comp.get("id_competencia", "")).strip()
+                comp_full = f"competencia {comp_id}: {comp_desc}".lower()
+
+                if tipo_nodo == "competencia" and (
+                    comp_desc.lower() == texto_a_buscar.lower() or
+                    comp_full == texto_a_buscar.lower()
+                ):
+                    node_data["competencia"] = {"id_competencia": comp_id, "descripcion": comp_desc}
+                    found = True
+                    break
+
+                for ind in comp.get("indicadores_logro", []):
+                    ind_desc = str(ind.get("descripcion", "")).strip()
+                    ind_id = str(ind.get("id_indicador", "")).strip()
+                    ind_full = f"indicador {ind_id}: {ind_desc}".lower()
+
+                    if tipo_nodo == "indicador" and (
+                        ind_desc.lower() == texto_a_buscar.lower() or
+                        ind_full == texto_a_buscar.lower()
+                    ):
+                        node_data["competencia"] = {"id_competencia": comp_id, "descripcion": comp_desc}
+                        node_data["indicador"] = {"id_indicador": ind_id, "descripcion": ind_desc}
+                        found = True
+                        break
+
+                    for cnt in ind.get("contenidos", []):
+                        cnt_desc = str(cnt.get("descripcion", "") if isinstance(cnt, dict) else str(cnt)).strip()
+                        cnt_id = str(cnt.get("id_contenido", "") if isinstance(cnt, dict) else "").strip()
+                        cnt_full = f"contenido {cnt_id}: {cnt_desc}".lower()
+
+                        if tipo_nodo == "contenido" and (
+                            cnt_desc.lower() == texto_a_buscar.lower() or
+                            cnt_full == texto_a_buscar.lower()
+                        ):
+                            node_data["competencia"] = {"id_competencia": comp_id, "descripcion": comp_desc}
+                            node_data["indicador"] = {"id_indicador": ind_id, "descripcion": ind_desc}
+                            node_data["contenido"] = {"id_contenido": cnt_id, "descripcion": cnt_desc}
+                            found = True
+                            break
+                    if found:
+                        break
+                if found:
+                    break
+
+        # Si no matcheó con documento subarea_doc
+        if not node_data["competencia"] and not node_data["indicador"] and not node_data["contenido"]:
+            if tipo_nodo == "competencia":
+                node_data["competencia"] = {"id_competencia": "", "descripcion": texto_a_buscar}
+            elif tipo_nodo == "indicador":
+                node_data["indicador"] = {"id_indicador": "", "descripcion": texto_a_buscar}
+            elif tipo_nodo == "contenido":
+                node_data["contenido"] = {"id_contenido": "", "descripcion": texto_a_buscar}
+
+        matched_nodes.append(node_data)
+
+    return matched_nodes
+
+
+def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Función 2: Recibe los resultados de fetch_subarea_nodes_from_db y construye el árbol.
+    Aplica MERGE a nivel de competencias, indicadores y contenidos para mantener un solo árbol unificado.
+    """
+    if not elements:
+        return []
+
+    competencias_map = {}
+
+    for elem in elements:
+        comp = elem.get("competencia")
+        ind = elem.get("indicador")
+        cnt = elem.get("contenido")
+
+        if not comp or not comp.get("descripcion"):
+            continue
+
+        comp_desc = comp["descripcion"].strip()
+        comp_id = str(comp.get("id_competencia", "")).strip()
+        comp_key = comp_desc.lower()
+
+        if comp_key not in competencias_map:
+            competencias_map[comp_key] = {
+                "id_competencia": comp_id,
+                "competencia": comp_desc,
+                "indicadores": {}
+            }
+        elif comp_id and not competencias_map[comp_key]["id_competencia"]:
+            competencias_map[comp_key]["id_competencia"] = comp_id
+
+        if ind and ind.get("descripcion"):
+            ind_desc = ind["descripcion"].strip()
+            ind_id = str(ind.get("id_indicador", "")).strip()
+            ind_key = ind_desc.lower()
+
+            if ind_key not in competencias_map[comp_key]["indicadores"]:
+                competencias_map[comp_key]["indicadores"][ind_key] = {
+                    "id_indicador": ind_id,
+                    "indicador": ind_desc,
+                    "contenidos": []
+                }
+            elif ind_id and not competencias_map[comp_key]["indicadores"][ind_key]["id_indicador"]:
+                competencias_map[comp_key]["indicadores"][ind_key]["id_indicador"] = ind_id
+
+            if cnt and cnt.get("descripcion"):
+                cnt_desc = cnt["descripcion"].strip()
+                cnt_id = str(cnt.get("id_contenido", "")).strip()
+
+                cnt_list = competencias_map[comp_key]["indicadores"][ind_key]["contenidos"]
+                exists = any(
+                    c.get("descripcion", "").lower() == cnt_desc.lower() or
+                    (cnt_id and c.get("id_contenido") == cnt_id)
+                    for c in cnt_list
+                )
+                if not exists:
+                    cnt_list.append({
+                        "id_contenido": cnt_id,
+                        "descripcion": cnt_desc
+                    })
+
+    arbol_final = []
+    for comp_info in competencias_map.values():
+        indicadores_list = []
+        for ind_info in comp_info["indicadores"].values():
+            indicadores_list.append({
+                "id_indicador": ind_info["id_indicador"],
+                "indicador": ind_info["indicador"],
+                "contenidos": ind_info["contenidos"]
+            })
+        arbol_final.append({
+            "id_competencia": comp_info["id_competencia"],
+            "competencia": comp_info["competencia"],
+            "indicadores": indicadores_list
+        })
+
+    return arbol_final
+
+
 @tool("search_curriculum_vector_db", args_schema=SearchCurriculumVectorDBInput)
 def search_curriculum_vector_db(query: str, id_subarea_relacionada: str, limit: int = 10) -> str:
     """
@@ -184,17 +371,25 @@ def search_curriculum_vector_db(query: str, id_subarea_relacionada: str, limit: 
         limit (int): Número máximo de resultados a retornar.
         
     Returns:
-        str: Cadena en formato JSON con las coincidencias semánticas encontradas y su puntuación de relevancia.
+        str: Cadena en formato JSON con el árbol curricular unificado (merged) y las coincidencias semánticas encontradas.
     """
     try:
-        results = vector_search_cnb(query=query, id_subarea_relacionada=id_subarea_relacionada, limit=limit)
+        raw_results = vector_search_cnb(query=query, id_subarea_relacionada=id_subarea_relacionada, limit=limit)
+
+        db = None
+        try:
+            db = get_db()
+        except Exception:
+            pass
+
+        elements = fetch_subarea_nodes_from_db(raw_results, db=db)
+        arbol_curricular = build_merged_curriculum_tree(elements)
 
         return json.dumps({
             "status": "success",
             "query": query,
             "id_subarea_relacionada": id_subarea_relacionada.strip(),
-            "count": len(results),
-            "results": results
+            "arbol_curricular": arbol_curricular
         }, ensure_ascii=False, indent=2)
 
     except Exception as e:

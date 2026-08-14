@@ -44,13 +44,11 @@ def test_vector_search_mocked_tree():
         result_dict = json.loads(result_json_str)
 
         assert result_dict.get("status") == "success"
-        results = result_dict.get("results", [])
-        assert isinstance(results, list)
-        assert len(results) == 1
-        assert results[0]["tipo_nodo"] == "competencia"
-        assert results[0]["nombre_subarea"] == "Comunicación y Lenguaje L1"
-        assert "referencia_jerarquica" in results[0]
-        assert "score" in results[0]
+        arbol = result_dict.get("arbol_curricular", [])
+        assert isinstance(arbol, list)
+        assert len(arbol) == 1
+        assert "count" not in result_dict
+        assert "results" not in result_dict
 
 
 def test_vector_search_live_tree():
@@ -69,5 +67,66 @@ def test_vector_search_live_tree():
     result_dict = json.loads(result_json_str)
 
     assert result_dict.get("status") == "success"
-    results = result_dict.get("results", [])
-    assert isinstance(results, list)
+    arbol = result_dict.get("arbol_curricular", [])
+    assert isinstance(arbol, list)
+
+
+def test_tree_merging_logic():
+    """Verifica la lógica de fusión (merge) cuando dos contenidos pertenecen al mismo indicador."""
+    from tools.vector_tool import fetch_subarea_nodes_from_db, build_merged_curriculum_tree
+    from unittest.mock import MagicMock
+
+    sample_subarea_doc = {
+        "_id": "60d5ec49f1a2c8123456789b",
+        "nombre_subarea": "Física General",
+        "competencias": [
+            {
+                "id_competencia": "1",
+                "descripcion": "Aplica el conocimiento científico",
+                "indicadores_logro": [
+                    {
+                        "id_indicador": "1.1",
+                        "descripcion": "Utiliza conceptos básicos de física",
+                        "contenidos": [
+                            {"id_contenido": "1.1.1", "descripcion": "Mecánica clásica y vectores"},
+                            {"id_contenido": "1.1.2", "descripcion": "Leyes de Newton y movimiento"}
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+
+    sample_vector_results = [
+        {
+            "_id": "1",
+            "id_subarea_relacionada": "60d5ec49f1a2c8123456789b",
+            "tipo_nodo": "contenido",
+            "texto_a_buscar": "Mecánica clásica y vectores"
+        },
+        {
+            "_id": "2",
+            "id_subarea_relacionada": "60d5ec49f1a2c8123456789b",
+            "tipo_nodo": "contenido",
+            "texto_a_buscar": "Leyes de Newton y movimiento"
+        }
+    ]
+
+    mock_db = MagicMock()
+    mock_db["cnb_subareas"].find_one.return_value = sample_subarea_doc
+
+    elements = fetch_subarea_nodes_from_db(sample_vector_results, db=mock_db)
+    assert len(elements) == 2
+    assert elements[0]["competencia"]["descripcion"] == "Aplica el conocimiento científico"
+    assert elements[0]["indicador"]["descripcion"] == "Utiliza conceptos básicos de física"
+    assert elements[0]["contenido"]["descripcion"] == "Mecánica clásica y vectores"
+
+    tree = build_merged_curriculum_tree(elements)
+    assert len(tree) == 1
+    assert tree[0]["id_competencia"] == "1"
+    assert tree[0]["competencia"] == "Aplica el conocimiento científico"
+    assert len(tree[0]["indicadores"]) == 1
+    assert tree[0]["indicadores"][0]["id_indicador"] == "1.1"
+    assert len(tree[0]["indicadores"][0]["contenidos"]) == 2
+    assert tree[0]["indicadores"][0]["contenidos"][0]["descripcion"] == "Mecánica clásica y vectores"
+    assert tree[0]["indicadores"][0]["contenidos"][1]["descripcion"] == "Leyes de Newton y movimiento"
