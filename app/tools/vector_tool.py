@@ -201,8 +201,6 @@ def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -
                 try:
                     obj_id = ObjectId(sub_id_str)
                     doc = db[SUBAREAS].find_one({"_id": obj_id})
-                    if not doc:
-                        doc = db[SUBAREAS].find_one({"id_subarea": obj_id})
                     subarea_docs[sub_id_str] = doc
                 except Exception:
                     subarea_docs[sub_id_str] = None
