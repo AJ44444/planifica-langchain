@@ -32,18 +32,17 @@ Los identificadores deben ser los numeros al lado del texto, ejemplo: id_compete
 
 SYSTEM_PROMPT_SCHOOL_LESSON_PLANS = """
 Busca la carrera que necesita el usuario, las áreas que pertenecen a la carrera y la subárea que necesita el usuario.
-Construye la planificación utilizando únicamente el árbol de competencias, indicadores y contenidos.
+Solicita el árbol curricular de la subárea seleccionada, recibe la respuesta y construye la planificación utilizando únicamente el árbol curricular.
 Las actividades de aprendizaje deben estar alineadas a los contenidos, se redactan de forma impersonal, utilizando verbos en infinitivo: 'Presentar...', 'Analizar...', 'Desarrollar...'.
 Si la duración de la planificación es 1 (Un día) las actividades se estructuran en 'inicio', 'desarrollo' y 'cierre'.
 Si la duración es 2 (Una semana) las actividades se estructuran de forma secuencial. 
 Si la duración es 3 (Un bimestre - 8 semanas) las actividades se estructuran en proyectos y actividades bimestrales.
-Árbol de competencias, indicadores y contenidos:
-competencias:
+Árbol curricular:
     id_competencia
-    descripcion
-    indicadores_logro:
+    competencia
+    indicadores:
         id_indicador
-        descripcion
+        indicador
         contenidos:
             id_contenido
             descripcion
