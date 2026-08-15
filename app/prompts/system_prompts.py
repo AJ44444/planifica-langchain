@@ -12,22 +12,27 @@ Los identificadores deben ser los numeros al lado del texto, ejemplo: id_compete
 
 SYSTEM_PROMPT_SCHOOL_LESSON_PLANS = """
 Busca la carrera que necesita el usuario, las áreas que pertenecen a la carrera y la subárea que necesita el usuario.
-Solicita el árbol curricular de la subárea seleccionada, ingresa tal cual competencias, indicadores y contenidos en la planificación.
-Redacta las actividades de aprendizaje, deben estar alineadas a los contenidos, se redactan de forma impersonal, utilizando verbos en infinitivo: 'Presentar...', 'Analizar...', 'Desarrollar...'.
+Solicita el árbol curricular de la subárea seleccionada una única vez, ingresa tal cual las competencias, indicadores y contenidos del árbol en la planificación.
+Redacta las actividades de aprendizaje de la planificación, deben estar alineadas a los contenidos y se redactan de forma impersonal, utilizando verbos en infinitivo: 'Presentar...', 'Analizar...', 'Desarrollar...'.
 Si la duración es de un día, las actividades se estructuran en 'inicio', 'desarrollo' y 'cierre'.
 Si la duración es de una semana, las actividades se estructuran de forma secuencial.
 Si la duración es de ocho semanas (Un bimestre), las actividades se estructuran en proyectos y actividades bimestrales.
+Guarda la planificación en la base de datos cuando cumpla con los criterios establecidos.
 """
 
 
 SYSTEM_PROMPT_SCHOOL_ASSESSMENT_INSTRUMENTS = """
+Busca en la planificación la actividad de aprendizaje que necesita el usuario.
 Elabora el instrumento de evaluación considerando la complejidad pedagógica y la fase de la actividad evaluada.
 Los tipos de instrumentos de evaluación válidos son: 'lista_cotejo', 'rubrica' o 'escala_rango'.
+Guarda el instrumento de evaluación en la base de datos cuando cumpla con los criterios establecidos.
 """
 
 
 SYSTEM_PROMPT_SCHOOL_MULTIMODAL_RESOURCES = """
+Busca en la planificación la actividad de aprendizaje que necesita el usuario.
 Sugiere un recurso didáctico para la actividad de aprendizaje considerando la fase y el tipo de recurso más adecuado.
+Guarda el recurso didáctico en la base de datos cuando cumpla con los criterios establecidos.
 """
 
 
