@@ -1,4 +1,5 @@
 from langchain.agents import create_agent
+from langchain.agents.middleware import SummarizationMiddleware
 from core.llm import llm
 from tools.persistence_tool import (
     save_assessment_instrument,
@@ -20,5 +21,12 @@ agent = create_agent(
         get_paginated_lesson_plans,
         get_full_lesson_plan_details
     ],
-    system_prompt=SYSTEM_PROMPT_SCHOOL_ASSESSMENT_INSTRUMENTS
+    system_prompt=SYSTEM_PROMPT_SCHOOL_ASSESSMENT_INSTRUMENTS,
+    middleware=[
+        SummarizationMiddleware(
+            model=llm,
+            trigger=("messages", 30),
+            keep=("messages", 15)
+        )
+    ]
 )

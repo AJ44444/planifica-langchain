@@ -1,6 +1,6 @@
-import os
-import json
 from typing import Dict, Any, Optional
+import time
+from collections import defaultdict
 from google.oauth2 import id_token as google_id_token_verifier
 from google.auth.transport import requests as google_requests
 from langgraph_sdk import Auth
@@ -10,6 +10,8 @@ from tools.persistence_tool import create_user_doc, get_user_by_google_id
 # Instancia global de Auth de LangGraph SDK
 auth = Auth()
 
+THREAD_CREATION_LOGS = defaultdict(list)
+MAX_THREADS_PER_MINUTE = 5
 
 def verify_google_id_token(id_token: str) -> Dict[str, Any]:
     """
@@ -126,3 +128,27 @@ async def authenticate(authorization: Optional[str] = None, headers: Optional[di
         "nombres": user.get("nombres", name),
         "rol": user.get("rol", "docente")
     }
+
+
+# Rate Limiter para la creación de hilos (POST /threads): Máximo 5 hilos por minuto por usuario autenticado
+@auth.on.threads.create
+async def limit_thread_creation_rate(ctx: Auth.types.AuthContext, value: dict):
+    """
+    Middleware / Interceptor de LangGraph SDK que restringe la creación de hilos (POST /threads).
+    Garantiza un límite máximo de 5 hilos por minuto por usuario autenticado.
+    """
+    user_id = getattr(ctx.user, "identity", None) or "anonymous"
+    now = time.time()
+
+    # Filtrar registros de creación de hilos activos en los últimos 60 segundos
+    recent_threads = [t for t in THREAD_CREATION_LOGS[user_id] if now - t < 60]
+
+    if len(recent_threads) >= MAX_THREADS_PER_MINUTE:
+        raise Auth.exceptions.HTTPException(
+            status_code=429,
+            detail=f"Límite de tasa excedido: Se permite crear un máximo de {MAX_THREADS_PER_MINUTE} hilos por minuto."
+        )
+
+    recent_threads.append(now)
+    THREAD_CREATION_LOGS[user_id] = recent_threads
+

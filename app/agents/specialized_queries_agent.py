@@ -1,4 +1,5 @@
 from langchain.agents import create_agent
+from langchain.agents.middleware import SummarizationMiddleware
 from core.llm import llm
 from tools.persistence_tool import (
     get_top_frequent_courses,
@@ -24,5 +25,12 @@ agent = create_agent(
         get_cnb_areas_by_career,
         get_cnb_subareas_by_area_id
     ],
-    system_prompt=SYSTEM_PROMPT_SPECIALIZED_QUERIES
+    system_prompt=SYSTEM_PROMPT_SPECIALIZED_QUERIES,
+    middleware=[
+        SummarizationMiddleware(
+            model=llm,
+            trigger=("messages", 30),
+            keep=("messages", 15)
+        )
+    ]
 )

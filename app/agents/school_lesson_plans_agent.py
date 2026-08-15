@@ -1,4 +1,5 @@
 from langchain.agents import create_agent
+from langchain.agents.middleware import SummarizationMiddleware
 from core.llm import llm
 from tools.persistence_tool import (
     get_paginated_lesson_plans,
@@ -26,5 +27,12 @@ agent = create_agent(
         get_cnb_subareas_by_area_id,
         get_paginated_lesson_plans
     ],
-    system_prompt=SYSTEM_PROMPT_SCHOOL_LESSON_PLANS
+    system_prompt=SYSTEM_PROMPT_SCHOOL_LESSON_PLANS,
+    middleware=[
+        SummarizationMiddleware(
+            model=llm,
+            trigger=("messages", 30),
+            keep=("messages", 15)
+        )
+    ]
 )

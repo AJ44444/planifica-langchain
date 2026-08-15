@@ -1,4 +1,5 @@
 from langchain.agents import create_agent
+from langchain.agents.middleware import SummarizationMiddleware
 from core.llm import llm
 from tools.web_search_tool import serper_web_search
 from tools.persistence_tool import (
@@ -22,5 +23,12 @@ agent = create_agent(
         get_paginated_lesson_plans,
         get_full_lesson_plan_details
     ],
-    system_prompt=SYSTEM_PROMPT_SCHOOL_MULTIMODAL_RESOURCES
+    system_prompt=SYSTEM_PROMPT_SCHOOL_MULTIMODAL_RESOURCES,
+    middleware=[
+        SummarizationMiddleware(
+            model=llm,
+            trigger=("messages", 30),
+            keep=("messages", 15)
+        )
+    ]
 )
