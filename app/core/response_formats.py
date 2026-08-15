@@ -50,7 +50,6 @@ class EncabezadoPlan(BaseModel):
     lugar: str
     grado: str
     seccion: str
-    nombre_docente: str
     duracion: int
 
 

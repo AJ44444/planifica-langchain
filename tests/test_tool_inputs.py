@@ -39,7 +39,6 @@ def test_save_lesson_plan_tool_schema_validation():
             "lugar": "Guatemala",
             "grado": "Primero Básico",
             "seccion": "A",
-            "nombre_docente": "Juan Pérez",
             "duracion": 1
         },
         "desarrollo_curricular": [

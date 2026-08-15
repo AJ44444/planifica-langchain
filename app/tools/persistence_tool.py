@@ -413,7 +413,7 @@ def save_lesson_plan(
             fila_dict["actividades_aprendizaje"] = formatted_acts
             formatted_desarrollo.append(fila_dict)
 
-        teacher_name = str(enc_dict.get("nombre_docente", "")).strip() or extract_teacher_name_from_config(config, effective_id)
+        teacher_name = extract_teacher_name_from_config(config, effective_id) or "Docente"
 
         doc = {
             "id_usuario": user_obj_id,
