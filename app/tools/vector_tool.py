@@ -229,6 +229,25 @@ def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -
                     comp_full == texto_a_buscar.lower()
                 ):
                     node_data["competencia"] = {"id_competencia": comp_id, "descripcion": comp_desc}
+                    full_ind_list = []
+                    for ind in comp.get("indicadores_logro", []):
+                        ind_id = str(ind.get("id_indicador", "")).strip()
+                        ind_desc = str(ind.get("descripcion", "")).strip()
+                        cnts_list = []
+                        for c in ind.get("contenidos", []):
+                            if isinstance(c, dict):
+                                cnts_list.append({
+                                    "id_contenido": str(c.get("id_contenido", "")).strip(),
+                                    "descripcion": str(c.get("descripcion", "")).strip()
+                                })
+                            else:
+                                cnts_list.append({"id_contenido": "", "descripcion": str(c).strip()})
+                        full_ind_list.append({
+                            "id_indicador": ind_id,
+                            "indicador": ind_desc,
+                            "contenidos": cnts_list
+                        })
+                    node_data["full_competencia_tree"] = full_ind_list
                     found = True
                     break
 
@@ -294,8 +313,8 @@ def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[st
     """
     Función 2: Recibe los resultados de fetch_subarea_nodes_from_db y construye el árbol.
     Aplica MERGE a nivel de competencias, indicadores y contenidos para mantener un solo árbol unificado.
-    Si la búsqueda devuelve un indicador sin contenidos vinculados explícitos, se agregan todos sus contenidos.
-    Si devuelve un contenido, se agrega obligatoriamente el indicador al que está vinculado.
+    Regla 1: Recuperar todos los contenidos para un indicador aplica UNICAMENTE cuando en la respuesta no existe ningún contenido vinculado.
+    Regla 2: Si en la respuesta no existe ningún indicador vinculado a una competencia, recuperar todo el árbol (indicadores y contenidos) de esa competencia.
     """
     if not elements:
         return []
@@ -307,6 +326,7 @@ def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[st
         ind = elem.get("indicador")
         cnt = elem.get("contenido")
         all_cnts = elem.get("all_contenidos_indicador", [])
+        full_comp_tree = elem.get("full_competencia_tree", [])
 
         if not comp or not comp.get("descripcion"):
             continue
@@ -319,10 +339,14 @@ def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[st
             competencias_map[comp_key] = {
                 "id_competencia": comp_id,
                 "competencia": comp_desc,
-                "indicadores": {}
+                "indicadores": {},
+                "full_competencia_tree": []
             }
         elif comp_id and not competencias_map[comp_key]["id_competencia"]:
             competencias_map[comp_key]["id_competencia"] = comp_id
+
+        if full_comp_tree and not competencias_map[comp_key]["full_competencia_tree"]:
+            competencias_map[comp_key]["full_competencia_tree"] = full_comp_tree
 
         if ind and ind.get("descripcion"):
             ind_desc = ind["descripcion"].strip()
@@ -358,7 +382,21 @@ def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[st
                         "descripcion": cnt_desc
                     })
 
-    # Si la búsqueda devuelve un indicador sin contenidos explícitos, agregar todos los contenidos de dicho indicador
+    # Regla 2: Si dentro de la respuesta no existe ningún indicador vinculado a una competencia, recuperar todo el árbol (indicadores y contenidos) de esa competencia.
+    for comp_info in competencias_map.values():
+        if len(comp_info["indicadores"]) == 0 and comp_info.get("full_competencia_tree"):
+            for ind_item in comp_info["full_competencia_tree"]:
+                ind_desc = ind_item["indicador"].strip()
+                ind_id = ind_item["id_indicador"].strip()
+                ind_key = ind_desc.lower()
+                comp_info["indicadores"][ind_key] = {
+                    "id_indicador": ind_id,
+                    "indicador": ind_desc,
+                    "contenidos": ind_item["contenidos"],
+                    "all_contenidos_fallback": []
+                }
+
+    # Regla 1: Recuperar todos los contenidos para un indicador aplica UNICAMENTE cuando dentro de la respuesta no existe ningún contenido vinculado al indicador.
     for comp_info in competencias_map.values():
         for ind_info in comp_info["indicadores"].values():
             if len(ind_info["contenidos"]) == 0 and ind_info.get("all_contenidos_fallback"):
