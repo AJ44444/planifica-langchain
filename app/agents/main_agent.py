@@ -12,7 +12,7 @@ from agents.school_multimodal_resources_agent import agent as multimodal_agent
 from agents.specialized_queries_agent import agent as specialized_queries_agent
 
 
-@tool
+@tool(return_direct=True)
 def call_process_pdf_agent(request: str, config: RunnableConfig) -> str:
     """
     Subagente procesador de PDF del CNB.
@@ -30,7 +30,7 @@ def call_process_pdf_agent(request: str, config: RunnableConfig) -> str:
     return res["messages"][-1].content
 
 
-@tool
+@tool(return_direct=True)
 def call_school_lesson_plans_agent(request: str, config: RunnableConfig) -> str:
     """
     Subagente planificador curricular de clases del CNB.
@@ -48,7 +48,7 @@ def call_school_lesson_plans_agent(request: str, config: RunnableConfig) -> str:
     return res["messages"][-1].content
 
 
-@tool
+@tool(return_direct=True)
 def call_school_assessment_instruments_agent(request: str, config: RunnableConfig) -> str:
     """
     Subagente diseñador de instrumentos de evaluación del CNB.
@@ -66,7 +66,7 @@ def call_school_assessment_instruments_agent(request: str, config: RunnableConfi
     return res["messages"][-1].content
 
 
-@tool
+@tool(return_direct=True)
 def call_school_multimodal_resources_agent(request: str, config: RunnableConfig) -> str:
     """
     Subagente de contenidos y recursos multimodales.
@@ -84,7 +84,7 @@ def call_school_multimodal_resources_agent(request: str, config: RunnableConfig)
     return res["messages"][-1].content
 
 
-@tool
+@tool(return_direct=True)
 def call_specialized_queries_agent(request: str, config: RunnableConfig) -> str:
     """
     Subagente de consultas especializadas y métricas del dashboard.
