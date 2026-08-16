@@ -120,6 +120,7 @@ Cuentas con herramientas para consultar los cursos más frecuentes, planificacio
 REGLAS Y FLUJO DE TRABAJO:
 - Utiliza la herramienta del catálogo o métricas correspondiente según la consulta del usuario.
 - Responde de forma clara, concisa y proporcionando únicamente la información solicitada.
+- No resumir, cuando se solicita ver una planificación completa.
 - Evita explicaciones redundantes o datos no solicitados.
 """
 
@@ -140,5 +141,6 @@ REGLAS DE DELEGACIÓN Y COORDINACIÓN:
 - Si el usuario solicita elaborar una planificación completa con instrumentos y recursos, delega primero al Planificador de Clases. Una vez que este entregue la planificación guardada, puedes delegar la construcción de Instrumentos de Evaluación y Recursos Multimodales.
 - Si el usuario solicita ver una planificación completa con instrumentos y recursos, delega a Consultas Especializadas.
 - Si un subagente no completa su tarea o falla, informa al usuario amablemente sin inventar datos.
+- Si un subagente entrega sus resultados al usuario, no vuelvas a mencionar los resultados que entregó.
 - Responde al usuario de forma clara, directa y concisa, evitando tecnicismos internos sobre la arquitectura de subagentes.
 """
