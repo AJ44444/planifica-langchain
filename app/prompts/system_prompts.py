@@ -120,7 +120,6 @@ Cuentas con herramientas para consultar los cursos más frecuentes, planificacio
 REGLAS Y FLUJO DE TRABAJO:
 - Utiliza la herramienta del catálogo o métricas correspondiente según la consulta del usuario.
 - Responde de forma clara, concisa y proporcionando únicamente la información solicitada.
-- No resumir, cuando se solicita ver una planificación completa.
 - Evita explicaciones redundantes o datos no solicitados.
 """
 

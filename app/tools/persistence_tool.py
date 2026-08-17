@@ -36,7 +36,6 @@ from core.tool_inputs import (
     GetPaginatedLessonPlansInput,
     GetFullLessonPlanDetailsInput,
     GetCNBAreasByCareerInput,
-    GetCNBAreasByCareersInput,
     GetCNBSubareasByAreaIdInput,
 )
 
@@ -536,7 +535,7 @@ def delete_lesson_plan(id_planificacion: str, config: RunnableConfig = None, id_
 
 
 # ==========================================
-# 3. CRUD: ÁREAS CURRICULARES (cnb_areas)
+# 3. ÁREAS CURRICULARES (cnb_areas)
 # ==========================================
 
 @tool("get_cnb_area_by_id")
@@ -552,44 +551,8 @@ def get_cnb_area_by_id(id_area: str) -> str:
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error al leer área curricular: {str(e)}"})
 
-
-@tool("update_cnb_area")
-def update_cnb_area(id_area: str, update_data: Dict[str, Any]) -> str:
-    """CRUD Update: Actualiza campos específicos de un área curricular mediante $set."""
-    try:
-        db = get_db()
-        obj_id = ObjectId(id_area.strip())
-        updates = _clean_updates(update_data)
-
-        res = db["cnb_areas"].update_one({"_id": obj_id}, {"$set": updates})
-        if res.matched_count == 0:
-            return json.dumps({"status": "error", "message": f"Área curricular '{id_area}' no encontrada."})
-
-        return json.dumps({"status": "success", "message": f"Área '{id_area}' actualizada exitosamente mediante $set."}, ensure_ascii=False)
-    except Exception as e:
-        return json.dumps({"status": "error", "message": f"Error al actualizar área curricular: {str(e)}"})
-
-
-@tool("delete_cnb_area")
-def delete_cnb_area(id_area: str, confirm: bool = True) -> str:
-    """CRUD Delete: Elimina un área curricular en 'cnb_areas' por su ID tras confirmación."""
-    try:
-        if not confirm:
-            return json.dumps({"status": "pending_confirmation", "message": f"CONFIRMACIÓN REQUERIDA: ¿Eliminar área '{id_area}'?"}, ensure_ascii=False)
-
-        db = get_db()
-        obj_id = ObjectId(id_area.strip())
-        res = db["cnb_areas"].delete_one({"_id": obj_id})
-        if res.deleted_count == 0:
-            return json.dumps({"status": "error", "message": f"Área curricular '{id_area}' no encontrada."})
-
-        return json.dumps({"status": "success", "message": f"Área '{id_area}' eliminada exitosamente."}, ensure_ascii=False)
-    except Exception as e:
-        return json.dumps({"status": "error", "message": f"Error al eliminar área curricular: {str(e)}"})
-
-
 # ==========================================
-# 4. CRUD: SUBÁREAS CURRICULARES (cnb_subareas)
+# 4. SUBÁREAS CURRICULARES (cnb_subareas)
 # ==========================================
 
 @tool("get_cnb_subarea_by_id")
@@ -605,47 +568,10 @@ def get_cnb_subarea_by_id(id_subarea: str) -> str:
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error al leer subárea: {str(e)}"})
 
-
-@tool("update_cnb_subarea")
-def update_cnb_subarea(id_subarea: str, update_data: Dict[str, Any]) -> str:
-    """CRUD Update: Actualiza campos específicos de una subárea en 'cnb_subareas' mediante $set."""
-    try:
-        db = get_db()
-        obj_id = ObjectId(id_subarea.strip())
-        updates = _clean_updates(update_data)
-
-        res = db["cnb_subareas"].update_one({"_id": obj_id}, {"$set": updates})
-        if res.matched_count == 0:
-            return json.dumps({"status": "error", "message": f"Subárea '{id_subarea}' no encontrada."})
-
-        return json.dumps({"status": "success", "message": f"Subárea '{id_subarea}' actualizada exitosamente mediante $set."}, ensure_ascii=False)
-    except Exception as e:
-        return json.dumps({"status": "error", "message": f"Error al actualizar subárea: {str(e)}"})
-
-
-@tool("delete_cnb_subarea")
-def delete_cnb_subarea(id_subarea: str, confirm: bool = True) -> str:
-    """CRUD Delete: Elimina una subárea curricular por su ID en 'cnb_subareas' tras confirmación."""
-    try:
-        if not confirm:
-            return json.dumps({"status": "pending_confirmation", "message": f"CONFIRMACIÓN REQUERIDA: ¿Eliminar subárea '{id_subarea}'?"}, ensure_ascii=False)
-
-        db = get_db()
-        obj_id = ObjectId(id_subarea.strip())
-        res = db["cnb_subareas"].delete_one({"_id": obj_id})
-        if res.deleted_count == 0:
-            return json.dumps({"status": "error", "message": f"Subárea '{id_subarea}' no encontrada."})
-
-        return json.dumps({"status": "success", "message": f"Subárea '{id_subarea}' eliminada exitosamente."}, ensure_ascii=False)
-    except Exception as e:
-        return json.dumps({"status": "error", "message": f"Error al eliminar subárea: {str(e)}"})
-
-
 # ==========================================
-# 5. CRUD: VECTORES DE BÚSQUEDA (cnb_vectores)
+# 5. VECTORES DE BÚSQUEDA (cnb_vectores)
 # ==========================================
 
-@tool("get_cnb_vector_by_id")
 def get_cnb_vector_by_id(id_vector: str) -> str:
     """CRUD Read: Obtiene un nodo vectorial de 'cnb_vectores' por su _id."""
     try:
@@ -659,7 +585,6 @@ def get_cnb_vector_by_id(id_vector: str) -> str:
         return json.dumps({"status": "error", "message": f"Error al leer vector: {str(e)}"})
 
 
-@tool("update_cnb_vector")
 def update_cnb_vector(id_vector: str, update_data: Dict[str, Any]) -> str:
     """CRUD Update: Actualiza los campos de un registro en 'cnb_vectores' mediante $set."""
     try:
@@ -676,7 +601,6 @@ def update_cnb_vector(id_vector: str, update_data: Dict[str, Any]) -> str:
         return json.dumps({"status": "error", "message": f"Error al actualizar vector: {str(e)}"})
 
 
-@tool("delete_cnb_vector")
 def delete_cnb_vector(id_vector: str, confirm: bool = True) -> str:
     """CRUD Delete: Elimina un registro vectorial en 'cnb_vectores' por su _id tras confirmación."""
     try:
@@ -1053,6 +977,36 @@ def get_full_lesson_plan_details(id_planificacion: str, config: RunnableConfig =
             "instrumentos_evaluacion": instruments,
             "recursos_multimodales": resources
         }, cls=JSONEncoderCustom, ensure_ascii=False)
+
+    except Exception as e:
+        return json.dumps({"status": "error", "message": f"Error al consultar detalle completo de planificación: {str(e)}"})
+
+
+@tool("get_lesson_plan_details", args_schema=GetFullLessonPlanDetailsInput, return_direct=True)
+def get_lesson_plan_details(id_planificacion: str, config: RunnableConfig = None, id_usuario: str = "") -> str:
+    """Recupera el documento completo de una planificación junto a sus instrumentos y recursos asociados en formato JSON estructurado directo."""
+    try:
+        db = get_db()
+        plan_obj_id = ObjectId(id_planificacion.strip())
+
+        effective_id = extract_user_id_from_config(config) or id_usuario
+        query = {"_id": plan_obj_id}
+        if effective_id and len(effective_id.strip()) == 24:
+            query["id_usuario"] = ObjectId(effective_id.strip())
+
+        plan = db["planificaciones_generadas"].find_one(query)
+        if not plan:
+            return json.dumps({"status": "error", "message": "Acceso denegado o planificación no encontrada para este usuario."})
+
+        instruments = list(db["instrumentos_evaluacion"].find({"id_planificacion": plan_obj_id}))
+        resources = list(db["recursos_multimodales"].find({"id_planificacion": plan_obj_id}))
+
+        return json.dumps({
+            "status": "success",
+            "planificacion": plan,
+            "instrumentos_evaluacion": instruments,
+            "recursos_multimodales": resources
+        }, cls=JSONEncoderCustom, ensure_ascii=False, indent=2)
 
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error al consultar detalle completo de planificación: {str(e)}"})
