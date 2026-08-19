@@ -39,7 +39,9 @@ def test_save_lesson_plan_tool_schema_validation():
             "lugar": "Guatemala",
             "grado": "Primero Básico",
             "seccion": "A",
-            "duracion": 1
+            "duracion": "1 día",
+            "cantidad_periodos": 1,
+            "duracion_periodos": 40
         },
         "desarrollo_curricular": [
             {

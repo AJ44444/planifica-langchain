@@ -50,7 +50,9 @@ class EncabezadoPlan(BaseModel):
     lugar: str
     grado: str
     seccion: str
-    duracion: int
+    duracion: str
+    cantidad_periodos: int
+    duracion_periodos: int
 
 
 class ActividadAprendizaje(BaseModel):

@@ -28,7 +28,7 @@ class SaveCurricularStructureInput(BaseModel):
 class SaveLessonPlanInput(BaseModel):
     """Input estructurado para crear una nueva planificación docente."""
     metadatos: MetadatosPlanInput = Field(..., description="Metadatos como carrera, subárea curricular y estado.")
-    encabezado: EncabezadoPlan = Field(..., description="Información administrativa del plan (centro_educativo, lugar, grado, seccion, nombre_docente, duracion).")
+    encabezado: EncabezadoPlan = Field(..., description="Información administrativa del plan (centro_educativo, lugar, grado, seccion, duracion, cantidad_periodos, duracion_periodos).")
     desarrollo_curricular: List[FilaCurricularPlan] = Field(..., description="Lista de filas de desarrollo pedagógico y actividades de aprendizaje.")
     id_usuario: Optional[str] = Field(default="", description="ID de MongoDB (24 caracteres) del docente autenticado.")
 
