@@ -14,6 +14,7 @@ from tools.persistence_tool import (
     get_cnb_area_by_id,
     get_cnb_subarea_by_id
 )
+from middleware.security_middleware import SecurityGuardrailMiddleware
 from prompts.system_prompts import SYSTEM_PROMPT_SPECIALIZED_QUERIES
 
 agent = create_agent(
@@ -33,6 +34,7 @@ agent = create_agent(
     ],
     system_prompt=SYSTEM_PROMPT_SPECIALIZED_QUERIES,
     middleware=[
+        SecurityGuardrailMiddleware(),
         SummarizationMiddleware(
             model=llm,
             trigger=("messages", 30),

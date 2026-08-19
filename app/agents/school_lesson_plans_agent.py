@@ -12,6 +12,7 @@ from tools.persistence_tool import (
     get_cnb_subareas_by_area_id
 )
 from tools.vector_tool import search_curriculum_vector_db
+from middleware.security_middleware import SecurityGuardrailMiddleware
 from prompts.system_prompts import SYSTEM_PROMPT_SCHOOL_LESSON_PLANS
 
 agent = create_agent(
@@ -29,6 +30,7 @@ agent = create_agent(
     ],
     system_prompt=SYSTEM_PROMPT_SCHOOL_LESSON_PLANS,
     middleware=[
+        SecurityGuardrailMiddleware(),
         SummarizationMiddleware(
             model=llm,
             trigger=("messages", 30),

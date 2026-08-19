@@ -9,6 +9,7 @@ from tools.persistence_tool import (
     get_paginated_lesson_plans,
     get_full_lesson_plan_details
 )
+from middleware.security_middleware import SecurityGuardrailMiddleware
 from prompts.system_prompts import SYSTEM_PROMPT_SCHOOL_ASSESSMENT_INSTRUMENTS
 
 agent = create_agent(
@@ -23,6 +24,7 @@ agent = create_agent(
     ],
     system_prompt=SYSTEM_PROMPT_SCHOOL_ASSESSMENT_INSTRUMENTS,
     middleware=[
+        SecurityGuardrailMiddleware(),
         SummarizationMiddleware(
             model=llm,
             trigger=("messages", 30),

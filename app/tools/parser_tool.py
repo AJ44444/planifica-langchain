@@ -4,19 +4,20 @@ import base64
 from typing import List, Dict, Union, Any
 from markitdown import MarkItDown, StreamInfo
 from langchain_core.tools import tool
+from middleware.security_middleware import sanitize_external_text
 
 
 def convert_pdf_to_markdown(pdf_input: Union[bytes, io.BufferedIOBase, str, Any]) -> str:
     """
     Convierte un documento PDF recibido en memoria a Markdown utilizando MarkItDown.
     No admite ni procesa rutas de archivos en disco; la entrada debe ser un buffer de bytes en memoria (io.BytesIO / bytes)
-    o una cadena codificada en base64.
+    o una cadena codificada en base64. Sanitiza el contenido extraído contra inyecciones de prompt indirectas.
 
     Args:
         pdf_input: Bytes en memoria, buffer en memoria (io.BytesIO) o representación en Base64 / texto Markdown.
 
     Returns:
-        str: El contenido procesado y convertido a Markdown.
+        str: El contenido procesado, sanitizado y convertido a Markdown.
     """
     md = MarkItDown()
 
@@ -37,13 +38,13 @@ def convert_pdf_to_markdown(pdf_input: Union[bytes, io.BufferedIOBase, str, Any]
                 result = md.convert(stream, stream_info=StreamInfo(mimetype="application/pdf", extension=".pdf"))
             except Exception:
                 # Si la cadena es texto markdown directo en memoria
-                return pdf_input
+                return sanitize_external_text(pdf_input)
         else:
-            return pdf_input
+            return sanitize_external_text(pdf_input)
     else:
         raise ValueError("El parámetro pdf_input debe ser un objeto de bytes en memoria (bytes / io.BytesIO) o una cadena en Base64. No se admiten rutas de archivo en disco.")
 
-    return result.text_content
+    return sanitize_external_text(result.text_content, wrap_xml=True)
 
 
 def extract_career_name(document: str) -> str:

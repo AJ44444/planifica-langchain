@@ -2,7 +2,7 @@ import json
 from langchain_community.utilities import GoogleSerperAPIWrapper
 from langchain_core.tools import tool
 from core.config import SERPER
-
+from middleware.security_middleware import sanitize_external_text
 
 def get_serper_wrapper(search_type: str = "search", k: int = 5) -> GoogleSerperAPIWrapper:
     """Retorna un objeto GoogleSerperAPIWrapper de LangChain Community configurado."""
@@ -21,7 +21,7 @@ def get_serper_wrapper(search_type: str = "search", k: int = 5) -> GoogleSerperA
 def serper_web_search(query: str, search_type: str = "search", num_results: int = 5) -> str:
     """
     Ejecuta búsquedas en la web utilizando SERPER / Google Search (LangChain Community).
-    Muestra los resultados relevantes con título, enlace y snippet.
+    Muestra los resultados relevantes con título, enlace y snippet sanitizados contra inyecciones indirectas.
     
     Args:
         query: Consulta o palabras clave de búsqueda.
@@ -46,26 +46,26 @@ def serper_web_search(query: str, search_type: str = "search", num_results: int 
         if stype == "videos" and "videos" in raw_results:
             for item in raw_results["videos"][:num_results]:
                 results.append({
-                    "title": item.get("title", ""),
+                    "title": sanitize_external_text(item.get("title", "")),
                     "link": item.get("link", ""),
-                    "snippet": item.get("snippet", ""),
+                    "snippet": sanitize_external_text(item.get("snippet", "")),
                     "tipo": "video"
                 })
         elif stype == "images" and "images" in raw_results:
             for item in raw_results["images"][:num_results]:
                 results.append({
-                    "title": item.get("title", ""),
+                    "title": sanitize_external_text(item.get("title", "")),
                     "link": item.get("imageUrl", item.get("link", "")),
-                    "snippet": item.get("source", ""),
+                    "snippet": sanitize_external_text(item.get("source", "")),
                     "tipo": "imagen"
                 })
         else:
             organic = raw_results.get("organic", [])
             for item in organic[:num_results]:
                 results.append({
-                    "title": item.get("title", ""),
+                    "title": sanitize_external_text(item.get("title", "")),
                     "link": item.get("link", ""),
-                    "snippet": item.get("snippet", ""),
+                    "snippet": sanitize_external_text(item.get("snippet", "")),
                     "tipo": "sitio_web"
                 })
 

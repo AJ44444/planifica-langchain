@@ -4,6 +4,7 @@ from core.llm import llm
 from tools.parser_tool import parse_curricular_areas
 from tools.persistence_tool import save_curricular_structure
 from tools.vector_tool import generate_subarea_vector_embeddings
+from middleware.security_middleware import SecurityGuardrailMiddleware
 from prompts.system_prompts import SYSTEM_PROMPT_PROCESS_PDF
 
 agent = create_agent(
@@ -11,6 +12,7 @@ agent = create_agent(
     tools=[parse_curricular_areas, save_curricular_structure, generate_subarea_vector_embeddings],
     system_prompt=SYSTEM_PROMPT_PROCESS_PDF,
     middleware=[
+        SecurityGuardrailMiddleware(),
         SummarizationMiddleware(
             model=llm,
             trigger=("messages", 30),

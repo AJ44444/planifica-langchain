@@ -10,6 +10,7 @@ from agents.school_lesson_plans_agent import agent as lesson_plans_agent
 from agents.school_assessment_instruments_agent import agent as assessment_agent
 from agents.school_multimodal_resources_agent import agent as multimodal_agent
 from agents.specialized_queries_agent import agent as specialized_queries_agent
+from middleware.security_middleware import SecurityGuardrailMiddleware
 
 
 @tool(return_direct=True)
@@ -114,6 +115,7 @@ main_agent = create_agent(
     ],
     system_prompt=SYSTEM_PROMPT_SUPERVISOR,
     middleware=[
+        SecurityGuardrailMiddleware(),
         SummarizationMiddleware(
             model=llm,
             trigger=("messages", 30),
