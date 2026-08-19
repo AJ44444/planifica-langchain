@@ -54,13 +54,13 @@ class SecurityGuardrailMiddleware(AgentMiddleware):
     2. Intentos de salto de políticas de seguridad y jailbreaks.
     """
 
-    def before_agent(self, state: Dict[str, Any], config: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def before_agent(self, state: Dict[str, Any], *args, **kwargs) -> Any:
         """
         Valida la entrada del usuario antes de que el agente comience la ejecución.
         """
         messages = state.get("messages", [])
         if not messages:
-            return state, config
+            return state
 
         last_message = messages[-1]
         content = ""
@@ -78,10 +78,10 @@ class SecurityGuardrailMiddleware(AgentMiddleware):
                         "Se detectó un intento de manipulación de instrucciones o inyección de prompt."
                     )
 
-        return state, config
+        return state
 
-    def before_model(self, state: Dict[str, Any], config: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def before_model(self, state: Dict[str, Any], *args, **kwargs) -> Any:
         """
         Garantiza la envoltura y sanitización antes de la llamada al modelo LLM.
         """
-        return state, config
+        return state

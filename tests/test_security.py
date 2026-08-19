@@ -34,8 +34,8 @@ def test_security_middleware_legitimate_input_allowed():
         ]
     }
 
-    state, config = middleware.before_agent(valid_state, {})
-    assert state == valid_state
+    res = middleware.before_agent(valid_state, {})
+    assert res == valid_state
 
 
 def test_sanitize_external_text_sanitization():
