@@ -152,3 +152,16 @@ async def limit_thread_creation_rate(ctx: Auth.types.AuthContext, value: dict):
     recent_threads.append(now)
     THREAD_CREATION_LOGS[user_id] = recent_threads
 
+
+# Política global por defecto de autorización para LangGraph Server
+@auth.on
+async def default_authorization_policy(ctx: Auth.types.AuthContext, value: dict = None):
+    """
+    Manejador global de autorización por defecto para LangGraph Server.
+    Cubre todas las rutas de despacho (assistants.*, crons.*, store.*, threads.*).
+    Verifica que la solicitud provenga de un usuario autenticado válidamente.
+    """
+    if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
+        return False
+    return True
+
