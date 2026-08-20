@@ -1,6 +1,6 @@
 # Sistema Multiagente Educativo "Planifica" 🚀
 
-**Planifica** es una plataforma educativa inteligente impulsada por una arquitectura **Multiagente con LangGraph Server (LangChain)**. Diseñada para automatizar la extracción curricular, la elaboración de planificaciones docentes y el diseño de instrumentos de evaluación alineados al **Currículum Nacional Base (CNB) de Guatemala**.
+**Planifica** es una plataforma educativa inteligente impulsada por una arquitectura **Multiagente con LangGraph Server**. Diseñada para automatizar la extracción curricular, la elaboración de planificaciones docentes y el diseño de instrumentos de evaluación alineados al **Currículum Nacional Base (CNB) de Guatemala**.
 
 ---
 
@@ -8,9 +8,9 @@
 
 * **Arquitectura Jerárquica de 5 Subagentes**: Un grafo supervisor enruta dinámicamente las solicitudes hacia agentes altamente especializados.
 * **Procesamiento de PDF en Memoria**: Extracción y análisis de documentos PDF del CNB directamente en memoria mediante `MarkItDown[pdf]`, sin persistencia temporal en disco.
-* **Búsqueda Vectorial Semántica de 768 Dimensiones**: Búsqueda sobre el CNB implementada con `$vectorSearch` de **MongoDB Atlas Search** utilizando el modelo oficial **Google Gemini `text-embedding-004`**.
+* **Búsqueda Vectorial Semántica de 768 Dimensiones**: Búsqueda sobre el CNB implementada con `$vectorSearch` de **MongoDB Atlas Search** utilizando el modelo oficial **Google Gemini `gemini-embedding-2`**.
 * **Autenticación Nativa de Producción (Google OAuth)**: Middleware integrado en LangGraph Server que valida el token de ID de Google y registra automáticamente al usuario en MongoDB por su `google_id`.
-* **Modelos de Respuesta Estructurada (Pydantic / DTO)**: Garantía de salidas estrictamente tipadas en formato YAML para planificaciones, rúbricas, listas de cotejo y recursos multimodales.
+* **Modelos de Respuesta Estructurada (Pydantic)**: Garantía de salidas estrictamente tipadas para planificaciones, rúbricas, listas de cotejo y recursos multimodales.
 * **Seguridad y Privacidad de Datos**: Aislamiento estricto de sesiones y documentos por `user_id` del docente autenticado.
 
 ---
@@ -41,10 +41,10 @@ flowchart TD
 
 ### Subagentes Especializados
 
-1. **`call_process_pdf_agent`**: Procesa documentos PDF curriculares en memoria, extrae áreas y subáreas, y genera vectores de embedding (768d).
-2. **`call_school_lesson_plans_agent`**: Elabora y gestiona planificaciones docentes (diarias, semanales y bimestrales) alineadas al CNB.
+1. **`call_process_pdf_agent`**: Procesa documentos PDF curriculares en memoria, extrae áreas y subáreas, y genera embeddings de 768 dimensiones.
+2. **`call_school_lesson_plans_agent`**: Elabora y gestiona planificaciones docentes (diarias, semanales, bimestrales, semestrales, anuales) alineadas al CNB.
 3. **`call_school_assessment_instruments_agent`**: Diseña rúbricas, listas de cotejo y escalas de rango para actividades de aprendizaje.
-4. **`call_school_multimodal_resources_agent`**: Explora la web en tiempo real mediante Serper API para vincular videos, imágenes y recursos educativos.
+4. **`call_school_multimodal_resources_agent`**: Explora la web en tiempo real para vincular videos, imágenes y recursos educativos.
 5. **`call_specialized_queries_agent`**: Atiende los datos analíticos del dashboard, catálogo de carreras/áreas del CNB e historial paginado.
 
 ---
