@@ -2,7 +2,12 @@
 Módulo de herramientas del sistema Planifica (Parseo de PDF, Búsqueda Vectorial, Búsqueda Web SERPER y Persistencia MongoDB).
 """
 
-from .parser_tool import convert_pdf_to_markdown, extract_career_name, parse_curricular_areas
+from .parser_tool import (
+    convert_pdf_to_markdown,
+    extract_career_name,
+    extract_curricular_structure_table,
+    parse_curricular_areas,
+)
 from .vector_tool import search_curriculum_vector_db, generate_subarea_vector_embeddings, vector_search_cnb
 from .web_search_tool import serper_web_search
 from .persistence_tool import (
@@ -32,6 +37,7 @@ from .persistence_tool import (
 __all__ = [
     "convert_pdf_to_markdown",
     "extract_career_name",
+    "extract_curricular_structure_table",
     "parse_curricular_areas",
     "search_curriculum_vector_db",
     "generate_subarea_vector_embeddings",

@@ -62,6 +62,50 @@ def extract_career_name(document: str) -> str:
     return "No identificada"
 
 
+def extract_curricular_structure_table(document: str) -> str:
+    """
+    Captura dinámicamente del documento la sección de la 'Tabla No. 1: Estructura...' de la carrera.
+    Utiliza extract_career_name para identificar la carrera dinámicamente.
+    Comienza la captura en la 'Tabla No. 1' / 'Estructura de <carrera>' y la cierra al detectar la 'Tabla No. 2'
+    o el inicio de la primera Área Curricular ('Área Curricular de ...').
+
+    Args:
+        document (str): Contenido Markdown del documento CNB a analizar.
+
+    Returns:
+        str: El bloque extraído correspondiente a la Tabla No. 1 (Estructura de la carrera).
+    """
+    if not document or not isinstance(document, str):
+        return ""
+
+    career_name = extract_career_name(document)
+    lines = document.splitlines()
+
+    capturing = False
+    captured_lines = []
+
+    escaped_career = re.escape(career_name) if career_name != "No identificada" else r'.+'
+    table1_pattern = re.compile(
+        r'(?i)(?:Tabla\s+(?:No\.?|N°|Nº)?\s*1\b|Estructura\s+de\s+' + escaped_career + r')'
+    )
+    # Cierra el bloque al detectar la Tabla No. 2 o la primera Área Curricular
+    closing_pattern = re.compile(
+        r'(?i)(?:Tabla\s+(?:No\.?|N°|Nº)?\s*2\b|^(?:#+\s*)?(?:Área|Area)\s+curricular\s+de\s+)'
+    )
+
+    for line in lines:
+        if not capturing:
+            if table1_pattern.search(line):
+                capturing = True
+                captured_lines.append(line)
+        else:
+            if closing_pattern.search(line.strip()):
+                break
+            captured_lines.append(line)
+
+    return "\n".join(captured_lines).strip()
+
+
 @tool
 def parse_curricular_areas(pdf_base64: str) -> List[Dict[str, str]]:
     """
@@ -77,6 +121,8 @@ def parse_curricular_areas(pdf_base64: str) -> List[Dict[str, str]]:
     content = convert_pdf_to_markdown(pdf_base64)
 
     career_name = extract_career_name(content)
+
+    structure_table = extract_curricular_structure_table(content)
 
     lines = content.splitlines(keepends=True)
     n_lines = len(lines)
@@ -159,7 +205,15 @@ def parse_curricular_areas(pdf_base64: str) -> List[Dict[str, str]]:
                     break
             areas_meta[k]['end_idx'] = end_idx
 
-    areas_list = []
+    structure_item = {
+        'index': 0,
+        'career_name': career_name,
+        'area_title': 'Estructura Curricular',
+        'clean_name': 'Estructura Curricular',
+        'content': structure_table
+    }
+
+    areas_list = [structure_item]
     for idx, area in enumerate(areas_meta, 1):
         s_idx = area['start_idx']
         e_idx = area['end_idx']
