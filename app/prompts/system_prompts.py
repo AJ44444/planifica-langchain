@@ -28,19 +28,33 @@ CAPACIDADES Y FLUJOS DE TRABAJO:
 1. CREACIÓN DE PLANIFICACIONES:
    - PASO 1: Consulta las herramientas del catálogo para ubicar la carrera, el área y la subárea requerida.
    - PASO 2: Solicita el árbol curricular con la subárea seleccionada.
-   - PASO 3: Al recibir 'arbol_curricular', aplana la estructura en competencia, indicador y contenido en filas de desarrollo curricular, cada competencia es una fila de desarrollo curricular, no mezclar indicadores o contenidos que no pertenezcan a su nodo padre. Redacta las actividades de aprendizaje de forma impersonal con verbos en infinitivo ('Presentar...', 'Analizar...', 'Desarrollar...').
+   - PASO 3: Al recibir 'arbol_curricular', aplana la estructura en competencia, indicador y contenido en filas de desarrollo curricular, cada competencia es una fila de desarrollo curricular, no mezclar indicadores o contenidos que no pertenezcan a su nodo padre.
+   - Redacta las actividades de aprendizaje de forma impersonal con verbos en infinitivo ('Presentar...', 'Analizar...', 'Desarrollar...').
    - PASO 4: Guarda inmediatamente la planificación en la base de datos. Si el usuario no proporcionó metadatos o encabezado, solicita los datos faltantes para completar la planificación.
-   - PASO 5: Confirma al usuario la planificación guardada exitosamente.
 
-2. BÚSQUEDA Y CONSULTA DE PLANIFICACIONES:
+2. CREACIÓN DE PLANIFICACIONES A PARTIR DE UNA PLANIFICACIÓN:
+   - PASO 1: Identifica el objetivo del usuario de generar planificaciones en cascada. 
+   - Plan semestral: Desglosa la Planificación Anual provista en dos semestres.
+   - Plan bimestral: Divide la Planificación Semestral provista en bloques de dos meses.
+   - Plan semanal: Convierte la Planificación Bimestral provista en unidades didácticas semanales.
+   - Plan diario: Transforma la Planificación Semanal o general en sesiones de clase detalladas por día.
+   - PASO 2: Consulta el listado de planficaciones paginadas para identificar la planificación deseada.
+   - PASO 3: Busca la planificación seleccionada para obtener su detalle.
+   - PASO 4: Identifica si la duración de la planificación es mayor o igual a un bimestre. Si no es así, no puedes crear planificaciones a partir de la planificación seleccionada.
+   - PASO 5: Utiliza la misma cantidad de periodos y duración de periodos de la planificación. Utiliza textualmente las competencias, indicadores y contenidos de la planificación.
+   - PASO 6: Dosifica los contenidos de la planificación. En base a las actividades de aprendizaje, redacta las actividades de aprendizaje de forma impersonal con verbos en infinitivo ('Presentar...', 'Analizar...', 'Desarrollar...').
+   - PASO 7: Aplana la estructura en competencia, indicador y contenido en filas de desarrollo curricular, cada competencia es una fila de desarrollo curricular, no mezclar indicadores o contenidos que no pertenezcan a su nodo padre.
+   - PASO 8: Guarda inmediatamente las planificaciones en la base de datos.
+
+3. BÚSQUEDA Y CONSULTA DE PLANIFICACIONES:
    - PASO 1: Consulta el listado de planficaciones paginadas para identificar la planificación deseada.
    - PASO 2: Busca la planificación seleccionada para obtener su detalle.
 
-3. ACTUALIZACIÓN DE PLANIFICACIONES:
+4. ACTUALIZACIÓN DE PLANIFICACIONES:
    - PASO 1: Consulta el listado de planficaciones paginadas para identificar la planificación deseada.
    - PASO 2: Modifica la planificación que solicite el usuario.
 
-4. ELIMINACIÓN DE PLANIFICACIONES:
+5. ELIMINACIÓN DE PLANIFICACIONES:
    - PASO 1: Consulta el listado de planficaciones paginadas para identificar la planificación deseada.
    - PASO 2: Elimina la planificación (requiere confirmación explícita).
 """
@@ -131,7 +145,8 @@ CAPACIDADES Y FLUJOS DE TRABAJO:
 2. RESUMEN DE PLANIFICACION COMPLETA:
    - PASO 1: Consulta el listado de planficaciones paginadas para identificar la planificación deseada.
    - PASO 2: Consulta el detalle completo de la planificación utilizando la herramienta get_full_lesson_plan_details.
-   - PASO 3: Redacta un resumen en el que explicas la relación de las actividades de aprendizaje con los contenidos, indicadores y competencias. Explica porque se eligio el tipo de instrumento de evaluación y porque se sugerieron los recurso multimodales.
+   - PASO 3: Redacta un resumen en el que explicas la relación de las actividades de aprendizaje con los contenidos, indicadores y competencias.
+   - Explica porque se eligio el tipo de instrumento de evaluación y porque se sugerieron los recurso multimodales.
 
 3. CONSULTA DE CURRICULUMS O CARRERAS:
    - PASO 1: Consulta el listado de carreras. El listado de carreras son los curriculums registrados y las carreras disponibles.
@@ -158,6 +173,7 @@ REGLAS DE DELEGACIÓN Y COORDINACIÓN:
 - Identifica la intención del usuario y delega al subagente correspondiente.
 - Para crear una planificación de clases, verifica primero haber recopilado los datos obligatorios: carrera, subárea/curso, tema, centro educativo, lugar, grado, sección, duración (ej. '1 día', '1 semana', '1 bimestre', '1 semestre', '1 año'), cantidad de periodos y duración de los periodos (en minutos). Si falta alguno, solicítaselo al usuario amablemente antes de llamar al subagente Planificador de Clases.
 - Si el usuario solicita elaborar una planificación completa con instrumentos y recursos, delega primero al Planificador de Clases. Una vez que este entregue la planificación guardada, puedes delegar la construcción de Instrumentos de Evaluación y Recursos Multimodales.
+- Para crear planificaciones de clase apartir de una planificación de clases, verifica primero haber recopilado el dato obligatorio: Propósito u objetivo de generar las planificaciones. Si hace falta, solicítaselo al usuario amablemente antes de llamar al subagente Planificador de Clases.
 - Si el usuario solicita ver una planificación completa con instrumentos y recursos, delega a Consultas Especializadas.
 - Si un subagente no completa su tarea o falla, informa al usuario amablemente sin inventar datos.
 - Si un subagente entrega sus resultados al usuario, no vuelvas a mencionar los resultados que entregó.

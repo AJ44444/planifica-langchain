@@ -70,20 +70,25 @@ def test_parse_curricular_areas():
     assert any("Contabilidad" in a for a in areas_found), "Falta el Área Curricular de Contabilidad."
 
 
+import base64
+
+
 def test_in_memory_pdf_processing():
     """
-    1.4 Procesar PDF: Verificar que el parser_tool admite flujos de bytes en memoria (io.BytesIO / bytes) sin escribir en disco.
+    1.4 Procesar PDF: Verificar que el parser_tool procese exclusivamente cadenas Base64 en memoria sin escribir en disco.
     """
     assert os.path.exists(REAL_CNB_FILE), f"El archivo de prueba real {REAL_CNB_FILE} no existe."
 
     with open(REAL_CNB_FILE, "rb") as f:
         raw_bytes = f.read()
 
-    # Prueba con stream de bytes en memoria
-    stream = io.BytesIO(raw_bytes)
-    result_stream = convert_pdf_to_markdown(stream)
-    assert len(result_stream) > 0, "El resultado de la conversión por stream de memoria está vacío."
+    b64_str = base64.b64encode(raw_bytes).decode("utf-8")
 
-    # Prueba con objeto bytes en memoria directamente
-    result_bytes = convert_pdf_to_markdown(raw_bytes)
-    assert len(result_bytes) > 0, "El resultado de la conversión por bytes en memoria está vacío."
+    # Prueba con cadena Base64 pura
+    result_b64 = convert_pdf_to_markdown(b64_str)
+    assert len(result_b64) > 0, "El resultado de la conversión por Base64 está vacío."
+
+    # Prueba con URI de datos Base64
+    data_uri = f"data:application/pdf;base64,{b64_str}"
+    result_uri = convert_pdf_to_markdown(data_uri)
+    assert len(result_uri) > 0, "El resultado de la conversión por Data URI Base64 está vacío."

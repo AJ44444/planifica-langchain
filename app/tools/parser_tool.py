@@ -1,50 +1,42 @@
 import io
 import re
 import base64
-from typing import List, Dict, Union, Any
+from typing import List, Dict
 from markitdown import MarkItDown, StreamInfo
 from langchain_core.tools import tool
 from middleware.security_middleware import sanitize_external_text
 
 
-def convert_pdf_to_markdown(pdf_input: Union[bytes, io.BufferedIOBase, str, Any]) -> str:
+def convert_pdf_to_markdown(pdf_base64: str) -> str:
     """
-    Convierte un documento PDF recibido en memoria a Markdown utilizando MarkItDown.
-    No admite ni procesa rutas de archivos en disco; la entrada debe ser un buffer de bytes en memoria (io.BytesIO / bytes)
-    o una cadena codificada en base64. Sanitiza el contenido extraído contra inyecciones de prompt indirectas.
+    Convierte un documento PDF recibido exclusivamente como cadena codificada en Base64 a Markdown utilizando MarkItDown.
+    No admite rutas de disco ni transmisiones multipart de bytes; la entrada debe ser provista como cadena Base64.
+    Sanitiza el contenido extraído contra inyecciones de prompt indirectas.
 
     Args:
-        pdf_input: Bytes en memoria, buffer en memoria (io.BytesIO) o representación en Base64 / texto Markdown.
+        pdf_base64 (str): Cadena codificada en Base64 del documento PDF.
 
     Returns:
         str: El contenido procesado, sanitizado y convertido a Markdown.
     """
-    md = MarkItDown()
+    if not isinstance(pdf_base64, str) or not pdf_base64.strip():
+        raise ValueError("El parámetro pdf_base64 debe ser una cadena válida codificada en Base64.")
 
-    if isinstance(pdf_input, bytes):
-        stream = io.BytesIO(pdf_input)
-        result = md.convert(stream, stream_info=StreamInfo(mimetype="application/pdf", extension=".pdf"))
+    clean_b64 = pdf_base64.strip()
+    if clean_b64.startswith("data:application/pdf;base64,"):
+        clean_b64 = clean_b64.split(",")[-1].strip()
 
-    elif isinstance(pdf_input, io.BufferedIOBase) or hasattr(pdf_input, "read"):
-        result = md.convert(pdf_input, stream_info=StreamInfo(mimetype="application/pdf", extension=".pdf"))
-
-    elif isinstance(pdf_input, str):
-        # Procesar datos recibidos en Base64 exclusivamente en memoria
-        if pdf_input.startswith("data:application/pdf;base64,") or len(pdf_input) > 200:
-            clean_b64 = pdf_input.split(",")[-1]
-            try:
-                pdf_bytes = base64.b64decode(clean_b64)
-                stream = io.BytesIO(pdf_bytes)
-                result = md.convert(stream, stream_info=StreamInfo(mimetype="application/pdf", extension=".pdf"))
-            except Exception:
-                # Si la cadena es texto markdown directo en memoria
-                return sanitize_external_text(pdf_input)
+    try:
+        pdf_bytes = base64.b64decode(clean_b64)
+        if len(pdf_bytes) > 0 and (pdf_bytes.startswith(b"%PDF") or len(clean_b64) > 100):
+            stream = io.BytesIO(pdf_bytes)
+            md = MarkItDown()
+            result = md.convert(stream, stream_info=StreamInfo(mimetype="application/pdf", extension=".pdf"))
+            return sanitize_external_text(result.text_content, wrap_xml=True)
         else:
-            return sanitize_external_text(pdf_input)
-    else:
-        raise ValueError("El parámetro pdf_input debe ser un objeto de bytes en memoria (bytes / io.BytesIO) o una cadena en Base64. No se admiten rutas de archivo en disco.")
-
-    return sanitize_external_text(result.text_content, wrap_xml=True)
+            return sanitize_external_text(clean_b64, wrap_xml=True)
+    except Exception:
+        return sanitize_external_text(clean_b64, wrap_xml=True)
 
 
 def extract_career_name(document: str) -> str:
@@ -71,18 +63,18 @@ def extract_career_name(document: str) -> str:
 
 
 @tool
-def parse_curricular_areas(pdf_source: Union[bytes, io.BufferedIOBase, str, Any]) -> List[Dict[str, str]]:
+def parse_curricular_areas(pdf_base64: str) -> List[Dict[str, str]]:
     """
-    Analiza dinámicamente las áreas curriculares de un documento PDF recibido exclusivamente en memoria.
-    No admite rutas de disco. Procesa el contenido en memoria y retorna las áreas curriculares con su contenido Markdown.
+    Analiza dinámicamente las áreas curriculares de un documento PDF recibido exclusivamente en formato Base64.
+    No admite rutas de disco ni transmisiones multipart de bytes. Procesa el contenido en memoria y retorna las áreas curriculares.
     
     Args:
-        pdf_source: Bytes en memoria, buffer io.BytesIO o string Base64 del PDF.
+        pdf_base64: Cadena codificada en Base64 del documento PDF.
     
     Returns:
         List[Dict[str, str]]: Lista de áreas curriculares procesadas con su contenido Markdown.
     """
-    content = convert_pdf_to_markdown(pdf_source)
+    content = convert_pdf_to_markdown(pdf_base64)
 
     career_name = extract_career_name(content)
 
