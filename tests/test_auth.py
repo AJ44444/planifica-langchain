@@ -61,7 +61,8 @@ async def test_auth_middleware_valid_token_existing_user():
         "rol": "docente"
     }
 
-    with patch("auth.auth_handler.verify_google_id_token", return_value=mock_google_payload), \
+    with patch("auth.auth_handler.check_db_connection", return_value=True), \
+         patch("auth.auth_handler.verify_google_id_token", return_value=mock_google_payload), \
          patch("auth.auth_handler.get_user_by_google_id", return_value=mock_user_doc):
 
         result = await authenticate(authorization="Bearer valid_id_token_xyz")
@@ -96,7 +97,8 @@ async def test_auth_middleware_valid_token_auto_register():
         "rol": "docente"
     }
 
-    with patch("auth.auth_handler.verify_google_id_token", return_value=mock_google_payload), \
+    with patch("auth.auth_handler.check_db_connection", return_value=True), \
+         patch("auth.auth_handler.verify_google_id_token", return_value=mock_google_payload), \
          patch("auth.auth_handler.get_user_by_google_id", return_value=None), \
          patch("auth.auth_handler.create_user_doc", return_value={"status": "success", "user": created_user_doc}):
 
@@ -116,3 +118,17 @@ async def test_auth_middleware_missing_header():
         await authenticate(authorization=None, headers=None)
     assert exc_info.value.status_code == 401
     assert "Acceso Denegado" in exc_info.value.detail
+
+
+@pytest.mark.anyio
+async def test_auth_middleware_db_inactive_503():
+    """
+    Verifica que si la comunicación con la base de datos no está activa, la autenticación falle
+    antes de validar el token respondiendo con servicio no disponible (código 503).
+    """
+    with patch("auth.auth_handler.check_db_connection", return_value=False):
+        with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+            await authenticate(authorization="Bearer valid_id_token_xyz")
+
+        assert exc_info.value.status_code == 503
+        assert "Servicio No Disponible" in exc_info.value.detail

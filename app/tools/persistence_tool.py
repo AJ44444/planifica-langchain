@@ -66,6 +66,25 @@ def get_db():
     raise ValueError("No se especificó la base de datos de MongoDB. Configura DB_NAME en .env o inclúyela en la MONGODB_URI.")
 
 
+def check_db_connection(timeout_ms: int = 2000) -> bool:
+    """
+    Verifica si la comunicación con la base de datos MongoDB está activa.
+    Envía un comando 'ping' con un tiempo máximo de espera (timeout).
+
+    Args:
+        timeout_ms (int): Tiempo de espera en milisegundos para la verificación.
+
+    Returns:
+        bool: True si la base de datos está conectada y responde, False en caso de falla.
+    """
+    try:
+        client = get_mongo_client()
+        client.admin.command("ping", serverSelectionTimeoutMS=timeout_ms)
+        return True
+    except Exception:
+        return False
+
+
 def extract_user_id_from_config(config: Optional[Any] = None) -> str:
     """
     Extrae de forma segura el ID del usuario autenticado del objeto RunnableConfig de LangGraph.

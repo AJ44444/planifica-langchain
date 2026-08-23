@@ -5,7 +5,7 @@ from google.oauth2 import id_token as google_id_token_verifier
 from google.auth.transport import requests as google_requests
 from langgraph_sdk import Auth
 from core.config import GOOGLE_CLIENT_ID
-from tools.persistence_tool import create_user_doc, get_user_by_google_id
+from tools.persistence_tool import create_user_doc, get_user_by_google_id, check_db_connection
 
 # Instancia global de Auth de LangGraph SDK
 auth = Auth()
@@ -71,7 +71,14 @@ async def authenticate(authorization: Optional[str] = None, headers: Optional[di
             detail="Acceso Denegado: Encabezado 'Authorization: Bearer <google_id_token>' no proporcionado."
         )
 
-    # 1. Verificar la autenticidad del token mediante la biblioteca oficial google-auth
+    # 1. Verificar si la comunicación con la base de datos MongoDB está activa antes de validar el token
+    if not check_db_connection():
+        raise Auth.exceptions.HTTPException(
+            status_code=503,
+            detail="Servicio No Disponible: No hay comunicación activa con la base de datos."
+        )
+
+    # 2. Verificar la autenticidad del token mediante la biblioteca oficial google-auth
     try:
         google_payload = verify_google_id_token(token)
     except Exception as e:
