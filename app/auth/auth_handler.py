@@ -121,8 +121,8 @@ async def authenticate(authorization: Optional[str] = None, headers: Optional[di
 
     if not user or "_id" not in user:
         raise Auth.exceptions.HTTPException(
-            status_code=500,
-            detail="Error interno al procesar el perfil del docente en la base de datos."
+            status_code=401,
+            detail="Acceso Denegado: No se pudo verificar ni obtener el perfil del docente en la base de datos."
         )
 
     user_id = str(user["_id"])

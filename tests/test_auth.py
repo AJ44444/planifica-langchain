@@ -132,3 +132,25 @@ async def test_auth_middleware_db_inactive_401():
 
         assert exc_info.value.status_code == 401
         assert "Acceso Denegado" in exc_info.value.detail
+
+
+@pytest.mark.anyio
+async def test_auth_middleware_user_missing_id_401():
+    """
+    Verifica que si el usuario retornado de la BD no es válido o carece de _id, la autenticación
+    eleve un error HTTP 401 de Acceso Denegado.
+    """
+    mock_google_payload = {
+        "sub": "google_user_no_id",
+        "email": "invalid.user@escuela.edu.gt"
+    }
+    with patch("auth.auth_handler.check_db_connection", return_value=True), \
+         patch("auth.auth_handler.verify_google_id_token", return_value=mock_google_payload), \
+         patch("auth.auth_handler.get_user_by_google_id", return_value=None), \
+         patch("auth.auth_handler.create_user_doc", return_value={"status": "error", "user": None}):
+
+        with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+            await authenticate(authorization="Bearer token_invalid_user")
+
+        assert exc_info.value.status_code == 401
+        assert "Acceso Denegado" in exc_info.value.detail
