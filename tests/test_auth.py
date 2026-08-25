@@ -121,14 +121,14 @@ async def test_auth_middleware_missing_header():
 
 
 @pytest.mark.anyio
-async def test_auth_middleware_db_inactive_500():
+async def test_auth_middleware_db_inactive_401():
     """
     Verifica que si la comunicación con la base de datos no está activa, la autenticación falle
-    respondiendo con un error HTTP 500 de Error Interno del Servidor.
+    respondiendo con un error HTTP 401 de Acceso Denegado.
     """
     with patch("auth.auth_handler.check_db_connection", return_value=False):
         with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
             await authenticate(authorization="Bearer valid_id_token_xyz")
 
-        assert exc_info.value.status_code == 500
-        assert "Error Interno del Servidor" in exc_info.value.detail
+        assert exc_info.value.status_code == 401
+        assert "Acceso Denegado" in exc_info.value.detail

@@ -74,8 +74,8 @@ async def authenticate(authorization: Optional[str] = None, headers: Optional[di
     # 1. Verificar si la comunicación con la base de datos MongoDB está activa antes de validar el token
     if not check_db_connection():
         raise Auth.exceptions.HTTPException(
-            status_code=500,
-            detail="Error Interno del Servidor: No hay comunicación activa con la base de datos."
+            status_code=401,
+            detail="Acceso Denegado: No hay comunicación activa con la base de datos."
         )
 
     # 2. Verificar la autenticidad del token mediante la biblioteca oficial google-auth
