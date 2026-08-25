@@ -45,10 +45,12 @@ def _get_bson_timestamp() -> Timestamp:
     return Timestamp(int(time.time()), 1)
 
 
-def get_mongo_client() -> MongoClient:
+def get_mongo_client(timeout_ms: Optional[int] = None) -> MongoClient:
     """Retorna una instancia de MongoClient utilizando la URI configurada."""
     if not MONGODB_URI:
         raise ValueError("La variable MONGODB_URI no está configurada en .env.")
+    if timeout_ms:
+        return MongoClient(MONGODB_URI, serverSelectionTimeoutMS=timeout_ms, connectTimeoutMS=timeout_ms)
     return MongoClient(MONGODB_URI)
 
 
@@ -78,8 +80,8 @@ def check_db_connection(timeout_ms: int = 2000) -> bool:
         bool: True si la base de datos está conectada y responde, False en caso de falla.
     """
     try:
-        client = get_mongo_client()
-        client.admin.command("ping", serverSelectionTimeoutMS=timeout_ms)
+        client = get_mongo_client(timeout_ms=timeout_ms)
+        client.admin.command("ping")
         return True
     except Exception:
         return False
