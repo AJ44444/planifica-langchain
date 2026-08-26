@@ -8,7 +8,17 @@ from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
-from core.config import MONGODB_URI, DB_NAME
+from core.config import get_env_variable
+from core.collections import (
+    AREAS,
+    SUBAREAS,
+    VECTORES,
+    PLANIFICACION,
+    EVALUACION,
+    RECURSOS,
+    REFRESH_TOKENS,
+    USUARIOS,
+)
 from core.response_formats import (
     Subarea,
     EncabezadoPlan,
@@ -46,26 +56,18 @@ def _get_bson_timestamp() -> Timestamp:
 
 
 def get_mongo_client(timeout_ms: Optional[int] = None) -> MongoClient:
-    """Retorna una instancia de MongoClient utilizando la URI configurada."""
-    if not MONGODB_URI:
-        raise ValueError("La variable MONGODB_URI no está configurada en .env.")
+    """Retorna una instancia de MongoClient utilizando la URI configurada en MONGODB_URI."""
+    mongodb_uri = get_env_variable("MONGODB_URI")
     if timeout_ms:
-        return MongoClient(MONGODB_URI, serverSelectionTimeoutMS=timeout_ms, connectTimeoutMS=timeout_ms)
-    return MongoClient(MONGODB_URI)
+        return MongoClient(mongodb_uri, serverSelectionTimeoutMS=timeout_ms, connectTimeoutMS=timeout_ms)
+    return MongoClient(mongodb_uri)
 
 
 def get_db():
-    """Retorna la base de datos de MongoDB a partir de DB_NAME o la base por defecto de MONGODB_URI."""
+    """Retorna la base de datos de MongoDB a partir de DB_NAME."""
     client = get_mongo_client()
-    if DB_NAME:
-        return client[DB_NAME]
-    try:
-        db = client.get_default_database()
-        if db is not None:
-            return db
-    except Exception:
-        pass
-    raise ValueError("No se especificó la base de datos de MongoDB. Configura DB_NAME en .env o inclúyela en la MONGODB_URI.")
+    db_name = get_env_variable("DB_NAME")
+    return client[db_name]
 
 
 def check_db_connection(timeout_ms: int = 2000) -> bool:
@@ -148,7 +150,7 @@ def extract_teacher_name_from_config(config: Optional[Any] = None, user_id: str 
     if effective_id and len(effective_id.strip()) == 24:
         try:
             db = get_db()
-            user_doc = db["usuarios"].find_one({"_id": ObjectId(effective_id.strip())})
+            user_doc = db[USUARIOS].find_one({"_id": ObjectId(effective_id.strip())})
             if user_doc:
                 nombres = str(user_doc.get("nombres", "")).strip()
                 apellidos = str(user_doc.get("apellidos", "")).strip()
@@ -239,7 +241,7 @@ def insert_cnb_area_doc(data: dict) -> ObjectId:
         "criterios_evaluacion_sugeridos": _format_items(data.get("criterios_evaluacion_sugeridos", []))
     }
 
-    res = db["cnb_areas"].insert_one(area_doc)
+    res = db[AREAS].insert_one(area_doc)
     return res.inserted_id
 
 
@@ -256,7 +258,7 @@ def insert_cnb_subarea_doc(data: dict) -> ObjectId:
         "competencias": data.get("competencias", [])
     }
 
-    res = db["cnb_subareas"].insert_one(subarea_doc)
+    res = db[SUBAREAS].insert_one(subarea_doc)
     return res.inserted_id
 
 
@@ -277,7 +279,7 @@ def insert_cnb_vector_doc(data: dict) -> ObjectId:
         "vector_estado": data.get("vector_estado", False)
     }
 
-    res = db["cnb_vectores"].insert_one(doc)
+    res = db[VECTORES].insert_one(doc)
     return res.inserted_id
 
 
@@ -451,7 +453,7 @@ def save_lesson_plan(
             "desarrollo_curricular": formatted_desarrollo
         }
 
-        res = db["planificaciones_generadas"].insert_one(doc)
+        res = db[PLANIFICACION].insert_one(doc)
         return json.dumps({
             "status": "success",
             "message": "Planificación de clase creada exitosamente.",
@@ -475,7 +477,7 @@ def get_planification_by_id(id_planificacion: str, config: RunnableConfig = None
         if effective_id and len(effective_id.strip()) == 24:
             query["id_usuario"] = ObjectId(effective_id.strip())
 
-        plan = db["planificaciones_generadas"].find_one(query)
+        plan = db[PLANIFICACION].find_one(query)
         if not plan:
             return json.dumps({
                 "status": "error",
@@ -504,7 +506,7 @@ def update_lesson_plan(id_planificacion: str, update_data: Dict[str, Any], confi
         if effective_id and len(effective_id.strip()) == 24:
             query["id_usuario"] = ObjectId(effective_id.strip())
 
-        res = db["planificaciones_generadas"].update_one(query, {"$set": updates})
+        res = db[PLANIFICACION].update_one(query, {"$set": updates})
 
         if res.matched_count == 0:
             return json.dumps({
@@ -540,7 +542,7 @@ def delete_lesson_plan(id_planificacion: str, config: RunnableConfig = None, id_
         if effective_id and len(effective_id.strip()) == 24:
             query["id_usuario"] = ObjectId(effective_id.strip())
 
-        res = db["planificaciones_generadas"].delete_one(query)
+        res = db[PLANIFICACION].delete_one(query)
 
         if res.deleted_count == 0:
             return json.dumps({
@@ -567,7 +569,7 @@ def get_cnb_area_by_id(id_area: str) -> str:
     try:
         db = get_db()
         obj_id = ObjectId(id_area.strip())
-        area = db["cnb_areas"].find_one({"_id": obj_id})
+        area = db[AREAS].find_one({"_id": obj_id})
         if not area:
             return json.dumps({"status": "error", "message": f"Área curricular con _id '{id_area}' no encontrada."})
         return json.dumps({"status": "success", "area": area}, cls=JSONEncoderCustom, ensure_ascii=False)
@@ -584,7 +586,7 @@ def get_cnb_subarea_by_id(id_subarea: str) -> str:
     try:
         db = get_db()
         obj_id = ObjectId(id_subarea.strip())
-        sub = db["cnb_subareas"].find_one({"_id": obj_id})
+        sub = db[SUBAREAS].find_one({"_id": obj_id})
         if not sub:
             return json.dumps({"status": "error", "message": f"Subárea '{id_subarea}' no encontrada."})
         return json.dumps({"status": "success", "subarea": sub}, cls=JSONEncoderCustom, ensure_ascii=False)
@@ -600,7 +602,7 @@ def get_cnb_vector_by_id(id_vector: str) -> str:
     try:
         db = get_db()
         obj_id = ObjectId(id_vector.strip())
-        vec = db["cnb_vectores"].find_one({"_id": obj_id})
+        vec = db[VECTORES].find_one({"_id": obj_id})
         if not vec:
             return json.dumps({"status": "error", "message": f"Vector '{id_vector}' no encontrado."})
         return json.dumps({"status": "success", "vector": vec}, cls=JSONEncoderCustom, ensure_ascii=False)
@@ -615,7 +617,7 @@ def update_cnb_vector(id_vector: str, update_data: Dict[str, Any]) -> str:
         obj_id = ObjectId(id_vector.strip())
         updates = _clean_updates(update_data)
 
-        res = db["cnb_vectores"].update_one({"_id": obj_id}, {"$set": updates})
+        res = db[VECTORES].update_one({"_id": obj_id}, {"$set": updates})
         if res.matched_count == 0:
             return json.dumps({"status": "error", "message": f"Vector '{id_vector}' no encontrado."})
 
@@ -632,7 +634,7 @@ def delete_cnb_vector(id_vector: str, confirm: bool = True) -> str:
 
         db = get_db()
         obj_id = ObjectId(id_vector.strip())
-        res = db["cnb_vectores"].delete_one({"_id": obj_id})
+        res = db[VECTORES].delete_one({"_id": obj_id})
         if res.deleted_count == 0:
             return json.dumps({"status": "error", "message": f"Vector '{id_vector}' no encontrado."})
 
@@ -670,7 +672,7 @@ def save_assessment_instrument(
             "instrumento_generado": inst_gen_dict
         }
 
-        res = db["instrumentos_evaluacion"].insert_one(doc)
+        res = db[EVALUACION].insert_one(doc)
         return json.dumps({
             "status": "success",
             "message": "Instrumento de evaluación guardado exitosamente.",
@@ -688,7 +690,7 @@ def get_assessment_instrument_by_id(id_instrumento: str) -> str:
     try:
         db = get_db()
         obj_id = ObjectId(id_instrumento.strip())
-        inst = db["instrumentos_evaluacion"].find_one({"_id": obj_id})
+        inst = db[EVALUACION].find_one({"_id": obj_id})
         if not inst:
             return json.dumps({"status": "error", "message": f"Instrumento '{id_instrumento}' no encontrado."})
         return json.dumps({"status": "success", "instrumento": inst}, cls=JSONEncoderCustom, ensure_ascii=False)
@@ -704,7 +706,7 @@ def update_assessment_instrument(id_instrumento: str, update_data: Dict[str, Any
         obj_id = ObjectId(id_instrumento.strip())
         updates = _clean_updates(update_data)
 
-        res = db["instrumentos_evaluacion"].update_one({"_id": obj_id}, {"$set": updates})
+        res = db[EVALUACION].update_one({"_id": obj_id}, {"$set": updates})
         if res.matched_count == 0:
             return json.dumps({"status": "error", "message": f"Instrumento '{id_instrumento}' no encontrado."})
 
@@ -722,7 +724,7 @@ def delete_assessment_instrument(id_instrumento: str, confirm: bool = True) -> s
 
         db = get_db()
         obj_id = ObjectId(id_instrumento.strip())
-        res = db["instrumentos_evaluacion"].delete_one({"_id": obj_id})
+        res = db[EVALUACION].delete_one({"_id": obj_id})
         if res.deleted_count == 0:
             return json.dumps({"status": "error", "message": f"Instrumento '{id_instrumento}' no encontrado."})
 
@@ -759,7 +761,7 @@ def save_multimodal_resource(
             "url": str(url)
         }
 
-        res = db["recursos_multimodales"].insert_one(doc)
+        res = db[RECURSOS].insert_one(doc)
         return json.dumps({
             "status": "success",
             "message": "Recurso multimodal guardado exitosamente.",
@@ -777,7 +779,7 @@ def get_multimodal_resource_by_id(id_recurso: str) -> str:
     try:
         db = get_db()
         obj_id = ObjectId(id_recurso.strip())
-        rec = db["recursos_multimodales"].find_one({"_id": obj_id})
+        rec = db[RECURSOS].find_one({"_id": obj_id})
         if not rec:
             return json.dumps({"status": "error", "message": f"Recurso '{id_recurso}' no encontrado."})
         return json.dumps({"status": "success", "recurso": rec}, cls=JSONEncoderCustom, ensure_ascii=False)
@@ -793,7 +795,7 @@ def update_multimodal_resource(id_recurso: str, update_data: Dict[str, Any]) -> 
         obj_id = ObjectId(id_recurso.strip())
         updates = _clean_updates(update_data)
 
-        res = db["recursos_multimodales"].update_one({"_id": obj_id}, {"$set": updates})
+        res = db[RECURSOS].update_one({"_id": obj_id}, {"$set": updates})
         if res.matched_count == 0:
             return json.dumps({"status": "error", "message": f"Recurso '{id_recurso}' no encontrado."})
 
@@ -811,7 +813,7 @@ def delete_multimodal_resource(id_recurso: str, confirm: bool = True) -> str:
 
         db = get_db()
         obj_id = ObjectId(id_recurso.strip())
-        res = db["recursos_multimodales"].delete_one({"_id": obj_id})
+        res = db[RECURSOS].delete_one({"_id": obj_id})
         if res.deleted_count == 0:
             return json.dumps({"status": "error", "message": f"Recurso '{id_recurso}' no encontrado."})
 
@@ -842,7 +844,7 @@ def get_top_frequent_courses(config: RunnableConfig = None, id_usuario: str = ""
             {"$limit": limit}
         ]
 
-        results = list(db["planificaciones_generadas"].aggregate(pipeline))
+        results = list(db[PLANIFICACION].aggregate(pipeline))
         return json.dumps({"status": "success", "id_usuario": effective_id, "top_cursos": results}, cls=JSONEncoderCustom, ensure_ascii=False)
 
     except Exception as e:
@@ -870,7 +872,7 @@ def get_recent_lesson_plans(config: RunnableConfig = None, id_usuario: str = "",
         }
 
         plans = list(
-            db["planificaciones_generadas"]
+            db[PLANIFICACION]
             .find({"id_usuario": user_obj_id}, projection)
             .sort("metadatos.fecha_creacion", -1)
             .limit(limit)
@@ -893,7 +895,7 @@ def get_latest_plan_instruments_and_resources(config: RunnableConfig = None, id_
 
         user_obj_id = ObjectId(effective_id.strip())
 
-        user_plans = list(db["planificaciones_generadas"].find({"id_usuario": user_obj_id}, projection={"_id": 1}))
+        user_plans = list(db[PLANIFICACION].find({"id_usuario": user_obj_id}, projection={"_id": 1}))
         if not user_plans:
             return json.dumps({
                 "status": "success",
@@ -905,14 +907,14 @@ def get_latest_plan_instruments_and_resources(config: RunnableConfig = None, id_
         plan_ids = [plan["_id"] for plan in user_plans]
 
         instruments = list(
-            db["instrumentos_evaluacion"]
+            db[EVALUACION]
             .find({"id_planificacion": {"$in": plan_ids}})
             .sort("_id", -1)
             .limit(3)
         )
 
         resources = list(
-            db["recursos_multimodales"]
+            db[RECURSOS]
             .find({"id_planificacion": {"$in": plan_ids}})
             .sort("_id", -1)
             .limit(3)
@@ -940,7 +942,7 @@ def get_paginated_lesson_plans(config: RunnableConfig = None, id_usuario: str = 
 
         user_obj_id = ObjectId(effective_id.strip())
 
-        total_count = db["planificaciones_generadas"].count_documents({"id_usuario": user_obj_id})
+        total_count = db[PLANIFICACION].count_documents({"id_usuario": user_obj_id})
         skip = (max(1, page) - 1) * limit
 
         projection = {
@@ -953,7 +955,7 @@ def get_paginated_lesson_plans(config: RunnableConfig = None, id_usuario: str = 
         }
 
         plans = list(
-            db["planificaciones_generadas"]
+            db[PLANIFICACION]
             .find({"id_usuario": user_obj_id}, projection)
             .sort("metadatos.fecha_creacion", -1)
             .skip(skip)
@@ -987,12 +989,12 @@ def get_full_lesson_plan_details(id_planificacion: str, config: RunnableConfig =
         if effective_id and len(effective_id.strip()) == 24:
             query["id_usuario"] = ObjectId(effective_id.strip())
 
-        plan = db["planificaciones_generadas"].find_one(query)
+        plan = db[PLANIFICACION].find_one(query)
         if not plan:
             return json.dumps({"status": "error", "message": "Acceso denegado o planificación no encontrada para este usuario."})
 
-        instruments = list(db["instrumentos_evaluacion"].find({"id_planificacion": plan_obj_id}))
-        resources = list(db["recursos_multimodales"].find({"id_planificacion": plan_obj_id}))
+        instruments = list(db[EVALUACION].find({"id_planificacion": plan_obj_id}))
+        resources = list(db[RECURSOS].find({"id_planificacion": plan_obj_id}))
 
         return json.dumps({
             "status": "success",
@@ -1017,12 +1019,12 @@ def get_lesson_plan_details(id_planificacion: str, config: RunnableConfig = None
         if effective_id and len(effective_id.strip()) == 24:
             query["id_usuario"] = ObjectId(effective_id.strip())
 
-        plan = db["planificaciones_generadas"].find_one(query)
+        plan = db[PLANIFICACION].find_one(query)
         if not plan:
             return json.dumps({"status": "error", "message": "Acceso denegado o planificación no encontrada para este usuario."})
 
-        instruments = list(db["instrumentos_evaluacion"].find({"id_planificacion": plan_obj_id}))
-        resources = list(db["recursos_multimodales"].find({"id_planificacion": plan_obj_id}))
+        instruments = list(db[EVALUACION].find({"id_planificacion": plan_obj_id}))
+        resources = list(db[RECURSOS].find({"id_planificacion": plan_obj_id}))
 
         return json.dumps({
             "status": "success",
@@ -1040,7 +1042,7 @@ def get_cnb_careers_list() -> str:
     """Recupera la lista única de nombres de carreras académicas registradas en el CNB."""
     try:
         db = get_db()
-        raw_careers = db["cnb_areas"].distinct("nombre_carrera")
+        raw_careers = db[AREAS].distinct("nombre_carrera")
         career_names = [str(c).strip() for c in raw_careers if c and str(c).strip()]
         return json.dumps({"status": "success", "carreras": career_names}, ensure_ascii=False)
     except Exception as e:
@@ -1053,7 +1055,7 @@ def get_cnb_areas_by_career(carrera: str, page: int = 1, limit: int = 10) -> str
     try:
         db = get_db()
         query = {"nombre_carrera": carrera.strip()}
-        total_count = db["cnb_areas"].count_documents(query)
+        total_count = db[AREAS].count_documents(query)
         skip = (max(1, page) - 1) * limit
 
         projection = {
@@ -1061,7 +1063,7 @@ def get_cnb_areas_by_career(carrera: str, page: int = 1, limit: int = 10) -> str
             "nombre_area": 1
         }
 
-        areas_cursor = db["cnb_areas"].find(query, projection).skip(skip).limit(limit)
+        areas_cursor = db[AREAS].find(query, projection).skip(skip).limit(limit)
         areas = []
         for doc in areas_cursor:
             areas.append({
@@ -1091,7 +1093,7 @@ def get_cnb_subareas_by_area_id(id_area: str, page: int = 1, limit: int = 10) ->
         db = get_db()
         area_obj_id = ObjectId(id_area.strip())
         query = {"id_area": area_obj_id}
-        total_count = db["cnb_subareas"].count_documents(query)
+        total_count = db[SUBAREAS].count_documents(query)
         skip = (max(1, page) - 1) * limit
 
         projection = {
@@ -1099,7 +1101,7 @@ def get_cnb_subareas_by_area_id(id_area: str, page: int = 1, limit: int = 10) ->
             "nombre_subarea": 1
         }
 
-        subareas_cursor = db["cnb_subareas"].find(query, projection).skip(skip).limit(limit)
+        subareas_cursor = db[SUBAREAS].find(query, projection).skip(skip).limit(limit)
         subareas = []
         for doc in subareas_cursor:
             subareas.append({
@@ -1141,9 +1143,9 @@ def create_user_doc(data: dict) -> dict:
         if not email:
             return {"status": "error", "message": "El campo 'email' es obligatorio."}
 
-        existing = db["usuarios"].find_one({"google_id": google_id})
+        existing = db[USUARIOS].find_one({"google_id": google_id})
         if existing:
-            db["usuarios"].update_one({"_id": existing["_id"]}, {"$set": {"ultimo_acceso": _get_bson_timestamp()}})
+            db[USUARIOS].update_one({"_id": existing["_id"]}, {"$set": {"ultimo_acceso": _get_bson_timestamp()}})
             existing["_id"] = str(existing["_id"])
             return {"status": "info", "message": "Usuario existente.", "user": existing, "id_usuario": existing["_id"]}
 
@@ -1159,7 +1161,7 @@ def create_user_doc(data: dict) -> dict:
             "rol": str(data.get("rol", "docente"))
         }
 
-        res = db["usuarios"].insert_one(user_doc)
+        res = db[USUARIOS].insert_one(user_doc)
         user_doc["_id"] = str(res.inserted_id)
         return {"status": "success", "message": "Usuario creado.", "user": user_doc, "id_usuario": user_doc["_id"]}
 
@@ -1176,7 +1178,7 @@ def get_user_by_google_id(google_id: str) -> Optional[dict]:
         gid = str(google_id).strip()
         if not gid:
             return None
-        user = db["usuarios"].find_one({"google_id": gid})
+        user = db[USUARIOS].find_one({"google_id": gid})
         if user:
             user["_id"] = str(user["_id"])
         return user
@@ -1189,7 +1191,7 @@ def get_user_profile_doc(id_usuario: str) -> Optional[dict]:
     try:
         db = get_db()
         obj_id = ObjectId(id_usuario.strip())
-        user = db["usuarios"].find_one({"_id": obj_id})
+        user = db[USUARIOS].find_one({"_id": obj_id})
         if user:
             user["_id"] = str(user["_id"])
         return user
@@ -1205,7 +1207,7 @@ def update_user_profile_doc(id_usuario: str, update_data: dict) -> bool:
         updates = _clean_updates(update_data)
         updates["ultimo_acceso"] = _get_bson_timestamp()
 
-        res = db["usuarios"].update_one({"_id": obj_id}, {"$set": updates})
+        res = db[USUARIOS].update_one({"_id": obj_id}, {"$set": updates})
         return res.matched_count > 0
     except Exception:
         return False
@@ -1216,7 +1218,58 @@ def delete_user_profile_doc(id_usuario: str) -> bool:
     try:
         db = get_db()
         obj_id = ObjectId(id_usuario.strip())
-        res = db["usuarios"].delete_one({"_id": obj_id})
+        res = db[USUARIOS].delete_one({"_id": obj_id})
         return res.deleted_count > 0
     except Exception:
         return False
+
+
+def save_refresh_token(id_usuario: str, refresh_token: str, expires_in_days: int = 7) -> bool:
+    """
+    Guarda o actualiza un refresh token para el usuario en la colección 'refresh_tokens'.
+    Campos de la colección: id_usuario, refresh_token, fecha_creacion, fecha_expiracion.
+    Duración por defecto: 7 días.
+    """
+    try:
+        db = get_db()
+        now = time.time()
+        expires_at_epoch = now + (expires_in_days * 86400)
+        doc = {
+            "id_usuario": str(id_usuario).strip(),
+            "refresh_token": str(refresh_token).strip(),
+            "fecha_creacion": _get_bson_timestamp(),
+            "fecha_expiracion": Timestamp(int(expires_at_epoch), 1)
+        }
+        db[REFRESH_TOKENS].update_one(
+            {"id_usuario": str(id_usuario).strip()},
+            {"$set": doc},
+            upsert=True
+        )
+        return True
+    except Exception:
+        return False
+
+
+def get_refresh_token_doc(refresh_token: str) -> Optional[dict]:
+    """
+    Busca y retorna el documento de un refresh token activo si no ha expirado.
+    Valida la expiración comparando el campo 'fecha_expiracion' con el timestamp actual.
+    """
+    try:
+        db = get_db()
+        token_str = str(refresh_token).strip()
+        if not token_str:
+            return None
+        doc = db[REFRESH_TOKENS].find_one({"refresh_token": token_str})
+        if not doc:
+            return None
+        now = time.time()
+        exp = doc.get("fecha_expiracion")
+        exp_time = exp.time if hasattr(exp, "time") else doc.get("expires_at", 0)
+        if exp_time < now:
+            db[REFRESH_TOKENS].delete_one({"_id": doc["_id"]})
+            return None
+        doc["_id"] = str(doc["_id"])
+        return doc
+    except Exception:
+        return None

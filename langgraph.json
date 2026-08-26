@@ -13,24 +13,25 @@
     "path": "./app/auth/auth_handler.py:auth",
     "openapi": {
       "securitySchemes": {
-        "googleBearerAuth": {
-          "type": "http",
-          "scheme": "bearer",
-          "bearerFormat": "JWT",
-          "description": "Token ID de Google OAuth emitido para cualquier cliente (Web, Android, iOS, Flutter, React Native)"
+        "cookieAuth": {
+          "type": "apiKey",
+          "in": "cookie",
+          "name": "access_token",
+          "description": "Cookie HTTP segura (HttpOnly, SameSite=Lax, Secure) que contiene el Access Token JWT de sesión (expiración 5 min)"
         }
       },
       "security": [
-        { "googleBearerAuth": [] }
+        { "cookieAuth": [] }
       ]
     }
   },
   "http": {
+    "app": "./app/server.py:app",
     "cors": {
       "allow_origins": ["https://app.planifica.study"],
       "allow_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      "allow_headers": ["Content-Type", "Authorization"],
-      "allow_credentials": false,
+      "allow_headers": ["Content-Type", "Authorization", "Cookie"],
+      "allow_credentials": true,
       "max_age": 600
     }
   }

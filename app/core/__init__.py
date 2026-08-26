@@ -3,12 +3,7 @@ Módulo core de configuración, modelo de lenguaje (LLM), colecciones e interfac
 """
 
 from .config import (
-    DEEPSEEK,
-    GOOGLE,
-    MONGODB_URI,
-    DB_NAME,
-    SERPER,
-    GOOGLE_CLIENT_ID,
+    get_env_variable,
     DATABASE_URI,
     REDIS_URI,
     LANGGRAPH_AUTH,
@@ -41,12 +36,7 @@ from .response_formats import (
 )
 
 __all__ = [
-    "DEEPSEEK",
-    "GOOGLE",
-    "MONGODB_URI",
-    "DB_NAME",
-    "SERPER",
-    "GOOGLE_CLIENT_ID",
+    "get_env_variable",
     "DATABASE_URI",
     "REDIS_URI",
     "LANGGRAPH_AUTH",

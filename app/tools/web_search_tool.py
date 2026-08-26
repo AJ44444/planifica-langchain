@@ -1,15 +1,14 @@
 import json
 from langchain_community.utilities import GoogleSerperAPIWrapper
 from langchain_core.tools import tool
-from core.config import SERPER
+from core.config import get_env_variable
 from middleware.security_middleware import sanitize_external_text
 
 def get_serper_wrapper(search_type: str = "search", k: int = 5) -> GoogleSerperAPIWrapper:
     """Retorna un objeto GoogleSerperAPIWrapper de LangChain Community configurado."""
-    if not SERPER:
-        raise ValueError("La variable de entorno SERPER_API_KEY no está configurada.")
+    serper_key = get_env_variable("SERPER_API_KEY")
     return GoogleSerperAPIWrapper(
-        serper_api_key=SERPER,
+        serper_api_key=serper_key,
         type=search_type,
         k=k,
         gl="gt",
@@ -31,13 +30,8 @@ def serper_web_search(query: str, search_type: str = "search", num_results: int 
     Returns:
         Cadena en formato JSON con la lista de resultados encontrados (título, enlace, snippet, tipo).
     """
-    if not SERPER:
-        return json.dumps({
-            "status": "error",
-            "message": "La API Key de SERPER (SERPER_API_KEY) no está configurada en el archivo .env."
-        }, ensure_ascii=False)
-
     try:
+        serper_key = get_env_variable("SERPER_API_KEY")
         wrapper = get_serper_wrapper(search_type=search_type, k=num_results)
         raw_results = wrapper.results(query)
 

@@ -5,7 +5,7 @@ from pymongo import MongoClient
 from langchain_core.tools import tool
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from core.config import MONGODB_URI, DB_NAME, GOOGLE
+from core.config import get_env_variable
 from core.collections import VECTORES, SUBAREAS
 from core.tool_inputs import (
     SearchCurriculumVectorDBInput,
@@ -14,28 +14,19 @@ from core.tool_inputs import (
 
 
 def get_db():
-    """Retorna la base de datos de MongoDB a partir de DB_NAME o la base por defecto de MONGODB_URI."""
-    if not MONGODB_URI:
-        raise ValueError("La variable MONGODB_URI no está configurada.")
-    client = MongoClient(MONGODB_URI)
-    if DB_NAME:
-        return client[DB_NAME]
-    try:
-        db = client.get_default_database()
-        if db is not None:
-            return db
-    except Exception:
-        pass
-    raise ValueError("No se especificó la base de datos de MongoDB. Configura DB_NAME en .env o inclúyela en la MONGODB_URI.")
+    """Retorna la base de datos de MongoDB a partir de MONGODB_URI y DB_NAME."""
+    mongodb_uri = get_env_variable("MONGODB_URI")
+    db_name = get_env_variable("DB_NAME")
+    client = MongoClient(mongodb_uri)
+    return client[db_name]
 
 
 def get_embedding_model() -> GoogleGenerativeAIEmbeddings:
     """Instancia el modelo oficial de embeddings de Google Gemini (text-embedding-004 de 768 dimensiones)."""
-    if not GOOGLE:
-        raise ValueError("La clave de API GOOGLE_API_KEY (GOOGLE en core.config) no está configurada en .env.")
+    google_api_key = get_env_variable("GOOGLE_API_KEY")
     return GoogleGenerativeAIEmbeddings(
         model="models/gemini-embedding-2",
-        google_api_key=GOOGLE,
+        google_api_key=google_api_key,
         output_dimensionality=768
     )
 

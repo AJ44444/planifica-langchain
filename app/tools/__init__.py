@@ -33,6 +33,8 @@ from .persistence_tool import (
     get_cnb_subareas_by_area_id,
     extract_user_id_from_config,
     check_db_connection,
+    save_refresh_token,
+    get_refresh_token_doc,
 )
 
 __all__ = [
@@ -66,4 +68,6 @@ __all__ = [
     "get_cnb_subareas_by_area_id",
     "extract_user_id_from_config",
     "check_db_connection",
+    "save_refresh_token",
+    "get_refresh_token_doc",
 ]
