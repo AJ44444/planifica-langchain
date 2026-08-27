@@ -12,10 +12,11 @@ async def login_with_google(request):
     5. Configura los tokens en cookies HTTP seguras (HttpOnly, SameSite=lax, Secure).
     """
     try:
-        body = await request.json()
-        id_token_str = body.get("id_token") if isinstance(body, dict) else None
-        if not id_token_str:
-            return JSONResponse({"detail": "El campo 'id_token' es obligatorio."}, status_code=400)
+        raw_body = await request.json()
+        body = raw_body if isinstance(raw_body, dict) else {}
+        id_token_str = body.get("id_token")
+        if not id_token_str or not str(id_token_str).strip():
+            return JSONResponse({"detail": "El campo 'id_token' es obligatorio en el cuerpo de la petición."}, status_code=400)
 
         session = exchange_google_token_for_session(id_token_str)
         response = JSONResponse(session)
