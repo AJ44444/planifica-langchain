@@ -1,13 +1,18 @@
+print(">>> [SERVER.PY] INICIANDO IMPORTACION Y DECLARACION DE SERVER.PY <<<", flush=True)
+
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 from auth.auth_handler import exchange_google_token_for_session, refresh_access_token_session
+
+print(">>> [SERVER.PY] IMPORTACIONES COMPLETADAS CORRECTAMENTE <<<", flush=True)
 
 
 async def custom_health(request):
     """
     Endpoint GET de verificación de estado para confirmar que http.app se monta correctamente en LangGraph Server.
     """
+    print(">>> [SERVER.PY] PETICION RECIBIDA EN GET /custom-health <<<", flush=True)
     return JSONResponse({
         "status": "ok",
         "message": "http.app montado correctamente en LangGraph Server",
@@ -23,6 +28,7 @@ async def login_with_google(request):
     4. Emite un Access Token JWT propio (5 minutos) y un Refresh Token (7 días).
     5. Configura los tokens en cookies HTTP seguras (HttpOnly, SameSite=lax, Secure).
     """
+    print(">>> [SERVER.PY] PETICION RECIBIDA EN POST /auth/login <<<", flush=True)
     try:
         if request.method == "OPTIONS":
             return JSONResponse({"status": "ok"}, status_code=200)
@@ -70,6 +76,7 @@ async def refresh_token_endpoint(request):
     Renueva el Access Token de 5 minutos extrayendo automáticamente el Refresh Token desde la cookie HTTP 'refresh_token'.
     Actualiza la cookie HttpOnly access_token con la nueva sesión.
     """
+    print(">>> [SERVER.PY] PETICION RECIBIDA EN POST /auth/refresh <<<", flush=True)
     try:
         if request.method == "OPTIONS":
             return JSONResponse({"status": "ok"}, status_code=200)
@@ -106,6 +113,7 @@ async def logout(request):
     """
     Cierra la sesión del docente eliminando las cookies seguras access_token y refresh_token.
     """
+    print(">>> [SERVER.PY] PETICION RECIBIDA EN POST /auth/logout <<<", flush=True)
     if request.method == "OPTIONS":
         return JSONResponse({"status": "ok"}, status_code=200)
 
@@ -127,3 +135,4 @@ routes = [
 ]
 
 app = Starlette(debug=False, routes=routes)
+print(">>> [SERVER.PY] INSTANCIA STARLETTE 'app' CREADA EXITOSAMENTE CON RUTAS <<<", flush=True)
