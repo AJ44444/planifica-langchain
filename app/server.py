@@ -105,8 +105,11 @@ async def logout(request):
 
 routes = [
     Route("/auth/login", endpoint=login_with_google, methods=["POST", "OPTIONS"]),
+    Route("/auth/login/", endpoint=login_with_google, methods=["POST", "OPTIONS"]),
     Route("/auth/refresh", endpoint=refresh_token_endpoint, methods=["POST", "OPTIONS"]),
+    Route("/auth/refresh/", endpoint=refresh_token_endpoint, methods=["POST", "OPTIONS"]),
     Route("/auth/logout", endpoint=logout, methods=["POST", "OPTIONS"]),
+    Route("/auth/logout/", endpoint=logout, methods=["POST", "OPTIONS"]),
 ]
 
 app = Starlette(debug=False, routes=routes)
