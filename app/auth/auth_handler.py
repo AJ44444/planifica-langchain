@@ -1,4 +1,3 @@
-import os
 import jwt
 import secrets
 from datetime import datetime, timezone, timedelta
@@ -188,14 +187,27 @@ def refresh_access_token_session(refresh_token_str: str) -> Dict[str, Any]:
 
 
 @auth.authenticate
-async def authenticate(authorization: Optional[str] = None, headers: Optional[dict] = None) -> Auth.types.MinimalUserDict:
+async def authenticate(
+    authorization: Optional[str] = None,
+    headers: Optional[dict] = None,
+    path: Optional[str] = None
+) -> Auth.types.MinimalUserDict:
     """
     Middleware universal de autenticación para LangGraph Server.
     Verifica estrictamente nuestro Access Token JWT propio (5 minutos) extraído de la cookie HTTP 'access_token':
-    1. Extrae únicamente de las cookies HTTP la clave 'access_token' (no se mantiene compatibilidad con Bearer token).
-    2. Verifica la firma y expiración de nuestro JWT propio (< 1ms).
-    3. Inyecta la identidad para garantizar aislamiento estricto de hilos y datos por docente.
+    1. Permite acceso libre a las rutas públicas de autenticación (/auth/login, /auth/refresh, /auth/logout).
+    2. Extrae únicamente de las cookies HTTP la clave 'access_token' para rutas de grafos.
+    3. Verifica la firma y expiración de nuestro JWT propio (< 1ms).
+    4. Inyecta la identidad para garantizar aislamiento estricto de hilos y datos por docente.
     """
+    path_str = str(path.decode("utf-8") if isinstance(path, bytes) else (path or "")).strip()
+    path_clean = path_str if path_str.startswith("/") else f"/{path_str}"
+    if path_clean in {"/auth/login", "/auth/refresh", "/auth/logout"}:
+        return {
+            "identity": "anonymous",
+            "is_authenticated": False
+        }
+
     token = None
     if headers:
         cookie_header = headers.get(b"cookie") or headers.get("cookie")

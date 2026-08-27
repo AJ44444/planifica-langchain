@@ -142,6 +142,29 @@ async def test_auth_middleware_rejects_bearer_token_without_cookie():
 
 
 @pytest.mark.anyio
+async def test_auth_middleware_allows_public_auth_routes():
+    """
+    Verifica que el middleware authenticate() permita el acceso a rutas públicas (/auth/login, /auth/refresh, /auth/logout) sin requerir cookie access_token.
+    """
+    result_login = await authenticate(path="/auth/login")
+    assert result_login["identity"] == "anonymous"
+    assert result_login["is_authenticated"] is False
+
+    result_refresh = await authenticate(path="/auth/refresh")
+    assert result_refresh["identity"] == "anonymous"
+    assert result_refresh["is_authenticated"] is False
+
+    result_logout = await authenticate(path="/auth/logout")
+    assert result_logout["identity"] == "anonymous"
+    assert result_logout["is_authenticated"] is False
+
+    # Verificar que cualquier otra ruta que no sea /auth/login, /auth/refresh o /auth/logout requiera autenticación
+    with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+        await authenticate(path="/threads")
+    assert exc_info.value.status_code == 401
+
+
+@pytest.mark.anyio
 async def test_server_endpoints_set_secure_httponly_cookies():
     """
     Verifica que /auth/login y /auth/refresh devuelvan las cookies seguras HttpOnly, SameSite=lax y Secure.
