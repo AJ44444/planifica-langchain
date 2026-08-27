@@ -12,6 +12,9 @@ async def login_with_google(request):
     5. Configura los tokens en cookies HTTP seguras (HttpOnly, SameSite=lax, Secure).
     """
     try:
+        if request.method == "OPTIONS":
+            return JSONResponse({"status": "ok"}, status_code=200)
+
         raw_body = await request.json()
         body = raw_body if isinstance(raw_body, dict) else {}
         id_token_str = body.get("id_token")
@@ -56,6 +59,9 @@ async def refresh_token_endpoint(request):
     Actualiza la cookie HttpOnly access_token con la nueva sesión.
     """
     try:
+        if request.method == "OPTIONS":
+            return JSONResponse({"status": "ok"}, status_code=200)
+
         token = request.cookies.get("refresh_token")
         if not token:
             return JSONResponse(
@@ -88,6 +94,9 @@ async def logout(request):
     """
     Cierra la sesión del docente eliminando las cookies seguras access_token y refresh_token.
     """
+    if request.method == "OPTIONS":
+        return JSONResponse({"status": "ok"}, status_code=200)
+
     response = JSONResponse({"status": "success", "message": "Sesión cerrada correctamente."})
     response.delete_cookie(key="access_token", path="/", httponly=True, samesite="lax", secure=True)
     response.delete_cookie(key="refresh_token", path="/", httponly=True, samesite="lax", secure=True)
@@ -95,9 +104,9 @@ async def logout(request):
 
 
 routes = [
-    Route("/auth/login", endpoint=login_with_google, methods=["POST"]),
-    Route("/auth/refresh", endpoint=refresh_token_endpoint, methods=["POST"]),
-    Route("/auth/logout", endpoint=logout, methods=["POST"]),
+    Route("/auth/login", endpoint=login_with_google, methods=["POST", "OPTIONS"]),
+    Route("/auth/refresh", endpoint=refresh_token_endpoint, methods=["POST", "OPTIONS"]),
+    Route("/auth/logout", endpoint=logout, methods=["POST", "OPTIONS"]),
 ]
 
 app = Starlette(debug=False, routes=routes)
