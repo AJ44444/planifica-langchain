@@ -3,6 +3,18 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 from auth.auth_handler import exchange_google_token_for_session, refresh_access_token_session
 
+
+async def custom_health(request):
+    """
+    Endpoint GET de verificación de estado para confirmar que http.app se monta correctamente en LangGraph Server.
+    """
+    return JSONResponse({
+        "status": "ok",
+        "message": "http.app montado correctamente en LangGraph Server",
+        "routes": ["/auth/login", "/auth/refresh", "/auth/logout", "/custom-health"]
+    }, status_code=200)
+
+
 async def login_with_google(request):
     """
     1. Recibe el id_token de Google.
@@ -104,6 +116,8 @@ async def logout(request):
 
 
 routes = [
+    Route("/custom-health", endpoint=custom_health, methods=["GET", "OPTIONS"]),
+    Route("/custom-health/", endpoint=custom_health, methods=["GET", "OPTIONS"]),
     Route("/auth/login", endpoint=login_with_google, methods=["POST", "OPTIONS"]),
     Route("/auth/login/", endpoint=login_with_google, methods=["POST", "OPTIONS"]),
     Route("/auth/refresh", endpoint=refresh_token_endpoint, methods=["POST", "OPTIONS"]),

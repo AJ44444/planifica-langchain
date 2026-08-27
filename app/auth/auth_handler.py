@@ -203,7 +203,7 @@ async def authenticate(
     path_str = str(path.decode("utf-8") if isinstance(path, bytes) else (path or "")).strip()
     path_clean = path_str if path_str.startswith("/") else f"/{path_str}"
     path_normalized = path_clean.rstrip("/") if len(path_clean) > 1 else path_clean
-    if path_normalized in {"/auth/login", "/auth/refresh", "/auth/logout"}:
+    if path_normalized in {"/auth/login", "/auth/refresh", "/auth/logout", "/custom-health"}:
         return {
             "identity": "anonymous",
             "is_authenticated": False
