@@ -1,10 +1,3 @@
-print(">>> [GRAPH.PY] IMPORTADO CORRECTAMENTE <<<", flush=True)
-
-try:
-    import server
-except ModuleNotFoundError:
-    from app import server
-
 import json
 from typing import Dict, Any, Generator, Optional
 from langchain_core.messages import HumanMessage, AIMessage

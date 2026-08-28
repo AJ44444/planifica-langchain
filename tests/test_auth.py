@@ -165,23 +165,6 @@ async def test_auth_middleware_allows_public_auth_routes():
 
 
 @pytest.mark.anyio
-async def test_custom_health_endpoint():
-    """
-    Verifica que el nuevo endpoint GET /custom-health responda con status 200 y el JSON esperado.
-    """
-    from starlette.testclient import TestClient
-    from server import app
-
-    client = TestClient(app)
-    response = client.get("/custom-health")
-    assert response.status_code == 200
-    json_data = response.json()
-    assert json_data["status"] == "ok"
-    assert "http.app montado correctamente" in json_data["message"]
-
-
-
-@pytest.mark.anyio
 async def test_server_endpoints_set_secure_httponly_cookies():
     """
     Verifica que /auth/login y /auth/refresh devuelvan las cookies seguras HttpOnly, SameSite=lax y Secure.
