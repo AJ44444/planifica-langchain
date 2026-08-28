@@ -1,3 +1,5 @@
+print(">>> [AUTH_HANDLER.PY] IMPORTADO CORRECTAMENTE <<<", flush=True)
+
 import jwt
 import secrets
 from datetime import datetime, timezone, timedelta
