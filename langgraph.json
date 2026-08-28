@@ -26,7 +26,7 @@
     }
   },
   "http": {
-    "app": "./app/server.py:app",
+    "app": "app.server:app",
     "enable_custom_route_auth": true,
     "cors": {
       "allow_origins": ["https://app.planifica.study"],
