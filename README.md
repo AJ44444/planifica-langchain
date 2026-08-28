@@ -99,7 +99,9 @@ LANGSMITH_PROJECT="Planifica"
 
 # === Autenticación de Usuarios y Runtime ===
 GOOGLE_CLIENT_ID="tu-google-client-id.apps.googleusercontent.com"
-LANGGRAPH_AUTH='{"path": "/deps/planifica-langchain/app/auth/auth_handler.py:auth", "openapi": {"securitySchemes": {"googleBearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}}, "security": [{"googleBearerAuth": []}]}}'
+JWT_SECRET="tu-jwt-secret-de-firma"
+LANGGRAPH_AUTH='{"path": "/deps/planifica-langchain/app/auth/auth_handler.py:auth", "openapi": {"securitySchemes": {"cookieAuth": {"type": "apiKey", "in": "cookie", "name": "access_token", "description": "Cookie HTTP segura (HttpOnly, SameSite=Lax, Secure) que contiene el Access Token JWT de sesión (expiración 5 min)"}}, "security": [{"cookieAuth": []}]}}'
+LANGGRAPH_HTTP='{"app": "./app/server.py:app", "enable_custom_route_auth": true, "cors": {"allow_origins": ["https://app.planifica.study"], "allow_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization", "Cookie"], "allow_credentials": true, "max_age": 600}}'
 LANGSERVE_GRAPHS='{"supervisor": "/deps/planifica-langchain/app/graph.py:supervisor_graph"}'
 
 # === Llaves de APIs Externas ===
