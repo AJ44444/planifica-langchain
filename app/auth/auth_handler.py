@@ -244,14 +244,37 @@ async def authenticate(
         )
 
 
-# Rate Limiter para la creación de hilos (POST /threads): Máximo 5 hilos por minuto por usuario autenticado
+# Interceptor de autorización de hilos (threads): Aislamiento estricto por docente
+@auth.on.threads
+async def authorize_threads(ctx: Auth.types.AuthContext, value: dict = None):
+    """
+    Garantiza aislamiento estricto entre docentes (Usuario A no puede acceder a hilos ni ejecuciones del Usuario B):
+    1. Asigna la propiedad del hilo en los metadatos ('owner': ctx.user.identity).
+    2. Retorna un filtro {'owner': ctx.user.identity} para restringir lectura, búsqueda y ejecución exclusivamente al propietario.
+    """
+    if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
+        raise Auth.exceptions.HTTPException(status_code=401, detail="Acceso Denegado: Usuario no autenticado.")
+
+    user_id = ctx.user.identity
+    if isinstance(value, dict):
+        metadata = value.setdefault("metadata", {})
+        metadata["owner"] = user_id
+
+    return {"owner": user_id}
+
+
+# Rate Limiter y asignación de propiedad para creación de hilos (POST /threads)
 @auth.on.threads.create
 async def limit_thread_creation_rate(ctx: Auth.types.AuthContext, value: dict):
     """
-    Middleware / Interceptor de LangGraph SDK que restringe la creación de hilos (POST /threads).
-    Garantiza un límite máximo de 5 hilos por minuto por usuario autenticado.
+    Middleware / Interceptor de LangGraph SDK que restringe la creación de hilos (POST /threads):
+    1. Garantiza un límite máximo de 5 hilos por minuto por usuario autenticado.
+    2. Etiqueta la propiedad del hilo con el ID único del docente.
     """
-    user_id = getattr(ctx.user, "identity", None) or "anonymous"
+    if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
+        raise Auth.exceptions.HTTPException(status_code=401, detail="Acceso Denegado: Usuario no autenticado.")
+
+    user_id = ctx.user.identity
     now = time.time()
 
     # Filtrar registros de creación de hilos activos en los últimos 60 segundos
@@ -266,13 +289,35 @@ async def limit_thread_creation_rate(ctx: Auth.types.AuthContext, value: dict):
     recent_threads.append(now)
     THREAD_CREATION_LOGS[user_id] = recent_threads
 
+    if isinstance(value, dict):
+        metadata = value.setdefault("metadata", {})
+        metadata["owner"] = user_id
+
+    return {"owner": user_id}
+
+
+# Interceptor de autorización para la tienda de memoria persistente (BaseStore)
+@auth.on.store
+async def authorize_store(ctx: Auth.types.AuthContext, value: dict):
+    """
+    Aísla los elementos almacenados en la tienda (BaseStore) por docente:
+    Reescribe el namespace anteponiendo la identidad del usuario ('user_id', ...) para evitar lecturas/escrituras cruzadas.
+    """
+    if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
+        raise Auth.exceptions.HTTPException(status_code=401, detail="Acceso Denegado: Usuario no autenticado.")
+
+    user_id = ctx.user.identity
+    namespace = value.get("namespace", ())
+    if not namespace or namespace[0] != user_id:
+        value["namespace"] = (user_id,) + tuple(namespace)
+
 
 # Política global por defecto de autorización para LangGraph Server
 @auth.on
 async def default_authorization_policy(ctx: Auth.types.AuthContext, value: dict = None):
     """
     Manejador global de autorización por defecto para LangGraph Server.
-    Cubre todas las rutas de despacho (assistants.*, crons.*, store.*, threads.*).
+    Cubre todas las rutas no manejadas específicamente (assistants.*, crons.*).
     Verifica que la solicitud provenga de un usuario autenticado válidamente.
     """
     if not ctx.user or not getattr(ctx.user, "is_authenticated", False):

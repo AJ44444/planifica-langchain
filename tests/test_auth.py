@@ -318,3 +318,49 @@ def test_get_env_variable_missing_raises_value_error():
             get_env_variable("MISSING_VAR_XYZ")
         assert "MISSING_VAR_XYZ" in str(exc_info.value)
         assert "no está configurada" in str(exc_info.value)
+
+
+@pytest.mark.anyio
+async def test_auth_on_resource_isolation_between_users():
+    """
+    Verifica que el decorador @auth.on.threads e @auth.on.store aíslen estrictamente los recursos entre Usuario A y Usuario B.
+    """
+    from auth.auth_handler import authorize_threads, authorize_store
+
+    class MockUser:
+        def __init__(self, identity: str):
+            self.identity = identity
+            self.is_authenticated = True
+
+    class MockCtx:
+        def __init__(self, user_identity: str):
+            self.user = MockUser(user_identity)
+
+    ctx_user_a = MockCtx("user_id_A_123")
+    ctx_user_b = MockCtx("user_id_B_456")
+
+    # 1. Prueba de aislamiento de Hilos (Threads)
+    payload_a = {}
+    filters_a = await authorize_threads(ctx_user_a, payload_a)
+    assert payload_a["metadata"]["owner"] == "user_id_A_123"
+    assert filters_a == {"owner": "user_id_A_123"}
+
+    payload_b = {}
+    filters_b = await authorize_threads(ctx_user_b, payload_b)
+    assert payload_b["metadata"]["owner"] == "user_id_B_456"
+    assert filters_b == {"owner": "user_id_B_456"}
+
+    # Garantizar que el filtro del Usuario A impide acceder a los recursos del Usuario B
+    assert filters_a["owner"] != filters_b["owner"]
+
+    # 2. Prueba de aislamiento de Tienda (BaseStore)
+    store_val_a = {"namespace": ("memories", "pref")}
+    await authorize_store(ctx_user_a, store_val_a)
+    assert store_val_a["namespace"] == ("user_id_A_123", "memories", "pref")
+
+    store_val_b = {"namespace": ("memories", "pref")}
+    await authorize_store(ctx_user_b, store_val_b)
+    assert store_val_b["namespace"] == ("user_id_B_456", "memories", "pref")
+
+    assert store_val_a["namespace"] != store_val_b["namespace"]
+
