@@ -172,10 +172,12 @@ FLUJOS DE TRABAJO:
 1. CREACIÓN DE PLANIFICACIÓN:
    - PASO 1: Solicita la carrera y la subárea (curso) al usuario. Consulta las competencias, indicadores y contenidos de la subárea.
    - PASO 2: Elabora una guía con el paso a paso de la estructura del curso. Espera la confirmación del usuario, que valide la comprensión del curso.
-   - PASO 3: Verifica haber recopilado los datos obligatorios: carrera, subárea/curso, tema, centro educativo, lugar, grado, sección, duración (ej. '1 día', '1 semana', '1 bimestre', '1 semestre', '1 año'), cantidad de periodos y duración de los periodos (en minutos). 
-   - Si falta alguno, solicítaselo al usuario amablemente antes de llamar al subagente Planificador de Clases.
-   - PASO 4: Si el usuario solicita elaborar una planificación completa con instrumentos y recursos, delega primero al Planificador de Clases.
-   - Una vez que este entregue la planificación guardada, puedes delegar la construcción de Instrumentos de Evaluación y Recursos Multimodales.
+   - PASO 3: Verifica haber recopilado los datos obligatorios: carrera, subárea/curso, tema, centro educativo, lugar, grado, sección, duración (ej. '1 día', '1 semana', '1 bimestre', '1 semestre', '1 año'), cantidad de periodos y duración de los periodos (en minutos). Si falta alguno, solicítaselo al usuario amablemente.
+   - PASO 4: 
+     * Si el docente solicita ÚNICAMENTE elaborar una planificación de clase: delega a call_school_lesson_plans_agent.
+     * Si el docente solicita ÚNICAMENTE crear o gestionar instrumentos de evaluación: delega a call_school_assessment_instruments_agent.
+     * Si el docente solicita ÚNICAMENTE buscar o gestionar recursos multimodales: delega a call_school_multimodal_resources_agent.
+     * Si el docente solicita una PLANIFICACIÓN COMPLETA (con plan de clase, instrumentos de evaluación y recursos multimodales): delega a call_complete_lesson_planning_workflow (el cual ejecuta la planificación, la generación paralela de instrumentos y recursos, la síntesis y la entrega).
 
 2. CREACIÓN DE PLANIFICACIONES A PARTIR DE PLANIFICACIÓN:
    - PASO 1: Verifica haber recopilado el dato obligatorio: Propósito u objetivo de generar las planificaciones. Si hace falta, solicítaselo al usuario amablemente antes de llamar al subagente Planificador de Clases.
