@@ -1227,21 +1227,21 @@ def delete_user_profile_doc(id_usuario: str) -> bool:
 def save_refresh_token(id_usuario: str, refresh_token: str, expires_in_days: int = 7) -> bool:
     """
     Guarda o actualiza un refresh token para el usuario en la colección 'refresh_tokens'.
-    Campos de la colección: id_usuario, refresh_token, fecha_creacion, fecha_expiracion.
     Duración por defecto: 7 días.
     """
     try:
         db = get_db()
+        user_obj_id = _ensure_object_id(id_usuario)
         now = time.time()
         expires_at_epoch = now + (expires_in_days * 86400)
         doc = {
-            "id_usuario": str(id_usuario).strip(),
+            "id_usuario": user_obj_id,
             "refresh_token": str(refresh_token).strip(),
             "fecha_creacion": _get_bson_timestamp(),
             "fecha_expiracion": Timestamp(int(expires_at_epoch), 1)
         }
         db[REFRESH_TOKENS].update_one(
-            {"id_usuario": str(id_usuario).strip()},
+            {"id_usuario": user_obj_id},
             {"$set": doc},
             upsert=True
         )
@@ -1253,7 +1253,6 @@ def save_refresh_token(id_usuario: str, refresh_token: str, expires_in_days: int
 def get_refresh_token_doc(refresh_token: str) -> Optional[dict]:
     """
     Busca y retorna el documento de un refresh token activo si no ha expirado.
-    Valida la expiración comparando el campo 'fecha_expiracion' con el timestamp actual.
     """
     try:
         db = get_db()
@@ -1265,11 +1264,15 @@ def get_refresh_token_doc(refresh_token: str) -> Optional[dict]:
             return None
         now = time.time()
         exp = doc.get("fecha_expiracion")
-        exp_time = exp.time if hasattr(exp, "time") else doc.get("expires_at", 0)
+        if not exp or not hasattr(exp, "time"):
+            return None
+        exp_time = exp.time
         if exp_time < now:
             db[REFRESH_TOKENS].delete_one({"_id": doc["_id"]})
             return None
         doc["_id"] = str(doc["_id"])
+        if "id_usuario" in doc:
+            doc["id_usuario"] = str(doc["id_usuario"])
         return doc
     except Exception:
         return None
