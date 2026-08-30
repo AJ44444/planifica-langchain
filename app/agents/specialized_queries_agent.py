@@ -33,6 +33,7 @@ agent = create_agent(
         get_cnb_subarea_by_id
     ],
     system_prompt=SYSTEM_PROMPT_SPECIALIZED_QUERIES,
+    name="consultas_especializadas_cnb",
     middleware=[
         SecurityGuardrailMiddleware(),
         SummarizationMiddleware(

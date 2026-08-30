@@ -29,6 +29,7 @@ agent = create_agent(
         get_paginated_lesson_plans
     ],
     system_prompt=SYSTEM_PROMPT_SCHOOL_LESSON_PLANS,
+    name="planificador_clases_cnb",
     middleware=[
         SecurityGuardrailMiddleware(),
         SummarizationMiddleware(

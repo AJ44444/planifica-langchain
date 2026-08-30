@@ -164,3 +164,13 @@ class SearchCurriculumVectorDBInput(BaseModel):
 class GenerateSubareaVectorEmbeddingsInput(BaseModel):
     """Input para generar embeddings de una subárea."""
     id_subarea_relacionada: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la subárea a vectorizar.")
+
+
+class SubagentCallInput(BaseModel):
+    """Input estándar delimitado a máximo 300 caracteres para invocar subagentes desde el supervisor."""
+    request: str = Field(
+        ...,
+        max_length=300,
+        description="Instrucción concisa y directa de la tarea. Incluye solo los parámetros clave obligatorios. NUNCA pegues explicaciones largas ni textos masivos del CNB."
+    )
+

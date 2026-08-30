@@ -11,6 +11,7 @@ agent = create_agent(
     model=llm,
     tools=[parse_curricular_areas, save_curricular_structure, generate_subarea_vector_embeddings],
     system_prompt=SYSTEM_PROMPT_PROCESS_PDF,
+    name="procesador_pdf_cnb",
     middleware=[
         SecurityGuardrailMiddleware(),
         SummarizationMiddleware(

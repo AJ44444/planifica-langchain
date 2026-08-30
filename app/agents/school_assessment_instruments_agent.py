@@ -23,6 +23,7 @@ agent = create_agent(
         get_full_lesson_plan_details
     ],
     system_prompt=SYSTEM_PROMPT_SCHOOL_ASSESSMENT_INSTRUMENTS,
+    name="instrumentos_evaluacion_cnb",
     middleware=[
         SecurityGuardrailMiddleware(),
         SummarizationMiddleware(

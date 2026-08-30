@@ -25,6 +25,7 @@ agent = create_agent(
         get_full_lesson_plan_details
     ],
     system_prompt=SYSTEM_PROMPT_SCHOOL_MULTIMODAL_RESOURCES,
+    name="recursos_multimodales_cnb",
     middleware=[
         SecurityGuardrailMiddleware(),
         SummarizationMiddleware(
