@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from core.response_formats import (
     Subarea,
     EncabezadoPlan,
@@ -167,10 +167,20 @@ class GenerateSubareaVectorEmbeddingsInput(BaseModel):
 
 
 class SubagentCallInput(BaseModel):
-    """Input estándar delimitado a máximo 300 caracteres para invocar subagentes desde el supervisor."""
+    """Input estándar delimitado para invocar subagentes desde el supervisor."""
     request: str = Field(
         ...,
-        max_length=300,
         description="Instrucción concisa y directa de la tarea. Incluye solo los parámetros clave obligatorios. NUNCA pegues explicaciones largas ni textos masivos del CNB."
     )
+
+    @field_validator("request", mode="before")
+    @classmethod
+    def sanitize_and_trim_request(cls, v: Any) -> str:
+        if isinstance(v, str):
+            clean_str = v.strip()
+            if len(clean_str) > 500:
+                return clean_str[:500]
+            return clean_str
+        return str(v)
+
 
