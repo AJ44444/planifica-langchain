@@ -3,6 +3,8 @@ from langchain_community.utilities import GoogleSerperAPIWrapper
 from langchain_core.tools import tool
 from core.config import get_env_variable
 from middleware.security_middleware import sanitize_external_text
+from core.tool_inputs import SerperWebSearchInput
+
 
 def get_serper_wrapper(search_type: str = "search", k: int = 5) -> GoogleSerperAPIWrapper:
     """Retorna un objeto GoogleSerperAPIWrapper de LangChain Community configurado."""
@@ -16,7 +18,7 @@ def get_serper_wrapper(search_type: str = "search", k: int = 5) -> GoogleSerperA
     )
 
 
-@tool
+@tool("serper_web_search", args_schema=SerperWebSearchInput)
 def serper_web_search(query: str, search_type: str = "search", num_results: int = 5) -> str:
     """
     Ejecuta búsquedas en la web utilizando SERPER / Google Search (LangChain Community).

@@ -41,11 +41,11 @@ flowchart TD
 
 ### Subagentes Especializados
 
-1. **`call_process_pdf_agent`**: Procesa documentos PDF curriculares en memoria, extrae áreas y subáreas, y genera embeddings de 768 dimensiones.
-2. **`call_school_lesson_plans_agent`**: Elabora y gestiona planificaciones docentes (diarias, semanales, bimestrales, semestrales, anuales) alineadas al CNB.
-3. **`call_school_assessment_instruments_agent`**: Diseña rúbricas, listas de cotejo y escalas de rango para actividades de aprendizaje.
-4. **`call_school_multimodal_resources_agent`**: Explora la web en tiempo real para vincular videos, imágenes y recursos educativos.
-5. **`call_specialized_queries_agent`**: Atiende los datos analíticos del dashboard, catálogo de carreras/áreas del CNB e historial paginado.
+1. **`process_pdf`**: Procesa documentos PDF curriculares en memoria, extrae áreas y subáreas, y genera embeddings de 768 dimensiones.
+2. **`school_lesson_plans`**: Elabora y gestiona planificaciones docentes (diarias, semanales, bimestrales, semestrales, anuales) alineadas al CNB.
+3. **`school_assessment_instruments`**: Diseña rúbricas, listas de cotejo y escalas de rango para actividades de aprendizaje.
+4. **`school_multimodal_resources`**: Explora la web en tiempo real para vincular videos, imágenes y recursos educativos.
+5. **`specialized_queries`**: Atiende los datos analíticos del dashboard, catálogo de carreras/áreas del CNB e historial paginado.
 
 ---
 

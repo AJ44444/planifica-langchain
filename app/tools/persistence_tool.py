@@ -19,19 +19,19 @@ from core.collections import (
     REFRESH_TOKENS,
     USUARIOS,
 )
-from core.response_formats import (
+from core.tool_inputs import (
     Subarea,
     EncabezadoPlan,
     FilaCurricularPlan,
     InstrumentoGeneradoDetail,
-)
-from core.tool_inputs import (
     MetadatosPlanInput,
     SaveCurricularStructureInput,
     SaveLessonPlanInput,
     GetPlanificationByIdInput,
     UpdateLessonPlanInput,
     DeleteLessonPlanInput,
+    GetCNBAreaByIdInput,
+    GetCNBSubareaByIdInput,
     SaveAssessmentInstrumentInput,
     GetAssessmentInstrumentByIdInput,
     UpdateAssessmentInstrumentInput,
@@ -45,6 +45,7 @@ from core.tool_inputs import (
     GetLatestPlanInstrumentsAndResourcesInput,
     GetPaginatedLessonPlansInput,
     GetFullLessonPlanDetailsInput,
+    GetCNBCareersListInput,
     GetCNBAreasByCareerInput,
     GetCNBSubareasByAreaIdInput,
 )
@@ -563,7 +564,7 @@ def delete_lesson_plan(id_planificacion: str, config: RunnableConfig = None, id_
 # 3. ÁREAS CURRICULARES (cnb_areas)
 # ==========================================
 
-@tool("get_cnb_area_by_id")
+@tool("get_cnb_area_by_id", args_schema=GetCNBAreaByIdInput)
 def get_cnb_area_by_id(id_area: str) -> str:
     """CRUD Read: Busca un área curricular del CNB por su ID de MongoDB."""
     try:
@@ -580,7 +581,7 @@ def get_cnb_area_by_id(id_area: str) -> str:
 # 4. SUBÁREAS CURRICULARES (cnb_subareas)
 # ==========================================
 
-@tool("get_cnb_subarea_by_id")
+@tool("get_cnb_subarea_by_id", args_schema=GetCNBSubareaByIdInput)
 def get_cnb_subarea_by_id(id_subarea: str) -> str:
     """CRUD Read: Busca una subárea curricular por su ID de MongoDB en 'cnb_subareas'."""
     try:
@@ -977,39 +978,9 @@ def get_paginated_lesson_plans(config: RunnableConfig = None, id_usuario: str = 
         return json.dumps({"status": "error", "message": f"Error en el historial paginado: {str(e)}"})
 
 
-@tool("get_full_lesson_plan_details", args_schema=GetFullLessonPlanDetailsInput)
-def get_full_lesson_plan_details(id_planificacion: str, config: RunnableConfig = None, id_usuario: str = "") -> str:
-    """Recupera el documento completo de una planificación junto a sus instrumentos y recursos asociados."""
-    try:
-        db = get_db()
-        plan_obj_id = ObjectId(id_planificacion.strip())
-
-        effective_id = extract_user_id_from_config(config) or id_usuario
-        query = {"_id": plan_obj_id}
-        if effective_id and len(effective_id.strip()) == 24:
-            query["id_usuario"] = ObjectId(effective_id.strip())
-
-        plan = db[PLANIFICACION].find_one(query)
-        if not plan:
-            return json.dumps({"status": "error", "message": "Acceso denegado o planificación no encontrada para este usuario."})
-
-        instruments = list(db[EVALUACION].find({"id_planificacion": plan_obj_id}))
-        resources = list(db[RECURSOS].find({"id_planificacion": plan_obj_id}))
-
-        return json.dumps({
-            "status": "success",
-            "planificacion": plan,
-            "instrumentos_evaluacion": instruments,
-            "recursos_multimodales": resources
-        }, cls=JSONEncoderCustom, ensure_ascii=False)
-
-    except Exception as e:
-        return json.dumps({"status": "error", "message": f"Error al consultar detalle completo de planificación: {str(e)}"})
-
-
-@tool("get_lesson_plan_details", args_schema=GetFullLessonPlanDetailsInput, return_direct=True)
+@tool("get_lesson_plan_details", args_schema=GetFullLessonPlanDetailsInput)
 def get_lesson_plan_details(id_planificacion: str, config: RunnableConfig = None, id_usuario: str = "") -> str:
-    """Recupera el documento completo de una planificación junto a sus instrumentos y recursos asociados en formato JSON estructurado directo."""
+    """Recupera el documento completo de una planificación junto a sus instrumentos y recursos asociados."""
     try:
         db = get_db()
         plan_obj_id = ObjectId(id_planificacion.strip())
@@ -1037,7 +1008,7 @@ def get_lesson_plan_details(id_planificacion: str, config: RunnableConfig = None
         return json.dumps({"status": "error", "message": f"Error al consultar detalle completo de planificación: {str(e)}"})
 
 
-@tool("get_cnb_careers_list")
+@tool("get_cnb_careers_list", args_schema=GetCNBCareersListInput)
 def get_cnb_careers_list() -> str:
     """Recupera la lista única de nombres de carreras académicas registradas en el CNB."""
     try:

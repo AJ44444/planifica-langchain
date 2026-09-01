@@ -2,9 +2,9 @@ import io
 import re
 import base64
 from typing import List, Dict
-from markitdown import MarkItDown, StreamInfo
 from langchain_core.tools import tool
 from middleware.security_middleware import sanitize_external_text
+from core.tool_inputs import ParseCurricularAreasInput
 
 
 def convert_pdf_to_markdown(pdf_base64: str) -> str:
@@ -28,13 +28,14 @@ def convert_pdf_to_markdown(pdf_base64: str) -> str:
 
     try:
         pdf_bytes = base64.b64decode(clean_b64)
-        if len(pdf_bytes) > 0 and (pdf_bytes.startswith(b"%PDF") or len(clean_b64) > 100):
+        if pdf_bytes.startswith(b"%PDF"):
             stream = io.BytesIO(pdf_bytes)
             md = MarkItDown()
             result = md.convert(stream, stream_info=StreamInfo(mimetype="application/pdf", extension=".pdf"))
             return sanitize_external_text(result.text_content, wrap_xml=True)
         else:
-            return sanitize_external_text(clean_b64, wrap_xml=True)
+            text_content = pdf_bytes.decode("utf-8", errors="ignore")
+            return sanitize_external_text(text_content, wrap_xml=True)
     except Exception:
         return sanitize_external_text(clean_b64, wrap_xml=True)
 
@@ -106,7 +107,7 @@ def extract_curricular_structure_table(document: str) -> str:
     return "\n".join(captured_lines).strip()
 
 
-@tool
+@tool("parse_curricular_areas", args_schema=ParseCurricularAreasInput)
 def parse_curricular_areas(pdf_base64: str) -> List[Dict[str, str]]:
     """
     Analiza dinámicamente las áreas curriculares de un documento PDF recibido exclusivamente en formato Base64.

@@ -1,5 +1,5 @@
 """
-Módulo core de configuración, modelo de lenguaje (LLM), colecciones e interfaces de datos Pydantic.
+Módulo core de configuración, modelo de lenguaje (LLM), colecciones e esquemas de entrada de herramientas (tool_inputs).
 """
 
 from .config import (
@@ -24,15 +24,20 @@ from .collections import (
     RECURSOS,
     USUARIOS,
 )
-from .response_formats import (
-    EstructuraCurricular,
-    ProcessPDFResponse,
+from .tool_inputs import (
+    Subarea,
+    Contenido,
+    IndicadorLogro,
+    CompetenciaEspecifica,
+    EncabezadoPlan,
+    FilaCurricularPlan,
+    InstrumentoGeneradoDetail,
     PlanificacionClase,
-    SchoolLessonPlanResponse,
-    InstrumentoEvaluacion,
-    SchoolAssessmentInstrumentResponse,
-    RecursoMultimodal,
-    SchoolMultimodalResourceResponse,
+    CurricularAreaModel,
+    SaveCurricularStructureInput,
+    SaveLessonPlanInput,
+    SaveAssessmentInstrumentInput,
+    SaveMultimodalResourceInput,
 )
 
 __all__ = [
@@ -54,12 +59,17 @@ __all__ = [
     "EVALUACION",
     "RECURSOS",
     "USUARIOS",
-    "EstructuraCurricular",
-    "ProcessPDFResponse",
+    "Subarea",
+    "Contenido",
+    "IndicadorLogro",
+    "CompetenciaEspecifica",
+    "EncabezadoPlan",
+    "FilaCurricularPlan",
+    "InstrumentoGeneradoDetail",
     "PlanificacionClase",
-    "SchoolLessonPlanResponse",
-    "InstrumentoEvaluacion",
-    "SchoolAssessmentInstrumentResponse",
-    "RecursoMultimodal",
-    "SchoolMultimodalResourceResponse",
+    "CurricularAreaModel",
+    "SaveCurricularStructureInput",
+    "SaveLessonPlanInput",
+    "SaveAssessmentInstrumentInput",
+    "SaveMultimodalResourceInput",
 ]
