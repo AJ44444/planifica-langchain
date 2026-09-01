@@ -27,27 +27,8 @@ from core.tool_inputs import (
     MetadatosPlanInput,
     SaveCurricularStructureInput,
     SaveLessonPlanInput,
-    GetPlanificationByIdInput,
-    UpdateLessonPlanInput,
-    DeleteLessonPlanInput,
-    GetCNBAreaByIdInput,
-    GetCNBSubareaByIdInput,
     SaveAssessmentInstrumentInput,
-    GetAssessmentInstrumentByIdInput,
-    UpdateAssessmentInstrumentInput,
-    DeleteAssessmentInstrumentInput,
     SaveMultimodalResourceInput,
-    GetMultimodalResourceByIdInput,
-    UpdateMultimodalResourceInput,
-    DeleteMultimodalResourceInput,
-    GetTopFrequentCoursesInput,
-    GetRecentLessonPlansInput,
-    GetLatestPlanInstrumentsAndResourcesInput,
-    GetPaginatedLessonPlansInput,
-    GetFullLessonPlanDetailsInput,
-    GetCNBCareersListInput,
-    GetCNBAreasByCareerInput,
-    GetCNBSubareasByAreaIdInput,
 )
 
 
@@ -466,7 +447,7 @@ def save_lesson_plan(
         return json.dumps({"status": "error", "message": f"Error al crear planificación: {str(e)}"})
 
 
-@tool("get_planification_by_id", args_schema=GetPlanificationByIdInput)
+@tool("get_planification_by_id")
 def get_planification_by_id(id_planificacion: str, config: RunnableConfig = None, id_usuario: str = "") -> str:
     """CRUD Read & Privacidad: Busca y recupera una planificación docente por su ID en MongoDB."""
     try:
@@ -491,7 +472,7 @@ def get_planification_by_id(id_planificacion: str, config: RunnableConfig = None
         return json.dumps({"status": "error", "message": f"Error al buscar planificación: {str(e)}"})
 
 
-@tool("update_lesson_plan", args_schema=UpdateLessonPlanInput)
+@tool("update_lesson_plan")
 def update_lesson_plan(id_planificacion: str, update_data: Dict[str, Any], config: RunnableConfig = None, id_usuario: str = "") -> str:
     """CRUD Update & Privacidad: Actualiza los campos solicitados mediante $set."""
     try:
@@ -525,7 +506,7 @@ def update_lesson_plan(id_planificacion: str, update_data: Dict[str, Any], confi
         return json.dumps({"status": "error", "message": f"Error al actualizar la planificación: {str(e)}"})
 
 
-@tool("delete_lesson_plan", args_schema=DeleteLessonPlanInput)
+@tool("delete_lesson_plan")
 def delete_lesson_plan(id_planificacion: str, config: RunnableConfig = None, id_usuario: str = "", confirm: bool = True) -> str:
     """CRUD Delete & Privacidad: Elimina una planificación por su ID en MongoDB validando propiedad y confirmación."""
     try:
@@ -564,7 +545,7 @@ def delete_lesson_plan(id_planificacion: str, config: RunnableConfig = None, id_
 # 3. ÁREAS CURRICULARES (cnb_areas)
 # ==========================================
 
-@tool("get_cnb_area_by_id", args_schema=GetCNBAreaByIdInput)
+@tool("get_cnb_area_by_id")
 def get_cnb_area_by_id(id_area: str) -> str:
     """CRUD Read: Busca un área curricular del CNB por su ID de MongoDB."""
     try:
@@ -581,7 +562,7 @@ def get_cnb_area_by_id(id_area: str) -> str:
 # 4. SUBÁREAS CURRICULARES (cnb_subareas)
 # ==========================================
 
-@tool("get_cnb_subarea_by_id", args_schema=GetCNBSubareaByIdInput)
+@tool("get_cnb_subarea_by_id")
 def get_cnb_subarea_by_id(id_subarea: str) -> str:
     """CRUD Read: Busca una subárea curricular por su ID de MongoDB en 'cnb_subareas'."""
     try:
@@ -685,7 +666,7 @@ def save_assessment_instrument(
         return json.dumps({"status": "error", "message": f"Error al guardar el instrumento de evaluación: {str(e)}"})
 
 
-@tool("get_assessment_instrument_by_id", args_schema=GetAssessmentInstrumentByIdInput)
+@tool("get_assessment_instrument_by_id")
 def get_assessment_instrument_by_id(id_instrumento: str) -> str:
     """CRUD Read: Obtiene un instrumento de evaluación por su ID de MongoDB en 'instrumentos_evaluacion'."""
     try:
@@ -699,7 +680,7 @@ def get_assessment_instrument_by_id(id_instrumento: str) -> str:
         return json.dumps({"status": "error", "message": f"Error al buscar instrumento de evaluación: {str(e)}"})
 
 
-@tool("update_assessment_instrument", args_schema=UpdateAssessmentInstrumentInput)
+@tool("update_assessment_instrument")
 def update_assessment_instrument(id_instrumento: str, update_data: Dict[str, Any]) -> str:
     """CRUD Update: Actualiza los datos específicos de un instrumento de evaluación mediante $set."""
     try:
@@ -716,7 +697,7 @@ def update_assessment_instrument(id_instrumento: str, update_data: Dict[str, Any
         return json.dumps({"status": "error", "message": f"Error al actualizar instrumento de evaluación: {str(e)}"})
 
 
-@tool("delete_assessment_instrument", args_schema=DeleteAssessmentInstrumentInput)
+@tool("delete_assessment_instrument")
 def delete_assessment_instrument(id_instrumento: str, confirm: bool = True) -> str:
     """CRUD Delete: Elimina un instrumento de evaluación por su ID tras confirmación."""
     try:
@@ -774,7 +755,7 @@ def save_multimodal_resource(
         return json.dumps({"status": "error", "message": f"Error al guardar el recurso multimodal: {str(e)}"})
 
 
-@tool("get_multimodal_resource_by_id", args_schema=GetMultimodalResourceByIdInput)
+@tool("get_multimodal_resource_by_id")
 def get_multimodal_resource_by_id(id_recurso: str) -> str:
     """CRUD Read: Obtiene un recurso multimodal por su ID de MongoDB en 'recursos_multimodales'."""
     try:
@@ -788,7 +769,7 @@ def get_multimodal_resource_by_id(id_recurso: str) -> str:
         return json.dumps({"status": "error", "message": f"Error al leer recurso multimodal: {str(e)}"})
 
 
-@tool("update_multimodal_resource", args_schema=UpdateMultimodalResourceInput)
+@tool("update_multimodal_resource")
 def update_multimodal_resource(id_recurso: str, update_data: Dict[str, Any]) -> str:
     """CRUD Update: Actualiza campos específicos de un recurso multimodal mediante $set."""
     try:
@@ -805,7 +786,7 @@ def update_multimodal_resource(id_recurso: str, update_data: Dict[str, Any]) -> 
         return json.dumps({"status": "error", "message": f"Error al actualizar recurso multimodal: {str(e)}"})
 
 
-@tool("delete_multimodal_resource", args_schema=DeleteMultimodalResourceInput)
+@tool("delete_multimodal_resource")
 def delete_multimodal_resource(id_recurso: str, confirm: bool = True) -> str:
     """CRUD Delete: Elimina un recurso multimodal por su ID en 'recursos_multimodales' tras confirmación."""
     try:
@@ -827,7 +808,7 @@ def delete_multimodal_resource(id_recurso: str, confirm: bool = True) -> str:
 # 8. HERRAMIENTAS DE CONSULTA Y SEGURIDAD
 # ==========================================
 
-@tool("get_top_frequent_courses", args_schema=GetTopFrequentCoursesInput)
+@tool("get_top_frequent_courses")
 def get_top_frequent_courses(config: RunnableConfig = None, id_usuario: str = "", limit: int = 4) -> str:
     """Agrupa las planificaciones del usuario por subárea curricular y obtiene las más frecuentes."""
     try:
@@ -852,7 +833,7 @@ def get_top_frequent_courses(config: RunnableConfig = None, id_usuario: str = ""
         return json.dumps({"status": "error", "message": f"Error al consultar top cursos: {str(e)}"})
 
 
-@tool("get_recent_lesson_plans", args_schema=GetRecentLessonPlansInput)
+@tool("get_recent_lesson_plans")
 def get_recent_lesson_plans(config: RunnableConfig = None, id_usuario: str = "", limit: int = 3) -> str:
     """Recupera los datos del encabezado y metadatos de las últimas planificaciones creadas por el docente."""
     try:
@@ -885,7 +866,7 @@ def get_recent_lesson_plans(config: RunnableConfig = None, id_usuario: str = "",
         return json.dumps({"status": "error", "message": f"Error al consultar planificaciones recientes: {str(e)}"})
 
 
-@tool("get_latest_plan_instruments_and_resources", args_schema=GetLatestPlanInstrumentsAndResourcesInput)
+@tool("get_latest_plan_instruments_and_resources")
 def get_latest_plan_instruments_and_resources(config: RunnableConfig = None, id_usuario: str = "") -> str:
     """Obtiene los últimos 3 instrumentos de evaluación y los últimos 3 recursos multimodales creados para las planificaciones del usuario."""
     try:
@@ -932,7 +913,7 @@ def get_latest_plan_instruments_and_resources(config: RunnableConfig = None, id_
         return json.dumps({"status": "error", "message": f"Error al consultar últimos instrumentos y recursos: {str(e)}"})
 
 
-@tool("get_paginated_lesson_plans", args_schema=GetPaginatedLessonPlansInput)
+@tool("get_paginated_lesson_plans")
 def get_paginated_lesson_plans(config: RunnableConfig = None, id_usuario: str = "", page: int = 1, limit: int = 10) -> str:
     """Obtiene la lista paginada de planificaciones pertenecientes al usuario con conteo total."""
     try:
@@ -978,7 +959,7 @@ def get_paginated_lesson_plans(config: RunnableConfig = None, id_usuario: str = 
         return json.dumps({"status": "error", "message": f"Error en el historial paginado: {str(e)}"})
 
 
-@tool("get_lesson_plan_details", args_schema=GetFullLessonPlanDetailsInput)
+@tool("get_lesson_plan_details")
 def get_lesson_plan_details(id_planificacion: str, config: RunnableConfig = None, id_usuario: str = "") -> str:
     """Recupera el documento completo de una planificación junto a sus instrumentos y recursos asociados."""
     try:
@@ -1008,7 +989,7 @@ def get_lesson_plan_details(id_planificacion: str, config: RunnableConfig = None
         return json.dumps({"status": "error", "message": f"Error al consultar detalle completo de planificación: {str(e)}"})
 
 
-@tool("get_cnb_careers_list", args_schema=GetCNBCareersListInput)
+@tool("get_cnb_careers_list")
 def get_cnb_careers_list() -> str:
     """Recupera la lista única de nombres de carreras académicas registradas en el CNB."""
     try:
@@ -1020,7 +1001,7 @@ def get_cnb_careers_list() -> str:
         return json.dumps({"status": "error", "message": f"Error al obtener catálogo de carreras: {str(e)}"})
 
 
-@tool("get_cnb_areas_by_career", args_schema=GetCNBAreasByCareerInput)
+@tool("get_cnb_areas_by_career")
 def get_cnb_areas_by_career(carrera: str, page: int = 1, limit: int = 10) -> str:
     """Recupera la lista paginada de áreas curriculares (id y nombre_area) pertenecientes a una carrera específica del CNB."""
     try:
@@ -1057,7 +1038,7 @@ def get_cnb_areas_by_career(carrera: str, page: int = 1, limit: int = 10) -> str
         return json.dumps({"status": "error", "message": f"Error al obtener áreas por carrera: {str(e)}"})
         
 
-@tool("get_cnb_subareas_by_area_id", args_schema=GetCNBSubareasByAreaIdInput)
+@tool("get_cnb_subareas_by_area_id")
 def get_cnb_subareas_by_area_id(id_area: str, page: int = 1, limit: int = 10) -> str:
     """Recupera la lista paginada de subáreas curriculares (id y nombre_subarea) pertenecientes a un área en 'cnb_subareas'."""
     try:

@@ -1,5 +1,4 @@
-import re
-from typing import Optional, List, Dict, Any, Union, Literal
+from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, Field
 
 
@@ -100,20 +99,8 @@ class MetadatosPlanInput(BaseModel):
 
 
 # ==============================================================================
-# 2. ESQUEMAS DE ENTRADA TIPADOS PARA TODAS LAS HERRAMIENTAS (args_schema)
+# 2. ESQUEMAS DE ENTRADA TIPADOS EXCLUSIVAMENTE PARA HERRAMIENTAS SAVE (args_schema)
 # ==============================================================================
-
-class ParseCurricularAreasInput(BaseModel):
-    """Input estrictamente tipado para la herramienta de parseo de PDF."""
-    pdf_base64: str = Field(..., description="Cadena del documento PDF codificada exclusivamente en Base64.")
-
-
-class SerperWebSearchInput(BaseModel):
-    """Input estrictamente tipado para búsquedas en la web mediante SERPER."""
-    query: str = Field(..., description="Consulta o palabras clave de búsqueda.")
-    search_type: str = Field(default="search", description="Tipo de búsqueda: 'search' (web), 'videos', 'images'.")
-    num_results: int = Field(default=5, description="Cantidad máxima de resultados a retornar.")
-
 
 class SaveCurricularStructureInput(BaseModel):
     """Input estrictamente tipado para guardar la estructura curricular parseada del CNB."""
@@ -133,39 +120,6 @@ class SaveLessonPlanInput(BaseModel):
     id_usuario: Optional[str] = Field(default="", description="ID del usuario opcional.")
 
 
-class GetSubareaTreeInput(BaseModel):
-    """Input estrictamente tipado para consultar el árbol de una subárea."""
-    id_subarea: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la subárea curricular.")
-
-
-class GetPlanificationByIdInput(BaseModel):
-    """Input estrictamente tipado para consultar una planificación por ID."""
-    id_planificacion: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la planificación.")
-
-
-class UpdateLessonPlanInput(BaseModel):
-    """Input estrictamente tipado para actualizar una planificación docente."""
-    id_planificacion: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la planificación a actualizar.")
-    encabezado: Optional[Dict[str, Any]] = Field(default=None, description="Datos de encabezado actualizados.")
-    desarrollo_curricular: Optional[List[Dict[str, Any]]] = Field(default=None, description="Desarrollo curricular actualizado.")
-    metadatos: Optional[Dict[str, Any]] = Field(default=None, description="Metadatos actualizados.")
-
-
-class DeleteLessonPlanInput(BaseModel):
-    """Input estrictamente tipado para eliminar una planificación."""
-    id_planificacion: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la planificación a eliminar.")
-
-
-class GetCNBAreaByIdInput(BaseModel):
-    """Input estrictamente tipado para consultar un área curricular por ID."""
-    id_area: str = Field(..., description="ID de MongoDB (24 caracteres hex) del área curricular.")
-
-
-class GetCNBSubareaByIdInput(BaseModel):
-    """Input strictly tipado para consultar una subárea por ID."""
-    id_subarea: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la subárea.")
-
-
 class SaveAssessmentInstrumentInput(BaseModel):
     """Input estrictamente tipado para guardar un instrumento de evaluación."""
     id_planificacion: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la planificación.")
@@ -176,25 +130,6 @@ class SaveAssessmentInstrumentInput(BaseModel):
     instrumento_generado: Dict[str, Any] = Field(..., description="Estructura completa del instrumento generado.")
 
 
-class GetAssessmentInstrumentByIdInput(BaseModel):
-    """Input estrictamente tipado para consultar un instrumento por ID."""
-    id_instrumento: str = Field(..., description="ID de MongoDB (24 caracteres hex) del instrumento de evaluación.")
-
-
-class UpdateAssessmentInstrumentInput(BaseModel):
-    """Input estrictamente tipado para actualizar un instrumento de evaluación."""
-    id_instrumento: str = Field(..., description="ID de MongoDB (24 caracteres hex) del instrumento a actualizar.")
-    tipo_instrumento: Optional[str] = Field(default=None, description="Tipo de instrumento actualizado.")
-    actividad_evaluada: Optional[str] = Field(default=None, description="Actividad evaluada actualizada.")
-    fase_actividad: Optional[str] = Field(default=None, description="Fase de actividad actualizada.")
-    criterios: Optional[List[Dict[str, Any]]] = Field(default=None, description="Criterios actualizados.")
-
-
-class DeleteAssessmentInstrumentInput(BaseModel):
-    """Input estrictamente tipado para eliminar un instrumento de evaluación."""
-    id_instrumento: str = Field(..., description="ID de MongoDB (24 caracteres hex) del instrumento a eliminar.")
-
-
 class SaveMultimodalResourceInput(BaseModel):
     """Input estrictamente tipado para guardar un recurso multimodal."""
     id_planificacion: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la planificación.")
@@ -203,86 +138,3 @@ class SaveMultimodalResourceInput(BaseModel):
     tipo: str = Field(..., description="Tipo de recurso: 'video', 'documento', 'imagen', 'simulacion', 'lectura'.")
     titulo: str = Field(..., description="Título descriptivo del recurso didáctico.")
     url: str = Field(..., description="Enlace URL del recurso (web o fuente externa).")
-
-
-class GetMultimodalResourceByIdInput(BaseModel):
-    """Input estrictamente tipado para consultar un recurso multimodal por ID."""
-    id_recurso: str = Field(..., description="ID de MongoDB (24 caracteres hex) del recurso multimodal.")
-
-
-class UpdateMultimodalResourceInput(BaseModel):
-    """Input estrictamente tipado para actualizar un recurso multimodal."""
-    id_recurso: str = Field(..., description="ID de MongoDB (24 caracteres hex) del recurso a actualizar.")
-    tipo_recurso: Optional[str] = Field(default=None, description="Tipo de recurso actualizado.")
-    titulo: Optional[str] = Field(default=None, description="Título actualizado.")
-    url: Optional[str] = Field(default=None, description="URL actualizada.")
-    fase_pedagogica: Optional[str] = Field(default=None, description="Fase pedagógica actualizada.")
-    descripcion: Optional[str] = Field(default=None, description="Descripción actualizada.")
-
-
-class DeleteMultimodalResourceInput(BaseModel):
-    """Input estrictamente tipado para eliminar un recurso multimodal."""
-    id_recurso: str = Field(..., description="ID de MongoDB (24 caracteres hex) del recurso a eliminar.")
-
-
-class GetTopFrequentCoursesInput(BaseModel):
-    """Input estrictamente tipado para consultar los cursos más frecuentes."""
-    limit: int = Field(default=5, description="Cantidad máxima de cursos a retornar.")
-
-
-class GetRecentLessonPlansInput(BaseModel):
-    """Input estrictamente tipado para consultar las planificaciones recientes."""
-    limit: int = Field(default=5, description="Cantidad de planificaciones recientes a retornar.")
-
-
-class GetLatestPlanInstrumentsAndResourcesInput(BaseModel):
-    """Input estrictamente tipado para consultar últimos instrumentos y recursos."""
-    pass
-
-
-class GetPaginatedLessonPlansInput(BaseModel):
-    """Input estrictamente tipado para consultar planificaciones paginadas."""
-    page: int = Field(default=1, description="Número de página (iniciando en 1).")
-    page_size: int = Field(default=10, description="Tamaño de página.")
-
-
-class GetFullLessonPlanDetailsInput(BaseModel):
-    """Input estrictamente tipado para consultar el detalle completo de una planificación."""
-    id_planificacion: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la planificación.")
-
-
-class GetCNBCareersListInput(BaseModel):
-    """Input estrictamente tipado para la lista de carreras del CNB."""
-    pass
-
-
-class GetCNBAreasByCareerInput(BaseModel):
-    """Input estrictamente tipado para consultar las áreas del CNB por carrera."""
-    carrera: str = Field(..., description="Nombre o filtro de la carrera.")
-    page: int = Field(default=1, description="Número de página.")
-    limit: int = Field(default=10, description="Límite por página.")
-
-
-class GetCNBSubareasByAreaIdInput(BaseModel):
-    """Input estrictamente tipado para consultar subáreas por ID de área."""
-    id_area: str = Field(..., description="ID del área curricular.")
-    page: int = Field(default=1, description="Número de página.")
-    limit: int = Field(default=10, description="Límite por página.")
-
-
-class SearchCurriculumVectorDBInput(BaseModel):
-    """Input estrictamente tipado para buscar en la base de datos vectorial del CNB."""
-    query: str = Field(..., description="Consulta semántica para buscar competencias o contenidos relevantes.")
-    id_subarea_relacionada: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la subárea curricular. Obligatorio.")
-    limit: int = Field(default=5, description="Número de resultados más similares a retornar.")
-
-
-class GetSubareaVectorEmbeddingsInput(BaseModel):
-    """Input estrictamente tipado para consultar el vector de embedding de una subárea."""
-    id_subarea_relacionada: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la subárea curricular. Obligatorio.")
-    limit: int = Field(default=5, description="Cantidad máxima de resultados a retornar.")
-
-
-class GenerateSubareaVectorEmbeddingsInput(BaseModel):
-    """Input estrictamente tipado para generar embeddings de una subárea."""
-    id_subarea_relacionada: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la subárea a vectorizar.")

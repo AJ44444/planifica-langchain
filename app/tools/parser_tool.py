@@ -4,7 +4,6 @@ import base64
 from typing import List, Dict
 from langchain_core.tools import tool
 from middleware.security_middleware import sanitize_external_text
-from core.tool_inputs import ParseCurricularAreasInput
 
 
 def convert_pdf_to_markdown(pdf_base64: str) -> str:
@@ -107,7 +106,7 @@ def extract_curricular_structure_table(document: str) -> str:
     return "\n".join(captured_lines).strip()
 
 
-@tool("parse_curricular_areas", args_schema=ParseCurricularAreasInput)
+@tool("parse_curricular_areas")
 def parse_curricular_areas(pdf_base64: str) -> List[Dict[str, str]]:
     """
     Analiza dinámicamente las áreas curriculares de un documento PDF recibido exclusivamente en formato Base64.

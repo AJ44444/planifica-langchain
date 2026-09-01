@@ -12,8 +12,6 @@ from core.tool_inputs import (
     SaveAssessmentInstrumentInput,
     SaveMultimodalResourceInput,
     SaveCurricularStructureInput,
-    GetPlanificationByIdInput,
-    UpdateLessonPlanInput,
 )
 from tools.persistence_tool import (
     save_lesson_plan,
