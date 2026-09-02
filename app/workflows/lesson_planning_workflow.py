@@ -16,8 +16,14 @@ class LessonPlanningState(TypedDict):
 
 def _get_isolated_subagent_config(config: RunnableConfig, subagent_name: str) -> RunnableConfig:
     """
-    Genera una configuración aislada de namespace para prevenir colisiones de mensajes
-    y errores HTTP 400 por secuencias de llamadas a herramientas compartidas en ejecuciones paralelas.
+    Genera un espacio de nombres aislado para la ejecución del subagente.
+
+    Args:
+        config (RunnableConfig): Configuración de ejecución actual.
+        subagent_name (str): Nombre del subagente.
+
+    Returns:
+        RunnableConfig: Configuración con el espacio de nombres asignado.
     """
     if not config:
         return {}
@@ -31,7 +37,14 @@ def _get_isolated_subagent_config(config: RunnableConfig, subagent_name: str) ->
 
 async def node_elaborar_planificacion(state: LessonPlanningState, config: RunnableConfig) -> Dict[str, Any]:
     """
-    PASO 1: Elaborar la planificación docente convocando al subagente planificador y esperando su respuesta.
+    Elabora la planificación docente inicial convocando al subagente planificador.
+
+    Args:
+        state (LessonPlanningState): Estado actual del flujo de planificación.
+        config (RunnableConfig): Configuración de ejecución.
+
+    Returns:
+        Dict[str, Any]: Diccionario con la planificación docente generada en 'plan_output'.
     """
     request = state.get("request", "")
     plan_config = _get_isolated_subagent_config(config, "plan_agent")
@@ -39,7 +52,7 @@ async def node_elaborar_planificacion(state: LessonPlanningState, config: Runnab
         {"messages": [{"role": "user", "content": request.strip()}]},
         config=plan_config
     )
-    
+
     messages = res.get("messages", [])
     plan_text = messages[-1].content if messages else "No se pudo generar la planificación de clase."
     return {"plan_output": plan_text}
@@ -47,11 +60,17 @@ async def node_elaborar_planificacion(state: LessonPlanningState, config: Runnab
 
 async def node_elaborar_recursos_y_evaluacion(state: LessonPlanningState, config: RunnableConfig) -> Dict[str, Any]:
     """
-    PASO 2: Elaborar herramientas e instrumentos de evaluación y recursos multimodales EN PARALELO,
-    y retornar únicamente el campo 'final_output' con la planificación, instrumentos y recursos consolidados.
+    Genera en paralelo los instrumentos de evaluación y recursos multimodales consolidados.
+
+    Args:
+        state (LessonPlanningState): Estado actual con la planificación elaborada.
+        config (RunnableConfig): Configuración de ejecución.
+
+    Returns:
+        Dict[str, Any]: Diccionario con la salida final consolidada en 'final_output'.
     """
     plan_text = state.get("plan_output", "")
-    
+
     eval_prompt = (
         f"Con base en la siguiente planificación docente, elabora los instrumentos de evaluación necesarios (rúbrica o lista de cotejo):\n\n"
         f"{plan_text}"
@@ -98,7 +117,6 @@ async def node_elaborar_recursos_y_evaluacion(state: LessonPlanningState, config
     }
 
 
-# Construcción del StateGraph del Subgrafo de Planificación de Clases
 workflow_builder = StateGraph(LessonPlanningState)
 
 workflow_builder.add_node("elaborar_planificacion", node_elaborar_planificacion)

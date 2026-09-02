@@ -3,28 +3,26 @@ from typing import Dict, Any, Generator, Optional
 from langchain_core.messages import HumanMessage, AIMessage
 from agents.main_agent import main_agent, checkpointer
 
-# Grafo Supervisor Principal Compilado con Checkpointer en main_agent.py
 supervisor_graph = main_agent
 
 
 def run_workflow(query: str, thread_id: str, id_usuario: str = "") -> str:
     """
-    Ejecuta una consulta a través del workflow LangGraph del Agente Supervisor Principal,
-    preservando el estado y la memoria a corto plazo del hilo de conversación.
-    
+    Ejecuta una consulta a través del flujo supervisor y sus subagentes.
+
     Args:
-        query: Consulta o instrucción del usuario en lenguaje natural.
-        thread_id: ID obligatorio del hilo de conversación.
-        id_usuario: ID opcional del usuario en MongoDB.
-        
+        query (str): Consulta o instrucción del usuario en lenguaje natural.
+        thread_id (str): Identificador del hilo de conversación para mantener el contexto.
+        id_usuario (str, opcional): Identificador del usuario.
+
     Returns:
-        Respuesta textual producida por el supervisor o subagentes activados.
+        str: Respuesta textual producida por el supervisor o subagentes.
     """
     config = {"configurable": {"thread_id": thread_id, "id_usuario": id_usuario}}
     initial_input = {"messages": [HumanMessage(content=query)]}
 
     result = supervisor_graph.invoke(initial_input, config=config)
-    
+
     messages = result.get("messages", [])
     if messages:
         last_message = messages[-1]
@@ -37,15 +35,15 @@ def run_workflow(query: str, thread_id: str, id_usuario: str = "") -> str:
 
 def stream_workflow(query: str, thread_id: str, id_usuario: str = "") -> Generator[Dict[str, Any], None, None]:
     """
-    Transmite en tiempo real los eventos de ejecución del grafo y subgrafos (subagentes).
-    
+    Transmite eventos en tiempo real de la ejecución del flujo del supervisor y sus subagentes.
+
     Args:
-        query: Consulta o instrucción del usuario.
-        thread_id: ID obligatorio del hilo de conversación.
-        id_usuario: ID del usuario.
-        
+        query (str): Consulta o instrucción del usuario.
+        thread_id (str): Identificador del hilo de conversación.
+        id_usuario (str, opcional): Identificador del usuario.
+
     Yields:
-        Eventos transmitidos por el flujo de LangGraph.
+        Dict[str, Any]: Eventos transmitidos por el flujo durante la ejecución.
     """
     config = {"configurable": {"thread_id": thread_id, "id_usuario": id_usuario}}
     initial_input = {"messages": [HumanMessage(content=query)]}

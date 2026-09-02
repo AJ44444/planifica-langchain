@@ -8,15 +8,13 @@ from middleware.security_middleware import sanitize_external_text
 
 def convert_pdf_to_markdown(pdf_base64: str) -> str:
     """
-    Convierte un documento PDF recibido exclusivamente como cadena codificada en Base64 a Markdown utilizando MarkItDown.
-    No admite rutas de disco ni transmisiones multipart de bytes; la entrada debe ser provista como cadena Base64.
-    Sanitiza el contenido extraído contra inyecciones de prompt indirectas.
+    Convierte un documento PDF codificado en Base64 a formato Markdown.
 
     Args:
-        pdf_base64 (str): Cadena codificada en Base64 del documento PDF.
+        pdf_base64 (str): Cadena de caracteres del documento PDF codificada en Base64.
 
     Returns:
-        str: El contenido procesado, sanitizado y convertido a Markdown.
+        str: Contenido del documento convertido a formato Markdown y sanitizado.
     """
     if not isinstance(pdf_base64, str) or not pdf_base64.strip():
         raise ValueError("El parámetro pdf_base64 debe ser una cadena válida codificada en Base64.")
@@ -41,13 +39,13 @@ def convert_pdf_to_markdown(pdf_base64: str) -> str:
 
 def extract_career_name(document: str) -> str:
     """
-    Extrae dinámicamente el nombre de la carrera o programa de estudios.
-    
+    Extrae el nombre de la carrera o programa académico del documento.
+
     Args:
-        document (str): El contenido Markdown a procesar.
+        document (str): Contenido del documento en formato Markdown.
 
     Returns:
-        str: El nombre de la carrera u opción por defecto: No identificada.
+        str: Nombre de la carrera identificada o 'No identificada'.
     """
     lines = document.splitlines()
 
@@ -64,16 +62,13 @@ def extract_career_name(document: str) -> str:
 
 def extract_curricular_structure_table(document: str) -> str:
     """
-    Captura dinámicamente del documento la sección de la 'Tabla No. 1: Estructura...' de la carrera.
-    Utiliza extract_career_name para identificar la carrera dinámicamente.
-    Comienza la captura en la 'Tabla No. 1' / 'Estructura de <carrera>' y la cierra al detectar la 'Tabla No. 2'
-    o el inicio de la primera Área Curricular ('Área Curricular de ...').
+    Extrae la tabla con la estructura curricular general de la carrera.
 
     Args:
-        document (str): Contenido Markdown del documento CNB a analizar.
+        document (str): Contenido del documento en formato Markdown.
 
     Returns:
-        str: El bloque extraído correspondiente a la Tabla No. 1 (Estructura de la carrera).
+        str: Bloque de texto Markdown correspondiente a la tabla de estructura curricular.
     """
     if not document or not isinstance(document, str):
         return ""
@@ -88,7 +83,6 @@ def extract_curricular_structure_table(document: str) -> str:
     table1_pattern = re.compile(
         r'(?i)(?:Tabla\s+(?:No\.?|N°|Nº)?\s*1\b|Estructura\s+de\s+' + escaped_career + r')'
     )
-    # Cierra el bloque al detectar la Tabla No. 2 o la primera Área Curricular
     closing_pattern = re.compile(
         r'(?i)(?:Tabla\s+(?:No\.?|N°|Nº)?\s*2\b|^(?:#+\s*)?(?:Área|Area)\s+curricular\s+de\s+)'
     )
@@ -109,14 +103,13 @@ def extract_curricular_structure_table(document: str) -> str:
 @tool("parse_curricular_areas")
 def parse_curricular_areas(pdf_base64: str) -> List[Dict[str, str]]:
     """
-    Analiza dinámicamente las áreas curriculares de un documento PDF recibido exclusivamente en formato Base64.
-    No admite rutas de disco ni transmisiones multipart de bytes. Procesa el contenido en memoria y retorna las áreas curriculares.
-    
+    Parsea y segmenta un documento PDF en sus correspondientes áreas curriculares.
+
     Args:
-        pdf_base64: Cadena codificada en Base64 del documento PDF.
-    
+        pdf_base64 (str): Cadena codificada en Base64 del documento PDF.
+
     Returns:
-        List[Dict[str, str]]: Lista de áreas curriculares procesadas con su contenido Markdown.
+        List[Dict[str, str]]: Lista de diccionarios con la estructura y contenido Markdown de cada área curricular.
     """
     content = convert_pdf_to_markdown(pdf_base64)
 

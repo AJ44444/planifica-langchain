@@ -36,12 +36,25 @@ from core.tool_inputs import (
 
 
 def _get_bson_timestamp() -> Timestamp:
-    """Genera un objeto BSON Timestamp de MongoDB."""
+    """
+    Genera un objeto BSON Timestamp de MongoDB.
+
+    Returns:
+        Timestamp: Marca de tiempo BSON actual.
+    """
     return Timestamp(int(time.time()), 1)
 
 
 def get_mongo_client(timeout_ms: Optional[int] = None) -> MongoClient:
-    """Retorna una instancia de MongoClient utilizando la URI configurada en MONGODB_URI."""
+    """
+    Crea una instancia de MongoClient utilizando la URI de conexión configurada.
+
+    Args:
+        timeout_ms (int, opcional): Tiempo de espera máximo en milisegundos.
+
+    Returns:
+        MongoClient: Cliente de MongoDB configurado.
+    """
     mongodb_uri = get_env_variable("MONGODB_URI")
     if timeout_ms:
         return MongoClient(mongodb_uri, serverSelectionTimeoutMS=timeout_ms, connectTimeoutMS=timeout_ms)
@@ -49,7 +62,12 @@ def get_mongo_client(timeout_ms: Optional[int] = None) -> MongoClient:
 
 
 def get_db():
-    """Retorna la base de datos de MongoDB a partir de DB_NAME."""
+    """
+    Obtiene la instancia de la base de datos MongoDB.
+
+    Returns:
+        Database: Instancia de la base de datos de la aplicación.
+    """
     client = get_mongo_client()
     db_name = get_env_variable("DB_NAME")
     return client[db_name]
@@ -57,14 +75,13 @@ def get_db():
 
 def check_db_connection(timeout_ms: int = 2000) -> bool:
     """
-    Verifica si la comunicación con la base de datos MongoDB está activa.
-    Envía un comando 'ping' con un tiempo máximo de espera (timeout).
+    Verifica la conectividad activa con la base de datos MongoDB.
 
     Args:
-        timeout_ms (int): Tiempo de espera en milisegundos para la verificación.
+        timeout_ms (int, opcional): Tiempo límite de espera en milisegundos. Por defecto 2000.
 
     Returns:
-        bool: True si la base de datos está conectada y responde, False en caso de falla.
+        bool: True si la base de datos responde correctamente, False en caso contrario.
     """
     try:
         client = get_mongo_client(timeout_ms=timeout_ms)
@@ -76,8 +93,13 @@ def check_db_connection(timeout_ms: int = 2000) -> bool:
 
 def extract_user_id_from_config(config: Optional[Any] = None) -> str:
     """
-    Extrae de forma segura el ID del usuario autenticado del objeto RunnableConfig de LangGraph.
-    Prioriza 'langgraph_auth_user' inyectado por auth_handler y la clave 'id_usuario'.
+    Extrae el identificador del usuario desde la configuración de ejecución de LangGraph.
+
+    Args:
+        config (opcional): Objeto RunnableConfig o diccionario de configuración.
+
+    Returns:
+        str: Identificador único de usuario extraído o cadena vacía.
     """
     if not config:
         return ""
@@ -98,17 +120,19 @@ def extract_user_id_from_config(config: Optional[Any] = None) -> str:
     elif hasattr(auth_user, "identity"):
         return str(getattr(auth_user, "identity"))
 
-    id_usuario = configurable.get("id_usuario")
-    if id_usuario:
-        return str(id_usuario)
-
-    return ""
+    return str(configurable.get("id_usuario", ""))
 
 
 def extract_teacher_name_from_config(config: Optional[Any] = None, user_id: str = "") -> str:
     """
-    Extrae el nombre del docente autenticado del objeto RunnableConfig de LangGraph
-    o lo consulta directamente del perfil en MongoDB.
+    Obtiene el nombre completo del docente autenticado a partir de la configuración o del identificador de usuario.
+
+    Args:
+        config (opcional): Objeto RunnableConfig o diccionario de configuración.
+        user_id (str, opcional): Identificador del usuario.
+
+    Returns:
+        str: Nombre del docente o 'Docente' por defecto.
     """
     if config:
         configurable = {}
@@ -121,17 +145,11 @@ def extract_teacher_name_from_config(config: Optional[Any] = None, user_id: str 
 
         auth_user = configurable.get("langgraph_auth_user")
         if isinstance(auth_user, dict):
-            nombres = auth_user.get("nombres") or auth_user.get("name")
-            if nombres:
-                return str(nombres).strip()
-        elif hasattr(auth_user, "nombres"):
-            return str(getattr(auth_user, "nombres")).strip()
+            display_name = auth_user.get("display_name") or auth_user.get("name")
+            if display_name:
+                return str(display_name)
 
-        nombre_docente = configurable.get("nombre_docente")
-        if nombre_docente:
-            return str(nombre_docente).strip()
-
-    effective_id = extract_user_id_from_config(config) or user_id
+    effective_id = user_id or extract_user_id_from_config(config)
     if effective_id and len(effective_id.strip()) == 24:
         try:
             db = get_db()
@@ -145,23 +163,33 @@ def extract_teacher_name_from_config(config: Optional[Any] = None, user_id: str 
         except Exception:
             pass
 
-    return ""
+    return "Docente"
 
 
 class JSONEncoderCustom(json.JSONEncoder):
-    """Codificador de JSON personalizado para manejar ObjectId, Timestamp y datetime de MongoDB."""
+    """
+    Codificador personalizado de JSON para objetos ObjectId, Timestamp y datetime de MongoDB.
+    """
     def default(self, o):
         if isinstance(o, ObjectId):
             return str(o)
         if isinstance(o, Timestamp):
-            return o.as_datetime().isoformat()
+            return o.time
         if isinstance(o, datetime):
             return o.isoformat()
         return super().default(o)
 
 
 def _to_dict(obj: Any) -> dict:
-    """Convierte un objeto Pydantic o diccionario en dict de Python."""
+    """
+    Convierte un objeto Pydantic o diccionario genérico en un diccionario de Python.
+
+    Args:
+        obj (Any): Instancia de Pydantic BaseModel o diccionario.
+
+    Returns:
+        dict: Diccionario de Python resultante.
+    """
     if hasattr(obj, "model_dump"):
         return obj.model_dump()
     if hasattr(obj, "dict"):
@@ -172,105 +200,128 @@ def _to_dict(obj: Any) -> dict:
 
 
 def _ensure_object_id(val: Any) -> ObjectId:
-    """Convierte una cadena hexadecimal de 24 caracteres en ObjectId de MongoDB."""
+    """
+    Convierte un valor de entrada en un objeto ObjectId de MongoDB.
+
+    Args:
+        val (Any): Cadena de 24 caracteres hexadecimales u ObjectId existente.
+
+    Returns:
+        ObjectId: Instancia de ObjectId.
+    """
     if isinstance(val, ObjectId):
         return val
-    if isinstance(val, str) and len(val.strip()) == 24:
-        try:
-            return ObjectId(val.strip())
-        except Exception:
-            pass
+    val_str = str(val).strip()
+    if len(val_str) == 24:
+        return ObjectId(val_str)
     return ObjectId()
 
 
 def _clean_updates(updates: dict) -> dict:
-    """Limpia el diccionario de actualización quitando _id y convirtiendo IDs de referencia."""
-    clean = _to_dict(updates)
-    if "_id" in clean:
-        del clean["_id"]
-    for key in ["id_area", "id_subarea_relacionada", "id_usuario", "id_planificacion", "id_actividad"]:
-        if key in clean and isinstance(clean[key], str) and len(clean[key].strip()) == 24:
-            try:
-                clean[key] = ObjectId(clean[key].strip())
-            except Exception:
-                pass
+    """
+    Limpia un diccionario de actualización omitiendo campos no editables e identificadores nulos.
+
+    Args:
+        updates (dict): Diccionario de campos a actualizar.
+
+    Returns:
+        dict: Diccionario procesado y saneado.
+    """
+    clean = {}
+    for k, v in updates.items():
+        if k in ["_id", "fecha_creacion"]:
+            continue
+        if v is not None:
+            if k in ["id_planificacion", "id_actividad", "id_subarea", "id_area", "id_usuario"] and isinstance(v, str):
+                if len(v.strip()) == 24:
+                    clean[k] = ObjectId(v.strip())
+                else:
+                    clean[k] = v
+            else:
+                clean[k] = v
     return clean
 
 
-# ==========================================
-# FUNCIONES INTERNAS DE PERSISTENCIA INDIVIDUAL (Sin anotación @tool)
-# ==========================================
-
 def insert_cnb_area_doc(data: dict) -> ObjectId:
-    """Función interna individual para insertar un área curricular en 'cnb_areas'."""
+    """
+    Inserta un nuevo registro de área curricular.
+
+    Args:
+        data (dict): Información del área curricular.
+
+    Returns:
+        ObjectId: Identificador del documento insertado.
+    """
     db = get_db()
-    nombre_carrera = data.get("nombre_carrera")
-    nombre_area = data.get("nombre_area")
+    carrera = str(data.get("nombre_carrera", "")).strip()
 
     def _format_items(items):
-        if not items:
+        if not isinstance(items, list):
             return []
-        result = []
+        cleaned = []
         for item in items:
-            if isinstance(item, str):
-                result.append({"descripcion": item})
-            elif isinstance(item, dict):
-                result.append(item)
-        return result
+            s_item = str(item).strip()
+            if s_item:
+                cleaned.append(s_item)
+        return cleaned
 
-    area_doc = {
-        "nombre_carrera": nombre_carrera,
-        "nombre_area": nombre_area,
-        "competencias_area": _format_items(data.get("competencias_area", [])),
-        "actividades_sugeridas": _format_items(data.get("actividades_sugeridas", [])),
-        "criterios_evaluacion_sugeridos": _format_items(data.get("criterios_evaluacion_sugeridos", []))
+    doc = {
+        "nombre_carrera": carrera,
+        "nombre_area": str(data.get("nombre_area", "")).strip(),
+        "competencias_area": _format_items(data.get("competencias_area")),
+        "actividades_sugeridas": _format_items(data.get("actividades_sugeridas")),
+        "criterios_evaluacion": _format_items(data.get("criterios_evaluacion_sugeridos")),
+        "fecha_creacion": _get_bson_timestamp()
     }
-
-    res = db[AREAS].insert_one(area_doc)
+    res = db[AREAS].insert_one(doc)
     return res.inserted_id
 
 
 def insert_cnb_subarea_doc(data: dict) -> ObjectId:
-    """Función interna individual para insertar una subárea curricular en 'cnb_subareas'."""
+    """
+    Inserta una subárea curricular en la base de datos.
+
+    Args:
+        data (dict): Información de la subárea curricular.
+
+    Returns:
+        ObjectId: Identificador del documento insertado.
+    """
     db = get_db()
-    id_area = data.get("id_area")
-    if isinstance(id_area, str):
-        id_area = ObjectId(id_area)
-
-    subarea_doc = {
-        "id_area": id_area,
-        "nombre_subarea": data.get("nombre_subarea"),
-        "competencias": data.get("competencias", [])
+    doc = {
+        "id_area": _ensure_object_id(data.get("id_area")),
+        "nombre_subarea": str(data.get("nombre_subarea", "")).strip(),
+        "competencias": data.get("competencias", []),
+        "fecha_creacion": _get_bson_timestamp()
     }
-
-    res = db[SUBAREAS].insert_one(subarea_doc)
+    res = db[SUBAREAS].insert_one(doc)
     return res.inserted_id
 
 
 def insert_cnb_vector_doc(data: dict) -> ObjectId:
-    """Función interna individual para insertar un nodo en 'cnb_vectores'."""
+    """
+    Inserta un nodo para indexación vectorial.
+
+    Args:
+        data (dict): Información del nodo a indexar.
+
+    Returns:
+        ObjectId: Identificador del documento insertado.
+    """
     db = get_db()
-    id_subarea = data.get("id_subarea_relacionada")
-    if isinstance(id_subarea, str):
-        id_subarea = ObjectId(id_subarea)
-
     doc = {
-        "id_subarea_relacionada": id_subarea,
-        "nombre_subarea": data.get("nombre_subarea"),
-        "tipo_nodo": data.get("tipo_nodo", "competencia"),
+        "id_subarea_relacionada": _ensure_object_id(data.get("id_subarea_relacionada")),
+        "nombre_subarea": str(data.get("nombre_subarea", "")).strip(),
+        "tipo_nodo": str(data.get("tipo_nodo", "")).strip(),
         "referencia_jerarquica": data.get("referencia_jerarquica", []),
-        "texto_a_buscar": data.get("texto_a_buscar", ""),
+        "texto_a_buscar": str(data.get("texto_a_buscar", "")).strip(),
         "vector_embedding": data.get("vector_embedding", []),
-        "vector_estado": data.get("vector_estado", False)
+        "vector_estado": bool(data.get("vector_estado", False)),
+        "fecha_creacion": _get_bson_timestamp()
     }
-
     res = db[VECTORES].insert_one(doc)
     return res.inserted_id
 
-
-# ==========================================
-# 1. TOOL PRINCIPAL: ESTRUCTURA CURRICULAR COMPLETA
-# ==========================================
 
 @tool("save_curricular_structure", args_schema=SaveCurricularStructureInput)
 def save_curricular_structure(
@@ -282,8 +333,18 @@ def save_curricular_structure(
     subareas: List[Union[dict, Subarea]]
 ) -> str:
     """
-    Guarda la estructura curricular completa del CNB en MongoDB (colecciones 'cnb_areas', 'cnb_subareas' y 'cnb_vectores').
-    Los registros vectoriales se crean con 'vector_embedding' vacío [] y 'vector_estado' = False.
+    Guarda la estructura curricular del CNB con sus áreas y subáreas.
+
+    Args:
+        nombre_carrera (str): Nombre oficial de la carrera.
+        nombre_area (str): Nombre del área curricular.
+        competencias_area (List[str]): Competencias del área.
+        actividades_sugeridas (List[str]): Actividades sugeridas del área.
+        criterios_evaluacion_sugeridos (List[str]): Criterios de evaluación sugeridos.
+        subareas (List[Union[dict, Subarea]]): Subáreas pertenecientes al área.
+
+    Returns:
+        str: Respuesta en formato JSON con el estado de la operación y el ID creado.
     """
     try:
         subareas_dicts = [_to_dict(s) for s in subareas]
@@ -376,10 +437,6 @@ def save_curricular_structure(
         return json.dumps({"status": "error", "message": f"Error al guardar la estructura curricular: {str(e)}"})
 
 
-# ==========================================
-# 2. CRUD Y SEGURIDAD: PLANIFICACIONES GENERADAS (planificaciones_generadas)
-# ==========================================
-
 @tool("save_lesson_plan", args_schema=SaveLessonPlanInput)
 def save_lesson_plan(
     metadatos: Union[dict, MetadatosPlanInput],
@@ -389,7 +446,17 @@ def save_lesson_plan(
     id_usuario: str = ""
 ) -> str:
     """
-    CRUD Create: Guarda/crea una nueva planificación docente en 'planificaciones_generadas'.
+    Guarda una planificación docente en la base de datos.
+
+    Args:
+        metadatos (Union[dict, MetadatosPlanInput]): Datos de metadatos de la planificación.
+        encabezado (Union[dict, EncabezadoPlan]): Datos generales del encabezado.
+        desarrollo_curricular (List[Union[dict, FilaCurricularPlan]]): Filas de desarrollo curricular.
+        config (RunnableConfig, opcional): Configuración de ejecución del flujo.
+        id_usuario (str, opcional): Identificador del usuario.
+
+    Returns:
+        str: Respuesta en formato JSON con el ID de la planificación guardada.
     """
     try:
         db = get_db()
@@ -452,11 +519,21 @@ def save_lesson_plan(
 
 @tool("get_planification_by_id")
 def get_planification_by_id(id_planificacion: str, config: RunnableConfig = None, id_usuario: str = "") -> str:
-    """CRUD Read & Privacidad: Busca y recupera una planificación docente por su ID en MongoDB."""
+    """
+    Recupera una planificación docente por su identificador.
+
+    Args:
+        id_planificacion (str): Identificador único de la planificación.
+        config (RunnableConfig, opcional): Configuración de ejecución del flujo.
+        id_usuario (str, opcional): Identificador del usuario.
+
+    Returns:
+        str: Respuesta en formato JSON con los detalles de la planificación encontrada.
+    """
     try:
         db = get_db()
         obj_id = ObjectId(id_planificacion.strip())
-        
+
         effective_id = extract_user_id_from_config(config) or id_usuario
         query = {"_id": obj_id}
         if effective_id and len(effective_id.strip()) == 24:
@@ -464,10 +541,7 @@ def get_planification_by_id(id_planificacion: str, config: RunnableConfig = None
 
         plan = db[PLANIFICACION].find_one(query)
         if not plan:
-            return json.dumps({
-                "status": "error",
-                "message": f"Acceso denegado o planificación con _id '{id_planificacion}' no encontrada para este usuario."
-            }, ensure_ascii=False)
+            return json.dumps({"status": "error", "message": f"Acceso denegado o planificación '{id_planificacion}' no encontrada."})
 
         return json.dumps({"status": "success", "planificacion": plan}, cls=JSONEncoderCustom, ensure_ascii=False)
 
@@ -484,7 +558,20 @@ def update_lesson_plan(
     config: RunnableConfig = None,
     id_usuario: str = ""
 ) -> str:
-    """CRUD Update & Privacidad: Actualiza los campos solicitados mediante $set."""
+    """
+    Actualiza los campos especificados de una planificación docente existente.
+
+    Args:
+        id_planificacion (str): Identificador único de la planificación a actualizar.
+        metadatos (Union[dict, MetadatosPlanInput], opcional): Datos de metadatos actualizados.
+        encabezado (Union[dict, EncabezadoPlan], opcional): Datos del encabezado actualizados.
+        desarrollo_curricular (List[Union[dict, FilaCurricularPlan]], opcional): Desarrollo curricular actualizado.
+        config (RunnableConfig, opcional): Configuración de ejecución del flujo.
+        id_usuario (str, opcional): Identificador del usuario.
+
+    Returns:
+        str: Respuesta en formato JSON con el resultado de la actualización.
+    """
     try:
         db = get_db()
         obj_id = ObjectId(id_planificacion.strip())
@@ -522,7 +609,7 @@ def update_lesson_plan(
 
         return json.dumps({
             "status": "success",
-            "message": f"Planificación '{id_planificacion}' actualizada exitosamente mediante $set.",
+            "message": f"Planificación '{id_planificacion}' actualizada exitosamente.",
             "modified_count": res.modified_count
         }, ensure_ascii=False)
 
@@ -532,12 +619,23 @@ def update_lesson_plan(
 
 @tool("delete_lesson_plan")
 def delete_lesson_plan(id_planificacion: str, config: RunnableConfig = None, id_usuario: str = "", confirm: bool = True) -> str:
-    """CRUD Delete & Privacidad: Elimina una planificación por su ID en MongoDB validando propiedad y confirmación."""
+    """
+    Elimina una planificación docente por su identificador.
+
+    Args:
+        id_planificacion (str): Identificador único de la planificación a eliminar.
+        config (RunnableConfig, opcional): Configuración de ejecución del flujo.
+        id_usuario (str, opcional): Identificador del usuario.
+        confirm (bool, opcional): Confirmación previa para la eliminación. Por defecto True.
+
+    Returns:
+        str: Respuesta en formato JSON con el estado de la eliminación.
+    """
     try:
         if not confirm:
             return json.dumps({
                 "status": "pending_confirmation",
-                "message": f"CONFIRMACIÓN REQUERIDA: ¿Está seguro de eliminar permanentemente la planificación '{id_planificacion}'?"
+                "message": f"CONFIRMACIÓN REQUERIDA: ¿Está seguro de eliminar la planificación '{id_planificacion}'?"
             }, ensure_ascii=False)
 
         db = get_db()
@@ -553,58 +651,76 @@ def delete_lesson_plan(id_planificacion: str, config: RunnableConfig = None, id_
         if res.deleted_count == 0:
             return json.dumps({
                 "status": "error",
-                "message": f"Acceso denegado o planificación '{id_planificacion}' no encontrada."
+                "message": f"Acceso denegado o planificación '{id_planificacion}' no encontrada para eliminar."
             }, ensure_ascii=False)
+
+        db[EVALUACION].delete_many({"id_planificacion": obj_id})
+        db[RECURSOS].delete_many({"id_planificacion": obj_id})
 
         return json.dumps({
             "status": "success",
-            "message": f"Planificación '{id_planificacion}' eliminada exitosamente."
+            "message": f"Planificación '{id_planificacion}' e instrumentos/recursos asociados eliminados exitosamente."
         }, ensure_ascii=False)
 
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error al eliminar la planificación: {str(e)}"})
 
 
-# ==========================================
-# 3. ÁREAS CURRICULARES (cnb_areas)
-# ==========================================
-
 @tool("get_cnb_area_by_id")
 def get_cnb_area_by_id(id_area: str) -> str:
-    """CRUD Read: Busca un área curricular del CNB por su ID de MongoDB."""
+    """
+    Obtiene los datos de un área curricular por su identificador.
+
+    Args:
+        id_area (str): Identificador del área curricular.
+
+    Returns:
+        str: Respuesta en formato JSON con la información del área curricular.
+    """
     try:
         db = get_db()
         obj_id = ObjectId(id_area.strip())
         area = db[AREAS].find_one({"_id": obj_id})
         if not area:
-            return json.dumps({"status": "error", "message": f"Área curricular con _id '{id_area}' no encontrada."})
+            return json.dumps({"status": "error", "message": f"Área curricular '{id_area}' no encontrada."})
         return json.dumps({"status": "success", "area": area}, cls=JSONEncoderCustom, ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": f"Error al leer área curricular: {str(e)}"})
+        return json.dumps({"status": "error", "message": f"Error al buscar área curricular: {str(e)}"})
 
-# ==========================================
-# 4. SUBÁREAS CURRICULARES (cnb_subareas)
-# ==========================================
 
 @tool("get_cnb_subarea_by_id")
 def get_cnb_subarea_by_id(id_subarea: str) -> str:
-    """CRUD Read: Busca una subárea curricular por su ID de MongoDB en 'cnb_subareas'."""
+    """
+    Obtiene los datos de una subárea curricular por su identificador.
+
+    Args:
+        id_subarea (str): Identificador de la subárea curricular.
+
+    Returns:
+        str: Respuesta en formato JSON con la información de la subárea curricular.
+    """
     try:
         db = get_db()
         obj_id = ObjectId(id_subarea.strip())
-        sub = db[SUBAREAS].find_one({"_id": obj_id})
-        if not sub:
-            return json.dumps({"status": "error", "message": f"Subárea '{id_subarea}' no encontrada."})
-        return json.dumps({"status": "success", "subarea": sub}, cls=JSONEncoderCustom, ensure_ascii=False)
+        subarea = db[SUBAREAS].find_one({"_id": obj_id})
+        if not subarea:
+            return json.dumps({"status": "error", "message": f"Subárea curricular '{id_subarea}' no encontrada."})
+        return json.dumps({"status": "success", "subarea": subarea}, cls=JSONEncoderCustom, ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": f"Error al leer subárea: {str(e)}"})
+        return json.dumps({"status": "error", "message": f"Error al buscar subárea curricular: {str(e)}"})
 
-# ==========================================
-# 5. VECTORES DE BÚSQUEDA (cnb_vectores)
-# ==========================================
 
+@tool("get_cnb_vector_by_id")
 def get_cnb_vector_by_id(id_vector: str) -> str:
-    """CRUD Read: Obtiene un nodo vectorial de 'cnb_vectores' por su _id."""
+    """
+    Obtiene un nodo de indexación vectorial por su identificador.
+
+    Args:
+        id_vector (str): Identificador del nodo vectorial.
+
+    Returns:
+        str: Respuesta en formato JSON con la información del nodo vectorial.
+    """
     try:
         db = get_db()
         obj_id = ObjectId(id_vector.strip())
@@ -613,11 +729,20 @@ def get_cnb_vector_by_id(id_vector: str) -> str:
             return json.dumps({"status": "error", "message": f"Vector '{id_vector}' no encontrado."})
         return json.dumps({"status": "success", "vector": vec}, cls=JSONEncoderCustom, ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": f"Error al leer vector: {str(e)}"})
+        return json.dumps({"status": "error", "message": f"Error al buscar registro vectorial: {str(e)}"})
 
 
 def update_cnb_vector(id_vector: str, update_data: Dict[str, Any]) -> str:
-    """CRUD Update: Actualiza los campos de un registro en 'cnb_vectores' mediante $set."""
+    """
+    Actualiza la información de un nodo vectorial existente.
+
+    Args:
+        id_vector (str): Identificador del nodo vectorial a actualizar.
+        update_data (Dict[str, Any]): Datos de actualización.
+
+    Returns:
+        str: Respuesta en formato JSON con el estado de la actualización.
+    """
     try:
         db = get_db()
         obj_id = ObjectId(id_vector.strip())
@@ -627,13 +752,22 @@ def update_cnb_vector(id_vector: str, update_data: Dict[str, Any]) -> str:
         if res.matched_count == 0:
             return json.dumps({"status": "error", "message": f"Vector '{id_vector}' no encontrado."})
 
-        return json.dumps({"status": "success", "message": f"Vector '{id_vector}' actualizado exitosamente mediante $set."}, ensure_ascii=False)
+        return json.dumps({"status": "success", "message": f"Vector '{id_vector}' actualizado exitosamente."}, ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": f"Error al actualizar vector: {str(e)}"})
+        return json.dumps({"status": "error", "message": f"Error al actualizar registro vectorial: {str(e)}"})
 
 
 def delete_cnb_vector(id_vector: str, confirm: bool = True) -> str:
-    """CRUD Delete: Elimina un registro vectorial en 'cnb_vectores' por su _id tras confirmación."""
+    """
+    Elimina un nodo vectorial por su identificador.
+
+    Args:
+        id_vector (str): Identificador del nodo a eliminar.
+        confirm (bool, opcional): Confirmación previa para la eliminación. Por defecto True.
+
+    Returns:
+        str: Respuesta en formato JSON con el resultado de la eliminación.
+    """
     try:
         if not confirm:
             return json.dumps({"status": "pending_confirmation", "message": f"CONFIRMACIÓN REQUERIDA: ¿Eliminar vector '{id_vector}'?"}, ensure_ascii=False)
@@ -646,12 +780,8 @@ def delete_cnb_vector(id_vector: str, confirm: bool = True) -> str:
 
         return json.dumps({"status": "success", "message": f"Vector '{id_vector}' eliminado exitosamente."}, ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"status": "error", "message": f"Error al eliminar vector: {str(e)}"})
+        return json.dumps({"status": "error", "message": f"Error al eliminar registro vectorial: {str(e)}"})
 
-
-# ==========================================
-# 6. CRUD: INSTRUMENTOS DE EVALUACIÓN (instrumentos_evaluacion)
-# ==========================================
 
 @tool("save_assessment_instrument", args_schema=SaveAssessmentInstrumentInput)
 def save_assessment_instrument(
@@ -662,12 +792,25 @@ def save_assessment_instrument(
     titulo: str,
     instrumento_generado: Union[dict, InstrumentoGeneradoDetail]
 ) -> str:
-    """CRUD Create: Guarda un instrumento de evaluación en 'instrumentos_evaluacion'."""
+    """
+    Guarda un instrumento de evaluación vinculado a una actividad de aprendizaje.
+
+    Args:
+        id_planificacion (str): Identificador de la planificación.
+        id_fila (int): Identificador de fila dentro de la planificación.
+        id_actividad (str): Identificador de la actividad evaluada.
+        tipo (str): Tipo de instrumento (rubrica, lista_cotejo, escala_rango).
+        titulo (str): Título del instrumento.
+        instrumento_generado (Union[dict, InstrumentoGeneradoDetail]): Estructura del instrumento generado.
+
+    Returns:
+        str: Respuesta en formato JSON con el ID del instrumento guardado.
+    """
     try:
         db = get_db()
         plan_obj_id = _ensure_object_id(id_planificacion)
         act_obj_id = _ensure_object_id(id_actividad)
-        inst_gen_dict = _to_dict(instrumento_generado)
+        inst_dict = _to_dict(instrumento_generado)
 
         doc = {
             "id_planificacion": plan_obj_id,
@@ -675,7 +818,7 @@ def save_assessment_instrument(
             "id_actividad": act_obj_id,
             "tipo": str(tipo),
             "titulo": str(titulo),
-            "instrumento_generado": inst_gen_dict
+            "instrumento_generado": inst_dict
         }
 
         res = db[EVALUACION].insert_one(doc)
@@ -692,7 +835,15 @@ def save_assessment_instrument(
 
 @tool("get_assessment_instrument_by_id")
 def get_assessment_instrument_by_id(id_instrumento: str) -> str:
-    """CRUD Read: Obtiene un instrumento de evaluación por su ID de MongoDB en 'instrumentos_evaluacion'."""
+    """
+    Recupera un instrumento de evaluación por su identificador.
+
+    Args:
+        id_instrumento (str): Identificador único del instrumento.
+
+    Returns:
+        str: Respuesta en formato JSON con los datos del instrumento.
+    """
     try:
         db = get_db()
         obj_id = ObjectId(id_instrumento.strip())
@@ -713,7 +864,20 @@ def update_assessment_instrument(
     titulo: Optional[str] = None,
     instrumento_generado: Optional[Union[dict, InstrumentoGeneradoDetail]] = None
 ) -> str:
-    """CRUD Update: Actualiza los datos específicos de un instrumento de evaluación mediante $set."""
+    """
+    Actualiza los datos de un instrumento de evaluación existente.
+
+    Args:
+        id_instrumento (str): Identificador único del instrumento a actualizar.
+        id_fila (int, opcional): Identificador de fila actualizado.
+        id_actividad (str, opcional): Identificador de actividad actualizado.
+        tipo (str, opcional): Tipo de instrumento actualizado.
+        titulo (str, opcional): Título del instrumento actualizado.
+        instrumento_generado (Union[dict, InstrumentoGeneradoDetail], opcional): Estructura del instrumento actualizada.
+
+    Returns:
+        str: Respuesta en formato JSON con el resultado de la actualización.
+    """
     try:
         db = get_db()
         obj_id = ObjectId(id_instrumento.strip())
@@ -741,14 +905,23 @@ def update_assessment_instrument(
         if res.matched_count == 0:
             return json.dumps({"status": "error", "message": f"Instrumento '{id_instrumento}' no encontrado."})
 
-        return json.dumps({"status": "success", "message": f"Instrumento '{id_instrumento}' actualizado exitosamente mediante $set."}, ensure_ascii=False)
+        return json.dumps({"status": "success", "message": f"Instrumento '{id_instrumento}' actualizado exitosamente."}, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error al actualizar instrumento de evaluación: {str(e)}"})
 
 
 @tool("delete_assessment_instrument")
 def delete_assessment_instrument(id_instrumento: str, confirm: bool = True) -> str:
-    """CRUD Delete: Elimina un instrumento de evaluación por su ID tras confirmación."""
+    """
+    Elimina un instrumento de evaluación por su identificador.
+
+    Args:
+        id_instrumento (str): Identificador único del instrumento a eliminar.
+        confirm (bool, opcional): Confirmación previa para la eliminación. Por defecto True.
+
+    Returns:
+        str: Respuesta en formato JSON con el resultado de la eliminación.
+    """
     try:
         if not confirm:
             return json.dumps({"status": "pending_confirmation", "message": f"CONFIRMACIÓN REQUERIDA: ¿Eliminar instrumento '{id_instrumento}'?"}, ensure_ascii=False)
@@ -764,10 +937,6 @@ def delete_assessment_instrument(id_instrumento: str, confirm: bool = True) -> s
         return json.dumps({"status": "error", "message": f"Error al eliminar instrumento de evaluación: {str(e)}"})
 
 
-# ==========================================
-# 7. CRUD: RECURSOS MULTIMODALES (recursos_multimodales)
-# ==========================================
-
 @tool("save_multimodal_resource", args_schema=SaveMultimodalResourceInput)
 def save_multimodal_resource(
     id_planificacion: str,
@@ -777,7 +946,20 @@ def save_multimodal_resource(
     titulo: str,
     url: str
 ) -> str:
-    """CRUD Create: Guarda un recurso multimodal (video, imagen, audio, documento, sitio web) en 'recursos_multimodales'."""
+    """
+    Guarda un recurso didáctico multimodal vinculado a una actividad de aprendizaje.
+
+    Args:
+        id_planificacion (str): Identificador de la planificación.
+        id_fila (int): Identificador de fila dentro de la planificación.
+        id_actividad (str): Identificador de la actividad de aprendizaje.
+        tipo (str): Tipo de recurso (video, imagen, documento, simulacion, lectura).
+        titulo (str): Título del recurso didáctico.
+        url (str): Enlace URL del recurso.
+
+    Returns:
+        str: Respuesta en formato JSON con el ID del recurso guardado.
+    """
     try:
         db = get_db()
         plan_obj_id = _ensure_object_id(id_planificacion)
@@ -806,7 +988,15 @@ def save_multimodal_resource(
 
 @tool("get_multimodal_resource_by_id")
 def get_multimodal_resource_by_id(id_recurso: str) -> str:
-    """CRUD Read: Obtiene un recurso multimodal por su ID de MongoDB en 'recursos_multimodales'."""
+    """
+    Recupera un recurso multimodal por su identificador.
+
+    Args:
+        id_recurso (str): Identificador único del recurso multimodal.
+
+    Returns:
+        str: Respuesta en formato JSON con la información del recurso.
+    """
     try:
         db = get_db()
         obj_id = ObjectId(id_recurso.strip())
@@ -827,7 +1017,20 @@ def update_multimodal_resource(
     titulo: Optional[str] = None,
     url: Optional[str] = None
 ) -> str:
-    """CRUD Update: Actualiza campos específicos de un recurso multimodal mediante $set."""
+    """
+    Actualiza la información de un recurso multimodal existente.
+
+    Args:
+        id_recurso (str): Identificador único del recurso a actualizar.
+        id_fila (int, opcional): Identificador de fila actualizado.
+        id_actividad (str, opcional): Identificador de la actividad actualizado.
+        tipo (str, opcional): Tipo de recurso actualizado.
+        titulo (str, opcional): Título del recurso actualizado.
+        url (str, opcional): URL del recurso actualizada.
+
+    Returns:
+        str: Respuesta en formato JSON con el resultado de la actualización.
+    """
     try:
         db = get_db()
         obj_id = ObjectId(id_recurso.strip())
@@ -855,14 +1058,23 @@ def update_multimodal_resource(
         if res.matched_count == 0:
             return json.dumps({"status": "error", "message": f"Recurso '{id_recurso}' no encontrado."})
 
-        return json.dumps({"status": "success", "message": f"Recurso '{id_recurso}' actualizado exitosamente mediante $set."}, ensure_ascii=False)
+        return json.dumps({"status": "success", "message": f"Recurso '{id_recurso}' actualizado exitosamente."}, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error al actualizar recurso multimodal: {str(e)}"})
 
 
 @tool("delete_multimodal_resource")
 def delete_multimodal_resource(id_recurso: str, confirm: bool = True) -> str:
-    """CRUD Delete: Elimina un recurso multimodal por su ID en 'recursos_multimodales' tras confirmación."""
+    """
+    Elimina un recurso multimodal por su identificador.
+
+    Args:
+        id_recurso (str): Identificador único del recurso a eliminar.
+        confirm (bool, opcional): Confirmación previa para la eliminación. Por defecto True.
+
+    Returns:
+        str: Respuesta en formato JSON con el resultado de la eliminación.
+    """
     try:
         if not confirm:
             return json.dumps({"status": "pending_confirmation", "message": f"CONFIRMACIÓN REQUERIDA: ¿Eliminar recurso '{id_recurso}'?"}, ensure_ascii=False)
@@ -878,13 +1090,19 @@ def delete_multimodal_resource(id_recurso: str, confirm: bool = True) -> str:
         return json.dumps({"status": "error", "message": f"Error al eliminar recurso multimodal: {str(e)}"})
 
 
-# ==========================================
-# 8. HERRAMIENTAS DE CONSULTA Y SEGURIDAD
-# ==========================================
-
 @tool("get_top_frequent_courses")
 def get_top_frequent_courses(config: RunnableConfig = None, id_usuario: str = "", limit: int = 4) -> str:
-    """Agrupa las planificaciones del usuario por subárea curricular y obtiene las más frecuentes."""
+    """
+    Obtiene las subáreas o asignaturas más frecuentemente utilizadas en planificaciones del docente.
+
+    Args:
+        config (RunnableConfig, opcional): Configuración de ejecución del flujo.
+        id_usuario (str, opcional): Identificador del usuario.
+        limit (int, opcional): Cantidad máxima de registros a obtener. Por defecto 4.
+
+    Returns:
+        str: Respuesta en formato JSON con el listado de subáreas más frecuentes.
+    """
     try:
         db = get_db()
         effective_id = extract_user_id_from_config(config) or id_usuario
@@ -909,7 +1127,17 @@ def get_top_frequent_courses(config: RunnableConfig = None, id_usuario: str = ""
 
 @tool("get_recent_lesson_plans")
 def get_recent_lesson_plans(config: RunnableConfig = None, id_usuario: str = "", limit: int = 3) -> str:
-    """Recupera los datos del encabezado y metadatos de las últimas planificaciones creadas por el docente."""
+    """
+    Obtiene el listado de las planificaciones docentes más recientes creadas por el docente.
+
+    Args:
+        config (RunnableConfig, opcional): Configuración de ejecución del flujo.
+        id_usuario (str, opcional): Identificador del usuario.
+        limit (int, opcional): Cantidad máxima de planificaciones a obtener. Por defecto 3.
+
+    Returns:
+        str: Respuesta en formato JSON con el listado de planificaciones recientes.
+    """
     try:
         db = get_db()
         effective_id = extract_user_id_from_config(config) or id_usuario
@@ -942,7 +1170,16 @@ def get_recent_lesson_plans(config: RunnableConfig = None, id_usuario: str = "",
 
 @tool("get_latest_plan_instruments_and_resources")
 def get_latest_plan_instruments_and_resources(config: RunnableConfig = None, id_usuario: str = "") -> str:
-    """Obtiene los últimos 3 instrumentos de evaluación y los últimos 3 recursos multimodales creados para las planificaciones del usuario."""
+    """
+    Obtiene los últimos instrumentos de evaluación y recursos multimodales del usuario.
+
+    Args:
+        config (RunnableConfig, opcional): Configuración de ejecución del flujo.
+        id_usuario (str, opcional): Identificador del usuario.
+
+    Returns:
+        str: Respuesta en formato JSON con los últimos instrumentos y recursos creados.
+    """
     try:
         db = get_db()
         effective_id = extract_user_id_from_config(config) or id_usuario
@@ -989,7 +1226,18 @@ def get_latest_plan_instruments_and_resources(config: RunnableConfig = None, id_
 
 @tool("get_paginated_lesson_plans")
 def get_paginated_lesson_plans(config: RunnableConfig = None, id_usuario: str = "", page: int = 1, limit: int = 10) -> str:
-    """Obtiene la lista paginada de planificaciones pertenecientes al usuario con conteo total."""
+    """
+    Obtiene una lista paginada de planificaciones docentes pertenecientes al usuario.
+
+    Args:
+        config (RunnableConfig, opcional): Configuración de ejecución del flujo.
+        id_usuario (str, opcional): Identificador del usuario.
+        page (int, opcional): Número de página (iniciando en 1). Por defecto 1.
+        limit (int, opcional): Cantidad de registros por página. Por defecto 10.
+
+    Returns:
+        str: Respuesta en formato JSON con la lista de planificaciones paginadas y metadatos.
+    """
     try:
         db = get_db()
         effective_id = extract_user_id_from_config(config) or id_usuario
@@ -1035,7 +1283,17 @@ def get_paginated_lesson_plans(config: RunnableConfig = None, id_usuario: str = 
 
 @tool("get_lesson_plan_details")
 def get_lesson_plan_details(id_planificacion: str, config: RunnableConfig = None, id_usuario: str = "") -> str:
-    """Recupera el documento completo de una planificación junto a sus instrumentos y recursos asociados."""
+    """
+    Obtiene los detalles completos de una planificación docente junto a sus instrumentos y recursos asociados.
+
+    Args:
+        id_planificacion (str): Identificador único de la planificación.
+        config (RunnableConfig, opcional): Configuración de ejecución del flujo.
+        id_usuario (str, opcional): Identificador del usuario.
+
+    Returns:
+        str: Respuesta en formato JSON con la información detallada de la planificación.
+    """
     try:
         db = get_db()
         plan_obj_id = ObjectId(id_planificacion.strip())
@@ -1065,7 +1323,12 @@ def get_lesson_plan_details(id_planificacion: str, config: RunnableConfig = None
 
 @tool("get_cnb_careers_list")
 def get_cnb_careers_list() -> str:
-    """Recupera la lista única de nombres de carreras académicas registradas en el CNB."""
+    """
+    Obtiene la lista de carreras académicas disponibles en el currículum.
+
+    Returns:
+        str: Respuesta en formato JSON con la lista de nombres de carreras.
+    """
     try:
         db = get_db()
         raw_careers = db[AREAS].distinct("nombre_carrera")
@@ -1077,7 +1340,17 @@ def get_cnb_careers_list() -> str:
 
 @tool("get_cnb_areas_by_career")
 def get_cnb_areas_by_career(carrera: str, page: int = 1, limit: int = 10) -> str:
-    """Recupera la lista paginada de áreas curriculares (id y nombre_area) pertenecientes a una carrera específica del CNB."""
+    """
+    Obtiene las áreas curriculares pertenecientes a una carrera específica del currículum.
+
+    Args:
+        carrera (str): Nombre de la carrera a consultar.
+        page (int, opcional): Número de página. Por defecto 1.
+        limit (int, opcional): Cantidad de registros por página. Por defecto 10.
+
+    Returns:
+        str: Respuesta en formato JSON con la lista paginada de áreas curriculares.
+    """
     try:
         db = get_db()
         query = {"nombre_carrera": carrera.strip()}
@@ -1110,11 +1383,21 @@ def get_cnb_areas_by_career(carrera: str, page: int = 1, limit: int = 10) -> str
         }, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error al obtener áreas por carrera: {str(e)}"})
-        
+
 
 @tool("get_cnb_subareas_by_area_id")
 def get_cnb_subareas_by_area_id(id_area: str, page: int = 1, limit: int = 10) -> str:
-    """Recupera la lista paginada de subáreas curriculares (id y nombre_subarea) pertenecientes a un área en 'cnb_subareas'."""
+    """
+    Obtiene las subáreas curriculares pertenecientes a un área específica del currículum.
+
+    Args:
+        id_area (str): Identificador del área curricular.
+        page (int, opcional): Número de página. Por defecto 1.
+        limit (int, opcional): Cantidad de registros por página. Por defecto 10.
+
+    Returns:
+        str: Respuesta en formato JSON con la lista paginada de subáreas curriculares.
+    """
     try:
         db = get_db()
         area_obj_id = ObjectId(id_area.strip())
@@ -1150,14 +1433,15 @@ def get_cnb_subareas_by_area_id(id_area: str, page: int = 1, limit: int = 10) ->
         return json.dumps({"status": "error", "message": f"Error al obtener subáreas: {str(e)}"})
 
 
-# ==========================================
-# 9. FUNCIONES DE SERVICIO DE USUARIOS (Sin anotación @tool)
-# ==========================================
-
 def create_user_doc(data: dict) -> dict:
     """
-    Función interna de servicio backend para crear un usuario en la colección 'usuarios' de MongoDB.
-    Requiere google_id y datos verídicos obtenidos directamente del token de Google OAuth.
+    Crea un nuevo usuario en el sistema a partir de datos autenticados.
+
+    Args:
+        data (dict): Información del usuario autenticado.
+
+    Returns:
+        dict: Diccionario con el resultado de la operación e ID de usuario.
     """
     try:
         db = get_db()
@@ -1197,7 +1481,13 @@ def create_user_doc(data: dict) -> dict:
 
 def get_user_by_google_id(google_id: str) -> Optional[dict]:
     """
-    Función interna de servicio backend para consultar un usuario únicamente por su 'google_id' en la colección 'usuarios'.
+    Obtiene la información de un usuario por su identificador de Google.
+
+    Args:
+        google_id (str): Identificador único de Google OAuth.
+
+    Returns:
+        Optional[dict]: Información del usuario o None si no existe.
     """
     try:
         db = get_db()
@@ -1213,7 +1503,15 @@ def get_user_by_google_id(google_id: str) -> Optional[dict]:
 
 
 def get_user_profile_doc(id_usuario: str) -> Optional[dict]:
-    """Función interna de servicio backend para obtener el perfil de un usuario por su _id de MongoDB."""
+    """
+    Obtiene el perfil de un usuario por su identificador único.
+
+    Args:
+        id_usuario (str): Identificador único de usuario.
+
+    Returns:
+        Optional[dict]: Información del perfil o None si no se encuentra.
+    """
     try:
         db = get_db()
         obj_id = ObjectId(id_usuario.strip())
@@ -1226,7 +1524,16 @@ def get_user_profile_doc(id_usuario: str) -> Optional[dict]:
 
 
 def update_user_profile_doc(id_usuario: str, update_data: dict) -> bool:
-    """Función interna de servicio backend para actualizar el perfil mediante $set."""
+    """
+    Actualiza los datos del perfil de un usuario.
+
+    Args:
+        id_usuario (str): Identificador único del usuario.
+        update_data (dict): Campos del perfil a actualizar.
+
+    Returns:
+        bool: True si la actualización fue exitosa, False en caso contrario.
+    """
     try:
         db = get_db()
         obj_id = ObjectId(id_usuario.strip())
@@ -1240,7 +1547,15 @@ def update_user_profile_doc(id_usuario: str, update_data: dict) -> bool:
 
 
 def delete_user_profile_doc(id_usuario: str) -> bool:
-    """Función interna de servicio backend para eliminar la cuenta de usuario."""
+    """
+    Elimina la cuenta de usuario del sistema.
+
+    Args:
+        id_usuario (str): Identificador único del usuario a eliminar.
+
+    Returns:
+        bool: True si la cuenta fue eliminada, False en caso contrario.
+    """
     try:
         db = get_db()
         obj_id = ObjectId(id_usuario.strip())
@@ -1252,8 +1567,15 @@ def delete_user_profile_doc(id_usuario: str) -> bool:
 
 def save_refresh_token(id_usuario: str, refresh_token: str, expires_in_days: int = 7) -> bool:
     """
-    Guarda o actualiza un refresh token para el usuario en la colección 'refresh_tokens'.
-    Duración por defecto: 7 días.
+    Guarda o actualiza un token de refresco para la sesión de un usuario.
+
+    Args:
+        id_usuario (str): Identificador único del usuario.
+        refresh_token (str): Token de refresco emitido.
+        expires_in_days (int, opcional): Días de validez del token. Por defecto 7.
+
+    Returns:
+        bool: True si el token fue almacenado exitosamente, False en caso contrario.
     """
     try:
         db = get_db()
@@ -1278,7 +1600,13 @@ def save_refresh_token(id_usuario: str, refresh_token: str, expires_in_days: int
 
 def get_refresh_token_doc(refresh_token: str) -> Optional[dict]:
     """
-    Busca y retorna el documento de un refresh token activo si no ha expirado.
+    Valida y recupera un token de refresco activo.
+
+    Args:
+        refresh_token (str): Token de refresco a validar.
+
+    Returns:
+        Optional[dict]: Datos del token de refresco activo o None si es inválido/expirado.
     """
     try:
         db = get_db()

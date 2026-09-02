@@ -18,16 +18,14 @@ from core.validator import validate_subagent_response
 @tool("process_pdf")
 def process_pdf(request: str, config: RunnableConfig) -> str:
     """
-    Subagente procesador de PDF del CNB ('procesador_pdf_cnb').
-    Analiza un documento PDF escolar para extraer la estructura curricular y guardarla en MongoDB.
-    Propaga la configuración de contexto y autenticación de LangGraph.
-    
+    Procesa y analiza documentos PDF escolares para extraer su estructura curricular.
+
     Args:
-        request: Instrucción enviada al subagente.
-        config: Objeto de configuración de estado y autenticación de LangGraph.
-        
+        request (str): Instrucción con los datos del documento PDF a procesar.
+        config (RunnableConfig): Configuración de ejecución y contexto de LangGraph.
+
     Returns:
-        Resultado validado determinísticamente con estado y artefacto generado.
+        str: Resultado del procesamiento con el estado y la estructura curricular extraída.
     """
     try:
         res = pdf_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
@@ -40,17 +38,14 @@ def process_pdf(request: str, config: RunnableConfig) -> str:
 @tool("school_lesson_plans")
 def school_lesson_plans(request: str, config: RunnableConfig) -> str:
     """
-    Subagente planificador curricular de clases del CNB ('planificador_clases_cnb').
-    Atiende la consulta por ID, actualización o eliminación de planificaciones docentes de clase existentes.
-    IMPORTANTE: NO utilizar esta herramienta para elaborar o crear nuevas planificaciones de clase. Toda nueva planificación debe ser elaborada mediante 'complete_lesson_planning_workflow'.
-    Propaga la configuración de contexto y autenticación de LangGraph.
-    
+    Gestiona la consulta por ID, actualización o eliminación de planificaciones de clase existentes.
+
     Args:
-        request: Instrucción para consultar por ID, actualizar o eliminar.
-        config: Objeto de configuración de estado y autenticación de LangGraph.
-        
+        request (str): Instrucción para consultar, actualizar o eliminar planificaciones.
+        config (RunnableConfig): Configuración de ejecución y contexto de LangGraph.
+
     Returns:
-        Resultado validado determinísticamente con estado y artefacto generado.
+        str: Resultado de la gestión de la planificación solicitada.
     """
     try:
         res = lesson_plans_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
@@ -63,19 +58,14 @@ def school_lesson_plans(request: str, config: RunnableConfig) -> str:
 @tool("complete_lesson_planning_workflow")
 async def complete_lesson_planning_workflow(request: str, config: RunnableConfig) -> str:
     """
-    Workflow y Subgrafo de Planificación de Clases del CNB ('lesson_planning_workflow').
-    Se invoca SIEMPRE que el docente solicite ELABORAR O CREAR una planificación de clase (diarias, semanales, bimestrales, anuales).
-    Ejecuta el flujo en 2 pasos:
-    1. Elabora la planificación docente convocando al subagente planificador.
-    2. Genera los instrumentos de evaluación y recursos multimodales EN PARALELO y retorna el plan, instrumentos y recursos consolidados.
-    Propaga la configuración de contexto y autenticación de LangGraph.
-    
+    Ejecuta el flujo completo para crear y elaborar nuevas planificaciones docentes con instrumentos y recursos.
+
     Args:
-        request: Instrucción con los parámetros clave del plan.
-        config: Objeto de configuración de estado y autenticación de LangGraph.
-        
+        request (str): Instrucción con los requerimientos y parámetros clave del plan a crear.
+        config (RunnableConfig): Configuración de ejecución y contexto de LangGraph.
+
     Returns:
-        Resultado validado determinísticamente con estado y artefacto generado.
+        str: Planificación completa elaborada junto a sus instrumentos de evaluación y recursos multimodales.
     """
     try:
         res = await lesson_planning_workflow.ainvoke({"request": request.strip()}, config=config)
@@ -88,17 +78,14 @@ async def complete_lesson_planning_workflow(request: str, config: RunnableConfig
 @tool("school_assessment_instruments")
 def school_assessment_instruments(request: str, config: RunnableConfig) -> str:
     """
-    Subagente diseñador de instrumentos de evaluación del CNB ('instrumentos_evaluacion_cnb').
-    Diseña, consulta, actualiza o elimina listas de cotejo, rúbricas y escalas de rango para actividades de aprendizaje.
-    Usa esta herramienta cuando el docente solicite ÚNICAMENTE gestionar o crear instrumentos de evaluación independientes.
-    Propaga la configuración de contexto y autenticación de LangGraph.
-    
+    Diseña, consulta, actualiza o elimina instrumentos de evaluación independientes (rúbricas, listas de cotejo).
+
     Args:
-        request: Instrucción del docente.
-        config: Objeto de configuración de estado y autenticación de LangGraph.
-        
+        request (str): Instrucción con los detalles del instrumento a gestionar o crear.
+        config (RunnableConfig): Configuración de ejecución y contexto de LangGraph.
+
     Returns:
-        Resultado validado determinísticamente con estado y artefacto generado.
+        str: Resultado con la información del instrumento de evaluación procesado.
     """
     try:
         res = assessment_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
@@ -111,17 +98,14 @@ def school_assessment_instruments(request: str, config: RunnableConfig) -> str:
 @tool("school_multimodal_resources")
 def school_multimodal_resources(request: str, config: RunnableConfig) -> str:
     """
-    Subagente de contenidos y recursos multimodales ('recursos_multimodales_cnb').
-    Busca recursos educativos en la web (videos, imágenes, documentos) con SERPER API y gestiona su almacenamiento.
-    Usa esta herramienta cuando el docente solicite ÚNICAMENTE buscar o gestionar recursos multimodales independientes.
-    Propaga la configuración de contexto y autenticación de LangGraph.
-    
+    Busca, consulta, actualiza o elimina recursos multimodales independientes (videos, documentos, imágenes).
+
     Args:
-        request: Instrucción del docente.
-        config: Objeto de configuración de estado y autenticación de LangGraph.
-        
+        request (str): Instrucción con los requerimientos del recurso a buscar o gestionar.
+        config (RunnableConfig): Configuración de ejecución y contexto de LangGraph.
+
     Returns:
-        Resultado validado determinísticamente con estado y artefacto generado.
+        str: Resultado con los recursos multimodales encontrados o procesados.
     """
     try:
         res = multimodal_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
@@ -134,16 +118,14 @@ def school_multimodal_resources(request: str, config: RunnableConfig) -> str:
 @tool("specialized_queries")
 def specialized_queries(request: str, config: RunnableConfig) -> str:
     """
-    Subagente de consultas especializadas y métricas del dashboard ('consultas_especializadas_cnb').
-    Atiende consultas del panel del docente (top cursos, recientes), historial paginado de planificaciones, detalles completos de planes y catálogo del CNB.
-    Propaga la configuración de contexto y autenticación de LangGraph.
-    
+    Atiende consultas del panel docente, métricas, catálogo del CNB e historial paginado de planificaciones.
+
     Args:
-        request: Instrucción del docente.
-        config: Objeto de configuración de estado y autenticación de LangGraph.
-        
+        request (str): Instrucción o consulta a realizar sobre el catálogo o métricas.
+        config (RunnableConfig): Configuración de ejecución y contexto de LangGraph.
+
     Returns:
-        Resultado validado determinísticamente con estado y artefacto generado.
+        str: Respuesta detallada a la consulta solicitada.
     """
     try:
         res = specialized_queries_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
@@ -153,7 +135,6 @@ def specialized_queries(request: str, config: RunnableConfig) -> str:
         return validate_subagent_response("consultas_especializadas_cnb", e)
 
 
-# Agente Supervisor Principal de LangGraph equipado con checkpointer MongoDBSaver respaldado por MongoDB
 main_agent = create_agent(
     model=llm,
     tools=[

@@ -6,11 +6,13 @@ from auth.auth_handler import exchange_google_token_for_session, refresh_access_
 
 async def login_with_google(request):
     """
-    1. Recibe el id_token de Google.
-    2. Verifica la validez y firma con la biblioteca oficial de Google.
-    3. Consulta o auto-registra al usuario en MongoDB.
-    4. Emite un Access Token JWT propio (5 minutos) y un Refresh Token (7 días).
-    5. Configura los tokens en cookies HTTP seguras (HttpOnly, SameSite=lax, Secure).
+    Autentica al usuario validando el token de Google y emite tokens de sesión en cookies seguras.
+
+    Args:
+        request: Objeto de petición HTTP con el token de Google en el cuerpo JSON.
+
+    Returns:
+        JSONResponse: Respuesta JSON con la sesión creada y las cookies configuradas.
     """
     try:
         if request.method == "OPTIONS":
@@ -24,8 +26,7 @@ async def login_with_google(request):
 
         session = exchange_google_token_for_session(id_token_str)
         response = JSONResponse(session)
-        
-        # Configurar cookie para Access Token (5 min = 300 s)
+
         response.set_cookie(
             key="access_token",
             value=session["access_token"],
@@ -35,8 +36,7 @@ async def login_with_google(request):
             secure=True,
             path="/"
         )
-        
-        # Configurar cookie para Refresh Token (7 días = 604800 s)
+
         response.set_cookie(
             key="refresh_token",
             value=session["refresh_token"],
@@ -46,7 +46,7 @@ async def login_with_google(request):
             secure=True,
             path="/"
         )
-        
+
         return response
     except ValueError as e:
         return JSONResponse({"detail": str(e)}, status_code=401)
@@ -56,8 +56,13 @@ async def login_with_google(request):
 
 async def refresh_token_endpoint(request):
     """
-    Renueva el Access Token de 5 minutos extrayendo automáticamente el Refresh Token desde la cookie HTTP 'refresh_token'.
-    Actualiza la cookie HttpOnly access_token con la nueva sesión.
+    Renueva el token de acceso utilizando la cookie de refresco de sesión.
+
+    Args:
+        request: Objeto de petición HTTP conteniendo la cookie 'refresh_token'.
+
+    Returns:
+        JSONResponse: Respuesta JSON con el nuevo token de acceso y la cookie actualizada.
     """
     try:
         if request.method == "OPTIONS":
@@ -72,8 +77,7 @@ async def refresh_token_endpoint(request):
 
         new_session = refresh_access_token_session(token)
         response = JSONResponse(new_session)
-        
-        # Actualizar la cookie de Access Token (5 min = 300 s)
+
         response.set_cookie(
             key="access_token",
             value=new_session["access_token"],
@@ -83,7 +87,7 @@ async def refresh_token_endpoint(request):
             secure=True,
             path="/"
         )
-        
+
         return response
     except ValueError as e:
         return JSONResponse({"detail": str(e)}, status_code=401)
@@ -93,7 +97,13 @@ async def refresh_token_endpoint(request):
 
 async def logout(request):
     """
-    Cierra la sesión del docente eliminando las cookies seguras access_token y refresh_token.
+    Cierra la sesión activa eliminando las cookies de autenticación del usuario.
+
+    Args:
+        request: Objeto de petición HTTP.
+
+    Returns:
+        JSONResponse: Respuesta JSON confirmando el cierre de sesión.
     """
     if request.method == "OPTIONS":
         return JSONResponse({"status": "ok"}, status_code=200)

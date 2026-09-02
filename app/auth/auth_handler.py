@@ -17,7 +17,6 @@ from tools.persistence_tool import (
     get_refresh_token_doc,
 )
 
-# Instancia global de Auth de LangGraph SDK
 auth = Auth()
 
 THREAD_CREATION_LOGS = defaultdict(list)
@@ -26,9 +25,13 @@ MAX_THREADS_PER_MINUTE = 5
 
 def verify_google_id_token(id_token: str) -> Dict[str, Any]:
     """
-    Verifica el token ID de Google OAuth con la biblioteca oficial recomendable para producción ('google-auth').
-    Valida la firma criptográfica localmente utilizando certificados públicos de Google en caché,
-    comprueba la vigencia y verifica que el Audience ('aud') coincida con GOOGLE_CLIENT_ID.
+    Verifica la autenticidad y vigencia de un token ID de Google OAuth.
+
+    Args:
+        id_token (str): Cadena de token ID emitida por Google.
+
+    Returns:
+        Dict[str, Any]: Carga útil (payload) del token validado con los datos del usuario.
     """
     try:
         client_id = get_env_variable("GOOGLE_CLIENT_ID")
@@ -48,7 +51,17 @@ def verify_google_id_token(id_token: str) -> Dict[str, Any]:
 
 def create_access_token(user_id: str, email: str, nombres: str = "", rol: str = "docente", expires_in_seconds: int = 300) -> str:
     """
-    Genera un Access Token JWT propio firmado con expiración máxima de 5 minutos (300 segundos).
+    Genera un token de acceso JWT firmado para el usuario.
+
+    Args:
+        user_id (str): Identificador único del usuario.
+        email (str): Correo electrónico del usuario.
+        nombres (str, opcional): Nombres del usuario.
+        rol (str, opcional): Rol asignado. Por defecto 'docente'.
+        expires_in_seconds (int, opcional): Tiempo de expiración en segundos. Por defecto 300.
+
+    Returns:
+        str: Token de acceso JWT codificado.
     """
     jwt_secret = get_env_variable("JWT_SECRET")
     now = datetime.now(timezone.utc)
@@ -66,7 +79,14 @@ def create_access_token(user_id: str, email: str, nombres: str = "", rol: str = 
 
 def create_refresh_token(user_id: str, expires_in_days: int = 7) -> str:
     """
-    Genera un Refresh Token seguro con vigencia de 7 días y lo almacena en MongoDB.
+    Genera y almacena un token de refresco para el usuario.
+
+    Args:
+        user_id (str): Identificador único del usuario.
+        expires_in_days (int, opcional): Días de validez del token. Por defecto 7.
+
+    Returns:
+        str: Cadena única del token de refresco generado.
     """
     token_str = secrets.token_hex(32)
     save_refresh_token(id_usuario=user_id, refresh_token=token_str, expires_in_days=expires_in_days)
@@ -75,7 +95,13 @@ def create_refresh_token(user_id: str, expires_in_days: int = 7) -> str:
 
 def verify_project_access_token(token: str) -> Dict[str, Any]:
     """
-    Verifica localmente la firma criptográfica y vigencia de nuestro JWT propio.
+    Verifica la firma y vigencia de un token de acceso JWT.
+
+    Args:
+        token (str): Token de acceso JWT a validar.
+
+    Returns:
+        Dict[str, Any]: Carga útil del token validado.
     """
     jwt_secret = get_env_variable("JWT_SECRET")
     try:
@@ -84,18 +110,20 @@ def verify_project_access_token(token: str) -> Dict[str, Any]:
             raise ValueError("El token proporcionado no es un Access Token de sesión válido.")
         return payload
     except jwt.ExpiredSignatureError:
-        raise ValueError("El Access Token ha expirado (duración máxima de 5 minutos). Requiere renovación.")
+        raise ValueError("El Access Token ha expirado. Requiere renovación.")
     except Exception as e:
         raise ValueError(f"Access Token no válido: {str(e)}")
 
 
 def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any]:
     """
-    Flujo de intercambio de autenticación:
-    1. Recibe y verifica el ID token de Google.
-    2. Consulta o auto-registra al docente en MongoDB.
-    3. Genera un Access Token JWT propio con expiración de 5 minutos.
-    4. Genera un Refresh Token con duración de 7 días.
+    Intercambia un token de Google OAuth por una sesión de usuario con sus respectivos tokens de acceso y refresco.
+
+    Args:
+        google_id_token_str (str): Token ID de Google OAuth.
+
+    Returns:
+        Dict[str, Any]: Diccionario con los tokens emitidos y datos del usuario.
     """
     if not check_db_connection():
         raise ValueError("Acceso Denegado: No hay comunicación activa con la base de datos.")
@@ -156,14 +184,20 @@ def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any
 
 def refresh_access_token_session(refresh_token_str: str) -> Dict[str, Any]:
     """
-    Renueva el Access Token de 5 minutos a partir de un Refresh Token activo de 7 días.
+    Renueva la sesión emitiendo un nuevo token de acceso a partir de un token de refresco válido.
+
+    Args:
+        refresh_token_str (str): Token de refresco de sesión activa.
+
+    Returns:
+        Dict[str, Any]: Diccionario con el nuevo token de acceso.
     """
     if not check_db_connection():
         raise ValueError("Acceso Denegado: No hay comunicación activa con la base de datos.")
 
     doc = get_refresh_token_doc(refresh_token_str)
     if not doc:
-        raise ValueError("Refresh token no válido o expirado (duración máxima 7 días). Requiere iniciar sesión nuevamente.")
+        raise ValueError("Refresh token no válido o expirado. Requiere iniciar sesión nuevamente.")
 
     id_usuario = str(doc.get("id_usuario") or doc.get("user_id", "")).strip()
     user = get_user_profile_doc(id_usuario)
@@ -193,12 +227,15 @@ async def authenticate(
     path: Optional[str] = None
 ) -> Auth.types.MinimalUserDict:
     """
-    Middleware universal de autenticación para LangGraph Server.
-    Verifica estrictamente nuestro Access Token JWT propio (5 minutos) extraído de la cookie HTTP 'access_token':
-    1. Permite acceso libre a las rutas públicas de autenticación (/auth/login, /auth/refresh, /auth/logout).
-    2. Extrae únicamente de las cookies HTTP la clave 'access_token' para rutas de grafos.
-    3. Verifica la firma y expiración de nuestro JWT propio (< 1ms).
-    4. Inyecta la identidad para garantizar aislamiento estricto de hilos y datos por docente.
+    Autentica las solicitudes extrayendo y validando la cookie de sesión.
+
+    Args:
+        authorization (opcional): Encabezado de autorización.
+        headers (opcional): Diccionario de encabezados HTTP.
+        path (opcional): Ruta de la petición solicitada.
+
+    Returns:
+        Auth.types.MinimalUserDict: Diccionario con la identidad y estado de autenticación del usuario.
     """
     path_str = str(path.decode("utf-8") if isinstance(path, bytes) else (path or "")).strip()
     path_clean = path_str if path_str.startswith("/") else f"/{path_str}"
@@ -227,7 +264,6 @@ async def authenticate(
             detail="Acceso Denegado: Cookie 'access_token' no proporcionada."
         )
 
-    # Validar que el token sea nuestro Access Token JWT propio (duración máxima 5 min)
     try:
         jwt_payload = verify_project_access_token(token)
         return {
@@ -244,13 +280,17 @@ async def authenticate(
         )
 
 
-# Interceptor de autorización de hilos (threads): Aislamiento estricto por docente
 @auth.on.threads
 async def authorize_threads(ctx: Auth.types.AuthContext, value: dict = None):
     """
-    Garantiza aislamiento estricto entre docentes (Usuario A no puede acceder a hilos ni ejecuciones del Usuario B):
-    1. Asigna la propiedad del hilo en los metadatos ('owner': ctx.user.identity).
-    2. Retorna un filtro {'owner': ctx.user.identity} para restringir lectura, búsqueda y ejecución exclusivamente al propietario.
+    Valida los permisos de acceso a hilos de conversación filtrando por el propietario.
+
+    Args:
+        ctx (Auth.types.AuthContext): Contexto de autenticación del usuario.
+        value (dict, opcional): Datos del hilo de conversación.
+
+    Returns:
+        dict: Filtro de propiedad con el identificador del usuario.
     """
     if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
         raise Auth.exceptions.HTTPException(status_code=401, detail="Acceso Denegado: Usuario no autenticado.")
@@ -263,13 +303,17 @@ async def authorize_threads(ctx: Auth.types.AuthContext, value: dict = None):
     return {"owner": user_id}
 
 
-# Rate Limiter y asignación de propiedad para creación de hilos (POST /threads)
 @auth.on.threads.create
 async def limit_thread_creation_rate(ctx: Auth.types.AuthContext, value: dict):
     """
-    Middleware / Interceptor de LangGraph SDK que restringe la creación de hilos (POST /threads):
-    1. Garantiza un límite máximo de 5 hilos por minuto por usuario autenticado.
-    2. Etiqueta la propiedad del hilo con el ID único del docente.
+    Aplica el control de tasa en la creación de hilos asignando la propiedad del hilo al usuario.
+
+    Args:
+        ctx (Auth.types.AuthContext): Contexto de autenticación del usuario.
+        value (dict): Datos del nuevo hilo a crear.
+
+    Returns:
+        dict: Filtro de propiedad asignado al hilo.
     """
     if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
         raise Auth.exceptions.HTTPException(status_code=401, detail="Acceso Denegado: Usuario no autenticado.")
@@ -277,7 +321,6 @@ async def limit_thread_creation_rate(ctx: Auth.types.AuthContext, value: dict):
     user_id = ctx.user.identity
     now = time.time()
 
-    # Filtrar registros de creación de hilos activos en los últimos 60 segundos
     recent_threads = [t for t in THREAD_CREATION_LOGS[user_id] if now - t < 60]
 
     if len(recent_threads) >= MAX_THREADS_PER_MINUTE:
@@ -296,12 +339,14 @@ async def limit_thread_creation_rate(ctx: Auth.types.AuthContext, value: dict):
     return {"owner": user_id}
 
 
-# Interceptor de autorización para la tienda de memoria persistente (BaseStore)
 @auth.on.store
 async def authorize_store(ctx: Auth.types.AuthContext, value: dict):
     """
-    Aísla los elementos almacenados en la tienda (BaseStore) por docente:
-    Reescribe el namespace anteponiendo la identidad del usuario ('user_id', ...) para evitar lecturas/escrituras cruzadas.
+    Restringe el acceso al almacén persistente delimitando el espacio de nombres por usuario.
+
+    Args:
+        ctx (Auth.types.AuthContext): Contexto de autenticación.
+        value (dict): Datos y espacio de nombres del elemento en el almacén.
     """
     if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
         raise Auth.exceptions.HTTPException(status_code=401, detail="Acceso Denegado: Usuario no autenticado.")
@@ -312,15 +357,18 @@ async def authorize_store(ctx: Auth.types.AuthContext, value: dict):
         value["namespace"] = (user_id,) + tuple(namespace)
 
 
-# Política global por defecto de autorización para LangGraph Server
 @auth.on
 async def default_authorization_policy(ctx: Auth.types.AuthContext, value: dict = None):
     """
-    Manejador global de autorización por defecto para LangGraph Server.
-    Cubre todas las rutas no manejadas específicamente (assistants.*, crons.*).
-    Verifica que la solicitud provenga de un usuario autenticado válidamente.
+    Evalúa la política global de autorización para solicitudes entrantes.
+
+    Args:
+        ctx (Auth.types.AuthContext): Contexto de autenticación.
+        value (dict, opcional): Datos adicionales de la solicitud.
+
+    Returns:
+        bool: True si la solicitud está autorizada, False en caso contrario.
     """
     if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
         return False
     return True
-

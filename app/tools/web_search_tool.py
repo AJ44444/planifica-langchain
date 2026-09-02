@@ -6,7 +6,16 @@ from middleware.security_middleware import sanitize_external_text
 
 
 def get_serper_wrapper(search_type: str = "search", k: int = 5) -> GoogleSerperAPIWrapper:
-    """Retorna un objeto GoogleSerperAPIWrapper de LangChain Community configurado."""
+    """
+    Crea una instancia del cliente de búsqueda GoogleSerperAPIWrapper.
+
+    Args:
+        search_type (str): Tipo de búsqueda ('search', 'videos', 'images').
+        k (int): Cantidad de resultados deseados.
+
+    Returns:
+        GoogleSerperAPIWrapper: Cliente de búsqueda configurado.
+    """
     serper_key = get_env_variable("SERPER_API_KEY")
     return GoogleSerperAPIWrapper(
         serper_api_key=serper_key,
@@ -20,16 +29,15 @@ def get_serper_wrapper(search_type: str = "search", k: int = 5) -> GoogleSerperA
 @tool("serper_web_search")
 def serper_web_search(query: str, search_type: str = "search", num_results: int = 5) -> str:
     """
-    Ejecuta búsquedas en la web utilizando SERPER / Google Search (LangChain Community).
-    Muestra los resultados relevantes con título, enlace y snippet sanitizados contra inyecciones indirectas.
-    
+    Realiza búsquedas en la web utilizando el motor Serper Google Search.
+
     Args:
-        query: Consulta o palabras clave de búsqueda.
-        search_type: Tipo de búsqueda ('search' para web, 'videos' para videos, 'images' para imágenes).
-        num_results: Cantidad de resultados a retornar (por defecto 5).
-        
+        query (str): Consulta o palabras clave de búsqueda.
+        search_type (str, opcional): Tipo de búsqueda ('search', 'videos', 'images'). Por defecto 'search'.
+        num_results (int, opcional): Cantidad de resultados a retornar. Por defecto 5.
+
     Returns:
-        Cadena en formato JSON con la lista de resultados encontrados (título, enlace, snippet, tipo).
+        str: Cadena en formato JSON con la lista de resultados encontrados (título, enlace, snippet, tipo).
     """
     try:
         serper_key = get_env_variable("SERPER_API_KEY")
@@ -75,5 +83,5 @@ def serper_web_search(query: str, search_type: str = "search", num_results: int 
     except Exception as e:
         return json.dumps({
             "status": "error",
-            "message": f"Error al ejecutar la búsqueda con LangChain SERPER: {str(e)}"
+            "message": f"Error al ejecutar la búsqueda: {str(e)}"
         }, ensure_ascii=False)

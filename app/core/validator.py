@@ -5,29 +5,24 @@ from typing import Dict, Any, Union, Optional
 
 def validate_subagent_response(subagent_name: str, raw_output: Union[str, dict, Exception]) -> str:
     """
-    Validador Determinista de Respuestas de Subagentes según el estándar de LangChain/DeepAgents.
-    Retorna la respuesta del artefacto completa sin truncar ni limitar su longitud.
-    
-    Estrategia de Validación:
-    1. Tipos de Excepción (isinstance):
-       - PermissionError, KeyError, ValueError -> estado: "blocked" (Falta de datos o permisos).
-       - Excepción genérica u otro error de ejecución -> estado: "failed".
-    2. Diccionarios/JSON Estructurados:
-       - status == "error" con código de bloqueo (MISSING_INPUT, PERMISSION_DENIED) -> estado: "blocked".
-       - status == "error" con fallo de ejecución -> estado: "failed".
-    3. Ejecución Exitosa:
-       - Extrae IDs de artefactos (24 caracteres hex) o retorna el contenido completo -> estado: "success".
+    Valida y estandariza la respuesta de un subagente determinando su estado de ejecución.
+
+    Args:
+        subagent_name (str): Nombre identificador del subagente.
+        raw_output (Union[str, dict, Exception]): Respuesta cruda, diccionario o excepción retornada por el subagente.
+
+    Returns:
+        str: Cadena en formato JSON con el estado de ejecución, nombre del agente, mensaje y artefacto generado.
     """
-    # 1. Manejo determinista por Tipo de Excepción
     if isinstance(raw_output, Exception):
         err_type = type(raw_output)
         err_msg = str(raw_output)
-        
+
         if issubclass(err_type, (PermissionError, KeyError, ValueError)):
             status = "blocked"
         else:
             status = "failed"
-            
+
         return json.dumps({
             "estado": status,
             "agente": subagent_name,
@@ -35,7 +30,6 @@ def validate_subagent_response(subagent_name: str, raw_output: Union[str, dict, 
             "mensaje": f"Error de ejecución ({err_type.__name__}): {err_msg}"
         }, ensure_ascii=False)
 
-    # 2. Intento de decodificación JSON estructurado
     data_dict: Optional[dict] = None
     text_content = ""
 
@@ -51,7 +45,6 @@ def validate_subagent_response(subagent_name: str, raw_output: Union[str, dict, 
         except (json.JSONDecodeError, TypeError):
             pass
 
-    # Inspección de esquema estructurado si estuvo disponible
     if data_dict:
         status_val = str(data_dict.get("status", "")).lower()
         if status_val in ("error", "failed", "blocked"):
@@ -67,7 +60,6 @@ def validate_subagent_response(subagent_name: str, raw_output: Union[str, dict, 
                 "mensaje": data_dict.get("message", text_content)
             }, ensure_ascii=False)
 
-    # 3. Extracción de Artefactos (IDs de MongoDB de 24 hex o contenido completo) para Ejecución Exitosa
     object_ids = list(set(re.findall(r'\b[a-fA-F0-9]{24}\b', text_content)))
 
     artefacto = None

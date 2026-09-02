@@ -10,7 +10,12 @@ from core.collections import VECTORES, SUBAREAS
 
 
 def get_db():
-    """Retorna la base de datos de MongoDB a partir de MONGODB_URI y DB_NAME."""
+    """
+    Obtiene la conexión a la base de datos MongoDB.
+
+    Returns:
+        Database: Instancia de la base de datos MongoDB.
+    """
     mongodb_uri = get_env_variable("MONGODB_URI")
     db_name = get_env_variable("DB_NAME")
     client = MongoClient(mongodb_uri)
@@ -18,7 +23,12 @@ def get_db():
 
 
 def get_embedding_model() -> GoogleGenerativeAIEmbeddings:
-    """Instancia el modelo oficial de embeddings de Google Gemini (text-embedding-004 de 768 dimensiones)."""
+    """
+    Instancia el modelo de embeddings de Google.
+
+    Returns:
+        GoogleGenerativeAIEmbeddings: Modelo de embeddings configurado.
+    """
     google_api_key = get_env_variable("GOOGLE_API_KEY")
     return GoogleGenerativeAIEmbeddings(
         model="models/gemini-embedding-2",
@@ -28,14 +38,25 @@ def get_embedding_model() -> GoogleGenerativeAIEmbeddings:
 
 
 def generate_embedding(text: str) -> List[float]:
-    """Genera un vector de 768 dimensiones para el texto proporcionado mediante Google Gemini API."""
+    """
+    Genera el vector de embedding para un texto dado.
+
+    Args:
+        text (str): Texto a vectorizar.
+
+    Returns:
+        List[float]: Vector numérico de embedding.
+    """
     embeddings_model = get_embedding_model()
     return embeddings_model.embed_query(text)
 
 
 def get_vector_store() -> MongoDBAtlasVectorSearch:
     """
-    Crea una instancia de MongoDBAtlasVectorSearch (LangChain MongoDB) sobre la colección VECTORES.
+    Obtiene la instancia de búsqueda vectorial sobre la colección de vectores.
+
+    Returns:
+        MongoDBAtlasVectorSearch: Almacén vectorial configurado.
     """
     db = get_db()
     collection = db[VECTORES]
@@ -53,13 +74,13 @@ def get_vector_store() -> MongoDBAtlasVectorSearch:
 
 def generate_and_store_subarea_embeddings(id_subarea_relacionada: str) -> Dict[str, Any]:
     """
-    Genera y guarda embeddings de 768 dimensiones en VECTORES para todos los nodos de una subárea.
-    
+    Genera y almacena los embeddings vectoriales para los nodos de una subárea curricular.
+
     Args:
-        id_subarea_relacionada (str): ID de la subárea en SUBAREAS.
-        
+        id_subarea_relacionada (str): Identificador de la subárea curricular.
+
     Returns:
-        dict: Resultado con la cantidad de vectores actualizados.
+        Dict[str, Any]: Resultado del proceso con el estado y la cantidad de vectores procesados.
     """
     try:
         db = get_db()
@@ -107,8 +128,15 @@ def vector_search_cnb(
     limit: int = 5
 ) -> List[Dict[str, Any]]:
     """
-    Ejecuta el pipeline de agregación '$vectorSearch' en MongoDB Atlas Search sobre la colección VECTORES.
-    El parámetro 'id_subarea_relacionada' es OBLIGATORIO para filtrar estrictamente por subárea.
+    Realiza una búsqueda semántica de vectores filtrada por subárea curricular.
+
+    Args:
+        query (str): Texto o consulta semántica a buscar.
+        id_subarea_relacionada (str): Identificador de la subárea curricular obligatoria.
+        limit (int, opcional): Número máximo de resultados a retornar. Por defecto 5.
+
+    Returns:
+        List[Dict[str, Any]]: Lista de nodos curriculares más similares encontrados.
     """
     if not id_subarea_relacionada or not str(id_subarea_relacionada).strip():
         raise ValueError("El parámetro 'id_subarea_relacionada' (ObjectId de 24 caracteres) es obligatorio para realizar la búsqueda vectorial.")
@@ -160,10 +188,14 @@ def vector_search_cnb(
 
 def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -> List[Dict[str, Any]]:
     """
-    Función 1: Recibe los resultados de la búsqueda de vectores (limit=5).
-    Itera sobre cada elemento accediendo a id_subarea_relacionada, tipo_nodo y texto_a_buscar.
-    Consulta la colección 'cnb_subareas' por _id: ObjectId(id_subarea_relacionada)
-    para localizar los elementos (competencias, indicadores_logro, contenidos) por su 'descripcion'.
+    Obtiene los nodos jerárquicos completos de la subárea a partir de los resultados vectoriales.
+
+    Args:
+        vector_results (List[Dict[str, Any]]): Resultados obtenidos de la búsqueda vectorial.
+        db (opcional): Instancia de la base de datos MongoDB.
+
+    Returns:
+        List[Dict[str, Any]]: Lista de nodos mapeados con su competencia, indicador y contenido.
     """
     if not vector_results:
         return []
@@ -203,7 +235,6 @@ def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -
             "all_contenidos_indicador": []
         }
 
-        # Búsqueda en el documento cnb_subareas de MongoDB por id_subarea_relacionada, tipo_nodo y texto_a_buscar
         if subarea_doc and "competencias" in subarea_doc:
             found = False
             for comp in subarea_doc.get("competencias", []):
@@ -271,7 +302,6 @@ def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -
                             cnt_desc.lower() == texto_a_buscar.lower() or
                             cnt_full == texto_a_buscar.lower()
                         ):
-                            # Al devolver un contenido, SIEMPRE se agrega el indicador al que está vinculado y su competencia
                             node_data["competencia"] = {"id_competencia": comp_id, "descripcion": comp_desc}
                             node_data["indicador"] = {"id_indicador": ind_id, "descripcion": ind_desc}
                             node_data["contenido"] = {"id_contenido": cnt_id, "descripcion": cnt_desc}
@@ -282,7 +312,6 @@ def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -
                 if found:
                     break
 
-        # Si no matcheó con documento subarea_doc
         if not node_data["competencia"] and not node_data["indicador"] and not node_data["contenido"]:
             if tipo_nodo == "competencia":
                 node_data["competencia"] = {"id_competencia": "", "descripcion": texto_a_buscar}
@@ -298,10 +327,13 @@ def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -
 
 def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Función 2: Recibe los resultados de fetch_subarea_nodes_from_db y construye el árbol.
-    Aplica MERGE a nivel de competencias, indicadores y contenidos para mantener un solo árbol unificado.
-    Regla 1: Recuperar todos los contenidos para un indicador aplica UNICAMENTE cuando en la respuesta no existe ningún contenido vinculado.
-    Regla 2: Si en la respuesta no existe ningún indicador vinculado a una competencia, recuperar todo el árbol (indicadores y contenidos) de esa competencia.
+    Construye una estructura de árbol unificada a partir de la lista de nodos curriculares.
+
+    Args:
+        elements (List[Dict[str, Any]]): Lista de nodos curriculares.
+
+    Returns:
+        List[Dict[str, Any]]: Estructura jerárquica unificada de la subárea.
     """
     if not elements:
         return []
@@ -369,7 +401,6 @@ def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[st
                         "descripcion": cnt_desc
                     })
 
-    # Regla 2: Si dentro de la respuesta no existe ningún indicador vinculado a una competencia, recuperar todo el árbol (indicadores y contenidos) de esa competencia.
     for comp_info in competencias_map.values():
         if len(comp_info["indicadores"]) == 0 and comp_info.get("full_competencia_tree"):
             for ind_item in comp_info["full_competencia_tree"]:
@@ -383,7 +414,6 @@ def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[st
                     "all_contenidos_fallback": []
                 }
 
-    # Regla 1: Recuperar todos los contenidos para un indicador aplica UNICAMENTE cuando dentro de la respuesta no existe ningún contenido vinculado al indicador.
     for comp_info in competencias_map.values():
         for ind_info in comp_info["indicadores"].values():
             if len(ind_info["contenidos"]) == 0 and ind_info.get("all_contenidos_fallback"):
@@ -410,16 +440,15 @@ def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[st
 @tool("search_curriculum_vector_db")
 def search_curriculum_vector_db(query: str, id_subarea_relacionada: str, limit: int = 5) -> str:
     """
-    Realiza una búsqueda semántica vectorial ($vectorSearch) sobre el Currículum Nacional Base (CNB) en MongoDB.
-    El parámetro 'id_subarea_relacionada' es OBLIGATORIO para delimitar la búsqueda a la subárea curricular correspondiente.
-    
+    Busca información semántica en la base de datos vectorial del currículum por subárea.
+
     Args:
-        query (str): Tema, competencia o contenido a buscar.
-        id_subarea_relacionada (str): ID OBLIGATORIO de la subárea (ObjectId de 24 caracteres hexadecimales).
-        limit (int): Número máximo de resultados a retornar (por defecto 5).
-        
+        query (str): Consulta semántica, tema o competencia a buscar.
+        id_subarea_relacionada (str): Identificador obligatorio de la subárea curricular.
+        limit (int, opcional): Límite de resultados a retornar. Por defecto 5.
+
     Returns:
-        str: Cadena en formato JSON con el árbol curricular unificado (merged) y las coincidencias semánticas encontradas.
+        str: Cadena en formato JSON con el árbol curricular unificado obtenido.
     """
     try:
         raw_results = vector_search_cnb(query=query, id_subarea_relacionada=id_subarea_relacionada, limit=limit)
@@ -450,13 +479,13 @@ def search_curriculum_vector_db(query: str, id_subarea_relacionada: str, limit: 
 @tool("generate_subarea_vector_embeddings")
 def generate_subarea_vector_embeddings(id_subarea_relacionada: str) -> str:
     """
-    Genera y actualiza los embeddings vectoriales (768d) para todos los nodos de una subárea en VECTORES.
-    
+    Genera embeddings vectoriales para todos los nodos pendientes de una subárea.
+
     Args:
-        id_subarea_relacionada (str): ID de la subárea a vectorizar.
-        
+        id_subarea_relacionada (str): Identificador de la subárea a vectorizar.
+
     Returns:
-        str: JSON con el resultado del proceso de vectorización.
+        str: Cadena en formato JSON con el reporte del proceso de vectorización.
     """
     res = generate_and_store_subarea_embeddings(id_subarea_relacionada)
     return json.dumps(res, ensure_ascii=False, indent=2)
