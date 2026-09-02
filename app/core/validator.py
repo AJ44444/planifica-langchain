@@ -3,13 +3,13 @@ import json
 from typing import Dict, Any, Union, Optional
 
 
-def validate_subagent_response(subagent_name: str, raw_output: Union[str, dict, Exception]) -> str:
+def validate_subagent_response(agent_name: str, raw_output: Union[str, dict, Exception]) -> str:
     """
     Valida y estandariza la respuesta de un subagente determinando su estado de ejecución.
 
     Args:
-        subagent_name (str): Nombre identificador del subagente.
-        raw_output (Union[str, dict, Exception]): Respuesta cruda, diccionario o excepción retornada por el subagente.
+        agent_name (str): Nombre identificador del agente o subagente.
+        raw_output (Union[str, dict, Exception]): Respuesta cruda, diccionario o excepción retornada.
 
     Returns:
         str: Cadena en formato JSON con el estado de ejecución, nombre del agente, mensaje y artefacto generado.
@@ -25,7 +25,7 @@ def validate_subagent_response(subagent_name: str, raw_output: Union[str, dict, 
 
         return json.dumps({
             "estado": status,
-            "agente": subagent_name,
+            "agente": agent_name,
             "artefacto_generado": None,
             "mensaje": f"Error de ejecución ({err_type.__name__}): {err_msg}"
         }, ensure_ascii=False)
@@ -55,25 +55,37 @@ def validate_subagent_response(subagent_name: str, raw_output: Union[str, dict, 
                 status = "failed"
             return json.dumps({
                 "estado": status,
-                "agente": subagent_name,
+                "agente": agent_name,
                 "artefacto_generado": None,
                 "mensaje": data_dict.get("message", text_content)
             }, ensure_ascii=False)
 
-    object_ids = list(set(re.findall(r'\b[a-fA-F0-9]{24}\b', text_content)))
+    name_clean = agent_name.strip().lower()
+    is_specialized = "consultas_especializadas" in name_clean
+    is_id_only_agent = any(k in name_clean for k in ["planificad", "lesson_planning", "instrumento", "recurso"])
 
-    artefacto = None
-    if object_ids:
+    if is_specialized:
+        artefacto = text_content
+    elif is_id_only_agent:
+        object_ids = list(set(re.findall(r'\b[a-fA-F0-9]{24}\b', text_content)))
         if len(object_ids) == 1:
             artefacto = {"id_referencia": object_ids[0]}
-        else:
+        elif len(object_ids) > 1:
             artefacto = {"ids_referencia": object_ids}
+        else:
+            artefacto = None
     else:
-        artefacto = text_content
+        object_ids = list(set(re.findall(r'\b[a-fA-F0-9]{24}\b', text_content)))
+        if len(object_ids) == 1:
+            artefacto = {"id_referencia": object_ids[0]}
+        elif len(object_ids) > 1:
+            artefacto = {"ids_referencia": object_ids}
+        else:
+            artefacto = text_content
 
     return json.dumps({
         "estado": "success",
-        "agente": subagent_name,
+        "agente": agent_name,
         "artefacto_generado": artefacto,
         "mensaje": "Operación completada exitosamente por el subagente."
     }, ensure_ascii=False)
