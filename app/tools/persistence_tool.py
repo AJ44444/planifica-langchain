@@ -29,6 +29,9 @@ from core.tool_inputs import (
     SaveLessonPlanInput,
     SaveAssessmentInstrumentInput,
     SaveMultimodalResourceInput,
+    UpdateLessonPlanInput,
+    UpdateAssessmentInstrumentInput,
+    UpdateMultimodalResourceInput,
 )
 
 
@@ -472,13 +475,34 @@ def get_planification_by_id(id_planificacion: str, config: RunnableConfig = None
         return json.dumps({"status": "error", "message": f"Error al buscar planificación: {str(e)}"})
 
 
-@tool("update_lesson_plan")
-def update_lesson_plan(id_planificacion: str, update_data: Dict[str, Any], config: RunnableConfig = None, id_usuario: str = "") -> str:
+@tool("update_lesson_plan", args_schema=UpdateLessonPlanInput)
+def update_lesson_plan(
+    id_planificacion: str,
+    metadatos: Optional[Union[dict, MetadatosPlanInput]] = None,
+    encabezado: Optional[Union[dict, EncabezadoPlan]] = None,
+    desarrollo_curricular: Optional[List[Union[dict, FilaCurricularPlan]]] = None,
+    config: RunnableConfig = None,
+    id_usuario: str = ""
+) -> str:
     """CRUD Update & Privacidad: Actualiza los campos solicitados mediante $set."""
     try:
         db = get_db()
         obj_id = ObjectId(id_planificacion.strip())
-        updates = _clean_updates(update_data)
+
+        merged_updates = {}
+        if metadatos is not None:
+            merged_updates["metadatos"] = _to_dict(metadatos)
+        if encabezado is not None:
+            merged_updates["encabezado"] = _to_dict(encabezado)
+        if desarrollo_curricular is not None:
+            des_list = []
+            for item in desarrollo_curricular:
+                des_list.append(_to_dict(item))
+            merged_updates["desarrollo_curricular"] = des_list
+
+        updates = _clean_updates(merged_updates)
+        if "id_usuario" in updates:
+            del updates["id_usuario"]
 
         if not updates:
             return json.dumps({"status": "error", "message": "No se proporcionaron campos válidos para actualizar."})
@@ -680,13 +704,38 @@ def get_assessment_instrument_by_id(id_instrumento: str) -> str:
         return json.dumps({"status": "error", "message": f"Error al buscar instrumento de evaluación: {str(e)}"})
 
 
-@tool("update_assessment_instrument")
-def update_assessment_instrument(id_instrumento: str, update_data: Dict[str, Any]) -> str:
+@tool("update_assessment_instrument", args_schema=UpdateAssessmentInstrumentInput)
+def update_assessment_instrument(
+    id_instrumento: str,
+    id_fila: Optional[int] = None,
+    id_actividad: Optional[str] = None,
+    tipo: Optional[str] = None,
+    titulo: Optional[str] = None,
+    instrumento_generado: Optional[Union[dict, InstrumentoGeneradoDetail]] = None
+) -> str:
     """CRUD Update: Actualiza los datos específicos de un instrumento de evaluación mediante $set."""
     try:
         db = get_db()
         obj_id = ObjectId(id_instrumento.strip())
-        updates = _clean_updates(update_data)
+
+        merged_updates = {}
+        if id_fila is not None:
+            merged_updates["id_fila"] = int(id_fila)
+        if id_actividad is not None:
+            merged_updates["id_actividad"] = _ensure_object_id(id_actividad)
+        if tipo is not None:
+            merged_updates["tipo"] = str(tipo)
+        if titulo is not None:
+            merged_updates["titulo"] = str(titulo)
+        if instrumento_generado is not None:
+            merged_updates["instrumento_generado"] = _to_dict(instrumento_generado)
+
+        updates = _clean_updates(merged_updates)
+        if "id_planificacion" in updates:
+            del updates["id_planificacion"]
+
+        if not updates:
+            return json.dumps({"status": "error", "message": "No se proporcionaron campos válidos para actualizar."})
 
         res = db[EVALUACION].update_one({"_id": obj_id}, {"$set": updates})
         if res.matched_count == 0:
@@ -769,13 +818,38 @@ def get_multimodal_resource_by_id(id_recurso: str) -> str:
         return json.dumps({"status": "error", "message": f"Error al leer recurso multimodal: {str(e)}"})
 
 
-@tool("update_multimodal_resource")
-def update_multimodal_resource(id_recurso: str, update_data: Dict[str, Any]) -> str:
+@tool("update_multimodal_resource", args_schema=UpdateMultimodalResourceInput)
+def update_multimodal_resource(
+    id_recurso: str,
+    id_fila: Optional[int] = None,
+    id_actividad: Optional[str] = None,
+    tipo: Optional[str] = None,
+    titulo: Optional[str] = None,
+    url: Optional[str] = None
+) -> str:
     """CRUD Update: Actualiza campos específicos de un recurso multimodal mediante $set."""
     try:
         db = get_db()
         obj_id = ObjectId(id_recurso.strip())
-        updates = _clean_updates(update_data)
+
+        merged_updates = {}
+        if id_fila is not None:
+            merged_updates["id_fila"] = int(id_fila)
+        if id_actividad is not None:
+            merged_updates["id_actividad"] = _ensure_object_id(id_actividad)
+        if tipo is not None:
+            merged_updates["tipo"] = str(tipo)
+        if titulo is not None:
+            merged_updates["titulo"] = str(titulo)
+        if url is not None:
+            merged_updates["url"] = str(url)
+
+        updates = _clean_updates(merged_updates)
+        if "id_planificacion" in updates:
+            del updates["id_planificacion"]
+
+        if not updates:
+            return json.dumps({"status": "error", "message": "No se proporcionaron campos válidos para actualizar."})
 
         res = db[RECURSOS].update_one({"_id": obj_id}, {"$set": updates})
         if res.matched_count == 0:

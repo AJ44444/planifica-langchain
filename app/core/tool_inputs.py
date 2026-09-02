@@ -99,7 +99,7 @@ class MetadatosPlanInput(BaseModel):
 
 
 # ==============================================================================
-# 2. ESQUEMAS DE ENTRADA TIPADOS EXCLUSIVAMENTE PARA HERRAMIENTAS SAVE (args_schema)
+# 2. ESQUEMAS DE ENTRADA TIPADOS PARA HERRAMIENTAS SAVE (args_schema)
 # ==============================================================================
 
 class SaveCurricularStructureInput(BaseModel):
@@ -138,3 +138,35 @@ class SaveMultimodalResourceInput(BaseModel):
     tipo: str = Field(..., description="Tipo de recurso: 'video', 'documento', 'imagen', 'simulacion', 'lectura'.")
     titulo: str = Field(..., description="Título descriptivo del recurso didáctico.")
     url: str = Field(..., description="Enlace URL del recurso (web o fuente externa).")
+
+
+# ==============================================================================
+# 3. ESQUEMAS DE ENTRADA TIPADOS PARA HERRAMIENTAS UPDATE (args_schema)
+# ==============================================================================
+
+class UpdateLessonPlanInput(BaseModel):
+    """Input estrictamente tipado para actualizar una planificación docente. Excluye 'id_usuario'."""
+    id_planificacion: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la planificación a actualizar.")
+    metadatos: Optional[Dict[str, Any]] = Field(default=None, description="Metadatos actualizados opcionales.")
+    encabezado: Optional[Dict[str, Any]] = Field(default=None, description="Datos de encabezado actualizados opcionales.")
+    desarrollo_curricular: Optional[List[Dict[str, Any]]] = Field(default=None, description="Desarrollo curricular actualizado opcional.")
+
+
+class UpdateAssessmentInstrumentInput(BaseModel):
+    """Input estrictamente tipado para actualizar un instrumento de evaluación. Excluye 'id_planificacion'."""
+    id_instrumento: str = Field(..., description="ID de MongoDB (24 caracteres hex) del instrumento a actualizar.")
+    id_fila: Optional[int] = Field(default=None, description="ID de fila actualizado opcional dentro de la planificación.")
+    id_actividad: Optional[str] = Field(default=None, description="ID de la actividad evaluada actualizado opcional.")
+    tipo: Optional[str] = Field(default=None, description="Tipo de instrumento actualizado opcional.")
+    titulo: Optional[str] = Field(default=None, description="Título descriptivo actualizado opcional.")
+    instrumento_generado: Optional[Dict[str, Any]] = Field(default=None, description="Estructura completa del instrumento generado actualizada opcional.")
+
+
+class UpdateMultimodalResourceInput(BaseModel):
+    """Input estrictamente tipado para actualizar un recurso multimodal. Excluye 'id_planificacion'."""
+    id_recurso: str = Field(..., description="ID de MongoDB (24 caracteres hex) del recurso a actualizar.")
+    id_fila: Optional[int] = Field(default=None, description="ID de fila actualizado opcional dentro de la planificación.")
+    id_actividad: Optional[str] = Field(default=None, description="ID de la actividad de aprendizaje actualizado opcional.")
+    tipo: Optional[str] = Field(default=None, description="Tipo de recurso actualizado opcional.")
+    titulo: Optional[str] = Field(default=None, description="Título descriptivo actualizado opcional.")
+    url: Optional[str] = Field(default=None, description="Enlace URL del recurso actualizado opcional.")

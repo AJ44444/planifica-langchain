@@ -12,13 +12,17 @@ from core.tool_inputs import (
     SaveAssessmentInstrumentInput,
     SaveMultimodalResourceInput,
     SaveCurricularStructureInput,
+    UpdateLessonPlanInput,
+    UpdateAssessmentInstrumentInput,
+    UpdateMultimodalResourceInput,
 )
 from tools.persistence_tool import (
     save_lesson_plan,
     save_assessment_instrument,
     save_multimodal_resource,
-    get_planification_by_id,
     update_lesson_plan,
+    update_assessment_instrument,
+    update_multimodal_resource,
 )
 
 
@@ -166,4 +170,11 @@ def test_cnb_catalog_query_tools():
         res_subareas = json.loads(get_cnb_subareas_by_area_id.invoke({"id_area": "60d5ec49f1a2c81234567811", "page": 1, "limit": 10}))
         assert res_subareas["status"] == "success"
         assert res_subareas["subareas"] == [{"id_subarea": "60d5ec49f1a2c81234567822", "nombre_subarea": "Matemáticas 1"}]
+
+
+def test_update_tools_schema_validation():
+    """Verifica que las herramientas de actualización tengan sus schemas Pydantic de entrada asignados."""
+    assert update_lesson_plan.args_schema == UpdateLessonPlanInput
+    assert update_assessment_instrument.args_schema == UpdateAssessmentInstrumentInput
+    assert update_multimodal_resource.args_schema == UpdateMultimodalResourceInput
 

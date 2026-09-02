@@ -38,6 +38,9 @@ from .tool_inputs import (
     SaveLessonPlanInput,
     SaveAssessmentInstrumentInput,
     SaveMultimodalResourceInput,
+    UpdateLessonPlanInput,
+    UpdateAssessmentInstrumentInput,
+    UpdateMultimodalResourceInput,
 )
 
 __all__ = [
@@ -72,4 +75,7 @@ __all__ = [
     "SaveLessonPlanInput",
     "SaveAssessmentInstrumentInput",
     "SaveMultimodalResourceInput",
+    "UpdateLessonPlanInput",
+    "UpdateAssessmentInstrumentInput",
+    "UpdateMultimodalResourceInput",
 ]
