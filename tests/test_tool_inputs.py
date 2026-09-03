@@ -23,6 +23,7 @@ from tools.persistence_tool import (
     update_lesson_plan,
     update_assessment_instrument,
     update_multimodal_resource,
+    get_learning_activity_by_id,
 )
 
 
@@ -82,8 +83,6 @@ def test_save_assessment_instrument_tool_schema_validation():
     assert save_assessment_instrument.args_schema == SaveAssessmentInstrumentInput
 
     sample_input = {
-        "id_planificacion": "60d5ec49f1a2c81234567899",
-        "id_fila": 1,
         "id_actividad": "60d5ec49f1a2c8123456789a",
         "tipo": "rubrica",
         "titulo": "Rúbrica de Resolución de Problemas",
@@ -99,7 +98,7 @@ def test_save_assessment_instrument_tool_schema_validation():
     }
 
     mock_db = MagicMock()
-    mock_db["instrumentos_evaluacion"].insert_one.return_value.inserted_id = ObjectId("60d5ec49f1a2c81234567898")
+    mock_db["evaluaciones_instrumentos"].insert_one.return_value.inserted_id = ObjectId("60d5ec49f1a2c81234567898")
 
     with patch("tools.persistence_tool.get_db", return_value=mock_db):
         res_str = save_assessment_instrument.invoke(sample_input)
@@ -113,8 +112,6 @@ def test_save_multimodal_resource_tool_schema_validation():
     assert save_multimodal_resource.args_schema == SaveMultimodalResourceInput
 
     sample_input = {
-        "id_planificacion": "60d5ec49f1a2c81234567899",
-        "id_fila": 1,
         "id_actividad": "60d5ec49f1a2c8123456789a",
         "tipo": "video",
         "titulo": "Video explicativo de álgebra",
@@ -129,6 +126,24 @@ def test_save_multimodal_resource_tool_schema_validation():
         res = json.loads(res_str)
         assert res.get("status") == "success"
         assert res.get("id_recurso") == "60d5ec49f1a2c81234567897"
+
+
+def test_get_learning_activity_by_id():
+    """Verifica la recuperación desestructurada de una actividad de aprendizaje por su ID en el pipeline."""
+    mock_db = MagicMock()
+    mock_db["planificaciones_generadas"].aggregate.return_value = [
+        {
+            "id_actividad": ObjectId("60d5ec49f1a2c8123456789a"),
+            "fase": "inicio",
+            "descripcion": "Resolver acertijo numérico"
+        }
+    ]
+
+    with patch("tools.persistence_tool.get_db", return_value=mock_db):
+        res_str = get_learning_activity_by_id.invoke({"id_actividad": "60d5ec49f1a2c8123456789a"})
+        res = json.loads(res_str)
+        assert res.get("status") == "success"
+        assert res.get("actividad", {}).get("id_actividad") == "60d5ec49f1a2c8123456789a"
 
 
 def test_cnb_catalog_query_tools():
@@ -156,17 +171,14 @@ def test_cnb_catalog_query_tools():
     }
 
     with patch("tools.persistence_tool.get_db", return_value=mock_db):
-        # 1. test get_cnb_careers_list
         res_careers = json.loads(get_cnb_careers_list.invoke({}))
         assert res_careers["status"] == "success"
         assert res_careers["carreras"] == ["Ciclo Básico", "Bachillerato en Ciencias y Letras"]
 
-        # 2. test get_cnb_areas_by_career (single career, pagination, only id_area & nombre_area)
         res_areas = json.loads(get_cnb_areas_by_career.invoke({"carrera": "Ciclo Básico", "page": 1, "limit": 10}))
         assert res_areas["status"] == "success"
         assert res_areas["areas"] == [{"id_area": "60d5ec49f1a2c81234567811", "nombre_area": "Matemáticas"}]
 
-        # 3. test get_cnb_subareas_by_area_id (pagination, only id_subarea & nombre_subarea)
         res_subareas = json.loads(get_cnb_subareas_by_area_id.invoke({"id_area": "60d5ec49f1a2c81234567811", "page": 1, "limit": 10}))
         assert res_subareas["status"] == "success"
         assert res_subareas["subareas"] == [{"id_subarea": "60d5ec49f1a2c81234567822", "nombre_subarea": "Matemáticas 1"}]
@@ -177,4 +189,3 @@ def test_update_tools_schema_validation():
     assert update_lesson_plan.args_schema == UpdateLessonPlanInput
     assert update_assessment_instrument.args_schema == UpdateAssessmentInstrumentInput
     assert update_multimodal_resource.args_schema == UpdateMultimodalResourceInput
-

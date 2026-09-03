@@ -4,7 +4,7 @@ from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
 from memory.mongodb_memory import checkpointer
 from core.llm import llm
-from prompts.system_prompts import SYSTEM_PROMPT_SUPERVISOR
+from core import load_prompt
 from agents.process_pdf_agent import agent as pdf_agent
 from agents.school_lesson_plans_agent import agent as lesson_plans_agent
 from agents.school_assessment_instruments_agent import agent as assessment_agent
@@ -145,7 +145,7 @@ main_agent = create_agent(
         school_multimodal_resources,
         specialized_queries
     ],
-    system_prompt=SYSTEM_PROMPT_SUPERVISOR,
+    system_prompt=load_prompt("supervisor.md"),
     name="supervisor_planifica",
     middleware=[
         SecurityGuardrailMiddleware(),

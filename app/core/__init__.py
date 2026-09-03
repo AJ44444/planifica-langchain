@@ -1,5 +1,5 @@
 """
-Módulo core de configuración, modelo de lenguaje (LLM), colecciones e esquemas de entrada de herramientas (tool_inputs).
+Módulo core de configuración, modelo de lenguaje (LLM), colecciones, esquemas de entrada (tool_inputs) y cargador de prompts.
 """
 
 from .config import (
@@ -15,6 +15,7 @@ from .config import (
     LANGGRAPH_CLOUD_LICENSE_KEY,
 )
 from .llm import llm
+from .prompt_loader import load_prompt
 from .collections import (
     AREAS,
     SUBAREAS,
@@ -55,6 +56,7 @@ __all__ = [
     "LANGSMITH_PROJECT",
     "LANGGRAPH_CLOUD_LICENSE_KEY",
     "llm",
+    "load_prompt",
     "AREAS",
     "SUBAREAS",
     "VECTORES",

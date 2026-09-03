@@ -6,29 +6,23 @@ from tools.persistence_tool import (
     save_lesson_plan,
     get_planification_by_id,
     update_lesson_plan,
-    delete_lesson_plan,
-    get_cnb_careers_list,
-    get_cnb_areas_by_career,
-    get_cnb_subareas_by_area_id
+    delete_lesson_plan
 )
 from tools.vector_tool import search_curriculum_vector_db
 from middleware.security_middleware import SecurityGuardrailMiddleware
-from prompts.system_prompts import SYSTEM_PROMPT_SCHOOL_LESSON_PLANS
+from core import load_prompt
 
 agent = create_agent(
     model=llm,
     tools=[
         search_curriculum_vector_db,
         save_lesson_plan,
+        get_paginated_lesson_plans,
         get_planification_by_id,
         update_lesson_plan,
-        delete_lesson_plan,
-        get_cnb_careers_list,
-        get_cnb_areas_by_career,
-        get_cnb_subareas_by_area_id,
-        get_paginated_lesson_plans
+        delete_lesson_plan
     ],
-    system_prompt=SYSTEM_PROMPT_SCHOOL_LESSON_PLANS,
+    system_prompt=load_prompt("school_lesson_plans.md"),
     name="planificador_clases_cnb",
     middleware=[
         SecurityGuardrailMiddleware(),

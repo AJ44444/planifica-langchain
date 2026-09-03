@@ -549,6 +549,43 @@ def get_planification_by_id(id_planificacion: str, config: RunnableConfig = None
         return json.dumps({"status": "error", "message": f"Error al buscar planificación: {str(e)}"})
 
 
+@tool("get_learning_activity_by_id")
+def get_learning_activity_by_id(id_actividad: str) -> str:
+    """
+    Recupera una actividad de aprendizaje específica por su identificador utilizando desestructuración en pipeline.
+
+    Args:
+        id_actividad (str): Identificador único de la actividad de aprendizaje.
+
+    Returns:
+        str: Respuesta en formato JSON con los datos desestructurados de la actividad de aprendizaje encontrada.
+    """
+    try:
+        db = get_db()
+        act_obj_id = ObjectId(id_actividad.strip())
+
+        pipeline = [
+            {"$unwind": "$desarrollo_curricular"},
+            {"$unwind": "$desarrollo_curricular.actividades_aprendizaje"},
+            {"$match": {"desarrollo_curricular.actividades_aprendizaje.id_actividad": act_obj_id}},
+            {"$project": {
+                "_id": 0,
+                "id_actividad": "$desarrollo_curricular.actividades_aprendizaje.id_actividad",
+                "fase": "$desarrollo_curricular.actividades_aprendizaje.fase",
+                "descripcion": "$desarrollo_curricular.actividades_aprendizaje.descripcion"
+            }}
+        ]
+
+        results = list(db[PLANIFICACION].aggregate(pipeline))
+        if not results:
+            return json.dumps({"status": "error", "message": f"Actividad de aprendizaje '{id_actividad}' no encontrada."})
+
+        return json.dumps({"status": "success", "actividad": results[0]}, cls=JSONEncoderCustom, ensure_ascii=False)
+
+    except Exception as e:
+        return json.dumps({"status": "error", "message": f"Error al buscar actividad de aprendizaje: {str(e)}"})
+
+
 @tool("update_lesson_plan", args_schema=UpdateLessonPlanInput)
 def update_lesson_plan(
     id_planificacion: str,
@@ -646,16 +683,25 @@ def delete_lesson_plan(id_planificacion: str, config: RunnableConfig = None, id_
         if effective_id and len(effective_id.strip()) == 24:
             query["id_usuario"] = ObjectId(effective_id.strip())
 
-        res = db[PLANIFICACION].delete_one(query)
-
-        if res.deleted_count == 0:
+        plan = db[PLANIFICACION].find_one(query)
+        if not plan:
             return json.dumps({
                 "status": "error",
                 "message": f"Acceso denegado o planificación '{id_planificacion}' no encontrada para eliminar."
             }, ensure_ascii=False)
 
-        db[EVALUACION].delete_many({"id_planificacion": obj_id})
-        db[RECURSOS].delete_many({"id_planificacion": obj_id})
+        activity_ids = []
+        for fila in plan.get("desarrollo_curricular", []):
+            for act in fila.get("actividades_aprendizaje", []):
+                act_id = act.get("id_actividad")
+                if act_id:
+                    activity_ids.append(_ensure_object_id(act_id))
+
+        res = db[PLANIFICACION].delete_one({"_id": obj_id})
+
+        if activity_ids:
+            db[EVALUACION].delete_many({"id_actividad": {"$in": activity_ids}})
+            db[RECURSOS].delete_many({"id_actividad": {"$in": activity_ids}})
 
         return json.dumps({
             "status": "success",
@@ -785,8 +831,6 @@ def delete_cnb_vector(id_vector: str, confirm: bool = True) -> str:
 
 @tool("save_assessment_instrument", args_schema=SaveAssessmentInstrumentInput)
 def save_assessment_instrument(
-    id_planificacion: str,
-    id_fila: int,
     id_actividad: str,
     tipo: str,
     titulo: str,
@@ -796,8 +840,6 @@ def save_assessment_instrument(
     Guarda un instrumento de evaluación vinculado a una actividad de aprendizaje.
 
     Args:
-        id_planificacion (str): Identificador de la planificación.
-        id_fila (int): Identificador de fila dentro de la planificación.
         id_actividad (str): Identificador de la actividad evaluada.
         tipo (str): Tipo de instrumento (rubrica, lista_cotejo, escala_rango).
         titulo (str): Título del instrumento.
@@ -808,13 +850,10 @@ def save_assessment_instrument(
     """
     try:
         db = get_db()
-        plan_obj_id = _ensure_object_id(id_planificacion)
         act_obj_id = _ensure_object_id(id_actividad)
         inst_dict = _to_dict(instrumento_generado)
 
         doc = {
-            "id_planificacion": plan_obj_id,
-            "id_fila": int(id_fila),
             "id_actividad": act_obj_id,
             "tipo": str(tipo),
             "titulo": str(titulo),
@@ -825,8 +864,7 @@ def save_assessment_instrument(
         return json.dumps({
             "status": "success",
             "message": "Instrumento de evaluación guardado exitosamente.",
-            "id_instrumento": str(res.inserted_id),
-            "id_planificacion": str(plan_obj_id)
+            "id_instrumento": str(res.inserted_id)
         }, cls=JSONEncoderCustom, ensure_ascii=False)
 
     except Exception as e:
@@ -858,7 +896,6 @@ def get_assessment_instrument_by_id(id_instrumento: str) -> str:
 @tool("update_assessment_instrument", args_schema=UpdateAssessmentInstrumentInput)
 def update_assessment_instrument(
     id_instrumento: str,
-    id_fila: Optional[int] = None,
     id_actividad: Optional[str] = None,
     tipo: Optional[str] = None,
     titulo: Optional[str] = None,
@@ -869,7 +906,6 @@ def update_assessment_instrument(
 
     Args:
         id_instrumento (str): Identificador único del instrumento a actualizar.
-        id_fila (int, opcional): Identificador de fila actualizado.
         id_actividad (str, opcional): Identificador de actividad actualizado.
         tipo (str, opcional): Tipo de instrumento actualizado.
         titulo (str, opcional): Título del instrumento actualizado.
@@ -883,8 +919,6 @@ def update_assessment_instrument(
         obj_id = ObjectId(id_instrumento.strip())
 
         merged_updates = {}
-        if id_fila is not None:
-            merged_updates["id_fila"] = int(id_fila)
         if id_actividad is not None:
             merged_updates["id_actividad"] = _ensure_object_id(id_actividad)
         if tipo is not None:
@@ -895,8 +929,6 @@ def update_assessment_instrument(
             merged_updates["instrumento_generado"] = _to_dict(instrumento_generado)
 
         updates = _clean_updates(merged_updates)
-        if "id_planificacion" in updates:
-            del updates["id_planificacion"]
 
         if not updates:
             return json.dumps({"status": "error", "message": "No se proporcionaron campos válidos para actualizar."})
@@ -939,8 +971,6 @@ def delete_assessment_instrument(id_instrumento: str, confirm: bool = True) -> s
 
 @tool("save_multimodal_resource", args_schema=SaveMultimodalResourceInput)
 def save_multimodal_resource(
-    id_planificacion: str,
-    id_fila: int,
     id_actividad: str,
     tipo: str,
     titulo: str,
@@ -950,8 +980,6 @@ def save_multimodal_resource(
     Guarda un recurso didáctico multimodal vinculado a una actividad de aprendizaje.
 
     Args:
-        id_planificacion (str): Identificador de la planificación.
-        id_fila (int): Identificador de fila dentro de la planificación.
         id_actividad (str): Identificador de la actividad de aprendizaje.
         tipo (str): Tipo de recurso (video, imagen, documento, simulacion, lectura).
         titulo (str): Título del recurso didáctico.
@@ -962,12 +990,9 @@ def save_multimodal_resource(
     """
     try:
         db = get_db()
-        plan_obj_id = _ensure_object_id(id_planificacion)
         act_obj_id = _ensure_object_id(id_actividad)
 
         doc = {
-            "id_planificacion": plan_obj_id,
-            "id_fila": int(id_fila),
             "id_actividad": act_obj_id,
             "tipo": str(tipo),
             "titulo": str(titulo),
@@ -978,8 +1003,7 @@ def save_multimodal_resource(
         return json.dumps({
             "status": "success",
             "message": "Recurso multimodal guardado exitosamente.",
-            "id_recurso": str(res.inserted_id),
-            "id_planificacion": str(plan_obj_id)
+            "id_recurso": str(res.inserted_id)
         }, cls=JSONEncoderCustom, ensure_ascii=False)
 
     except Exception as e:
@@ -1011,7 +1035,6 @@ def get_multimodal_resource_by_id(id_recurso: str) -> str:
 @tool("update_multimodal_resource", args_schema=UpdateMultimodalResourceInput)
 def update_multimodal_resource(
     id_recurso: str,
-    id_fila: Optional[int] = None,
     id_actividad: Optional[str] = None,
     tipo: Optional[str] = None,
     titulo: Optional[str] = None,
@@ -1022,7 +1045,6 @@ def update_multimodal_resource(
 
     Args:
         id_recurso (str): Identificador único del recurso a actualizar.
-        id_fila (int, opcional): Identificador de fila actualizado.
         id_actividad (str, opcional): Identificador de la actividad actualizado.
         tipo (str, opcional): Tipo de recurso actualizado.
         titulo (str, opcional): Título del recurso actualizado.
@@ -1036,8 +1058,6 @@ def update_multimodal_resource(
         obj_id = ObjectId(id_recurso.strip())
 
         merged_updates = {}
-        if id_fila is not None:
-            merged_updates["id_fila"] = int(id_fila)
         if id_actividad is not None:
             merged_updates["id_actividad"] = _ensure_object_id(id_actividad)
         if tipo is not None:
@@ -1048,8 +1068,6 @@ def update_multimodal_resource(
             merged_updates["url"] = str(url)
 
         updates = _clean_updates(merged_updates)
-        if "id_planificacion" in updates:
-            del updates["id_planificacion"]
 
         if not updates:
             return json.dumps({"status": "error", "message": "No se proporcionaron campos válidos para actualizar."})
@@ -1188,7 +1206,7 @@ def get_latest_plan_instruments_and_resources(config: RunnableConfig = None, id_
 
         user_obj_id = ObjectId(effective_id.strip())
 
-        user_plans = list(db[PLANIFICACION].find({"id_usuario": user_obj_id}, projection={"_id": 1}))
+        user_plans = list(db[PLANIFICACION].find({"id_usuario": user_obj_id}))
         if not user_plans:
             return json.dumps({
                 "status": "success",
@@ -1197,21 +1215,27 @@ def get_latest_plan_instruments_and_resources(config: RunnableConfig = None, id_
                 "ultimos_recursos": []
             }, ensure_ascii=False)
 
-        plan_ids = [plan["_id"] for plan in user_plans]
+        all_activity_ids = []
+        for plan in user_plans:
+            for fila in plan.get("desarrollo_curricular", []):
+                for act in fila.get("actividades_aprendizaje", []):
+                    act_id = act.get("id_actividad")
+                    if act_id:
+                        all_activity_ids.append(_ensure_object_id(act_id))
 
         instruments = list(
             db[EVALUACION]
-            .find({"id_planificacion": {"$in": plan_ids}})
+            .find({"id_actividad": {"$in": all_activity_ids}})
             .sort("_id", -1)
             .limit(3)
-        )
+        ) if all_activity_ids else []
 
         resources = list(
             db[RECURSOS]
-            .find({"id_planificacion": {"$in": plan_ids}})
+            .find({"id_actividad": {"$in": all_activity_ids}})
             .sort("_id", -1)
             .limit(3)
-        )
+        ) if all_activity_ids else []
 
         return json.dumps({
             "status": "success",
@@ -1307,8 +1331,15 @@ def get_lesson_plan_details(id_planificacion: str, config: RunnableConfig = None
         if not plan:
             return json.dumps({"status": "error", "message": "Acceso denegado o planificación no encontrada para este usuario."})
 
-        instruments = list(db[EVALUACION].find({"id_planificacion": plan_obj_id}))
-        resources = list(db[RECURSOS].find({"id_planificacion": plan_obj_id}))
+        activity_ids = []
+        for fila in plan.get("desarrollo_curricular", []):
+            for act in fila.get("actividades_aprendizaje", []):
+                act_id = act.get("id_actividad")
+                if act_id:
+                    activity_ids.append(_ensure_object_id(act_id))
+
+        instruments = list(db[EVALUACION].find({"id_actividad": {"$in": activity_ids}})) if activity_ids else []
+        resources = list(db[RECURSOS].find({"id_actividad": {"$in": activity_ids}})) if activity_ids else []
 
         return json.dumps({
             "status": "success",

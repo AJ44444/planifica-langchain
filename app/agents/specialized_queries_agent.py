@@ -14,7 +14,7 @@ from tools.persistence_tool import (
     get_cnb_subarea_by_id
 )
 from middleware.security_middleware import SecurityGuardrailMiddleware
-from prompts.system_prompts import SYSTEM_PROMPT_SPECIALIZED_QUERIES
+from core import load_prompt
 
 agent = create_agent(
     model=llm,
@@ -30,7 +30,7 @@ agent = create_agent(
         get_cnb_area_by_id,
         get_cnb_subarea_by_id
     ],
-    system_prompt=SYSTEM_PROMPT_SPECIALIZED_QUERIES,
+    system_prompt=load_prompt("specialized_queries.md"),
     name="consultas_especializadas_cnb",
     middleware=[
         SecurityGuardrailMiddleware(),
