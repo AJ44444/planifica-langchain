@@ -5,15 +5,6 @@ from auth.auth_handler import exchange_google_token_for_session, refresh_access_
 
 
 async def login_with_google(request):
-    """
-    Autentica al usuario validando el token de Google y emite tokens de sesión en cookies seguras.
-
-    Args:
-        request: Objeto de petición HTTP con el token de Google en el cuerpo JSON.
-
-    Returns:
-        JSONResponse: Respuesta JSON con la sesión creada y las cookies configuradas.
-    """
     try:
         if request.method == "OPTIONS":
             return JSONResponse({"status": "ok"}, status_code=200)
@@ -55,15 +46,6 @@ async def login_with_google(request):
 
 
 async def refresh_token_endpoint(request):
-    """
-    Renueva el token de acceso utilizando la cookie de refresco de sesión.
-
-    Args:
-        request: Objeto de petición HTTP conteniendo la cookie 'refresh_token'.
-
-    Returns:
-        JSONResponse: Respuesta JSON con el nuevo token de acceso y la cookie actualizada.
-    """
     try:
         if request.method == "OPTIONS":
             return JSONResponse({"status": "ok"}, status_code=200)
@@ -96,15 +78,6 @@ async def refresh_token_endpoint(request):
 
 
 async def logout(request):
-    """
-    Cierra la sesión activa eliminando las cookies de autenticación del usuario.
-
-    Args:
-        request: Objeto de petición HTTP.
-
-    Returns:
-        JSONResponse: Respuesta JSON confirmando el cierre de sesión.
-    """
     if request.method == "OPTIONS":
         return JSONResponse({"status": "ok"}, status_code=200)
 
