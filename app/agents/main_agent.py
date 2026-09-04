@@ -11,7 +11,6 @@ from agents.school_assessment_instruments_agent import agent as assessment_agent
 from agents.school_multimodal_resources_agent import agent as multimodal_agent
 from agents.specialized_queries_agent import agent as specialized_queries_agent
 from middleware.security_middleware import SecurityGuardrailMiddleware
-from core.validator import validate_subagent_response
 
 
 @tool("process_pdf")
@@ -28,10 +27,9 @@ def process_pdf(request: str, config: RunnableConfig) -> str:
     """
     try:
         res = pdf_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
-        raw_output = res["messages"][-1].content if res.get("messages") else "No se obtuvo respuesta."
-        return validate_subagent_response("procesador_pdf_cnb", raw_output)
+        return res["messages"][-1].content if res.get("messages") else "No se obtuvo respuesta."
     except Exception as e:
-        return validate_subagent_response("procesador_pdf_cnb", e)
+        return f"Error al procesar PDF: {str(e)}"
 
 
 @tool("school_lesson_plans")
@@ -48,10 +46,9 @@ def school_lesson_plans(request: str, config: RunnableConfig) -> str:
     """
     try:
         res = lesson_plans_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
-        raw_output = res["messages"][-1].content if res.get("messages") else "No se obtuvo respuesta."
-        return validate_subagent_response("planificador_clases_cnb", raw_output)
+        return res["messages"][-1].content if res.get("messages") else "No se obtuvo respuesta."
     except Exception as e:
-        return validate_subagent_response("planificador_clases_cnb", e)
+        return f"Error en gestión de planificaciones: {str(e)}"
 
 
 @tool("school_assessment_instruments")
@@ -68,10 +65,9 @@ def school_assessment_instruments(request: str, config: RunnableConfig) -> str:
     """
     try:
         res = assessment_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
-        raw_output = res["messages"][-1].content if res.get("messages") else "No se obtuvo respuesta."
-        return validate_subagent_response("instrumentos_evaluacion_cnb", raw_output)
+        return res["messages"][-1].content if res.get("messages") else "No se obtuvo respuesta."
     except Exception as e:
-        return validate_subagent_response("instrumentos_evaluacion_cnb", e)
+        return f"Error en instrumentos de evaluación: {str(e)}"
 
 
 @tool("school_multimodal_resources")
@@ -88,10 +84,9 @@ def school_multimodal_resources(request: str, config: RunnableConfig) -> str:
     """
     try:
         res = multimodal_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
-        raw_output = res["messages"][-1].content if res.get("messages") else "No se obtuvo respuesta."
-        return validate_subagent_response("recursos_multimodales_cnb", raw_output)
+        return res["messages"][-1].content if res.get("messages") else "No se obtuvo respuesta."
     except Exception as e:
-        return validate_subagent_response("recursos_multimodales_cnb", e)
+        return f"Error en recursos multimodales: {str(e)}"
 
 
 @tool("specialized_queries")
@@ -108,10 +103,9 @@ def specialized_queries(request: str, config: RunnableConfig) -> str:
     """
     try:
         res = specialized_queries_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
-        raw_output = res["messages"][-1].content if res.get("messages") else "No se obtuvo respuesta."
-        return validate_subagent_response("consultas_especializadas_cnb", raw_output)
+        return res["messages"][-1].content if res.get("messages") else "No se obtuvo respuesta."
     except Exception as e:
-        return validate_subagent_response("consultas_especializadas_cnb", e)
+        return f"Error en consultas especializadas: {str(e)}"
 
 
 main_agent = create_agent(
