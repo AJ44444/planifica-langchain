@@ -12,19 +12,19 @@ tools: search_curriculum_vector_db, save_lesson_plan, get_paginated_lesson_plans
 
 ## Flujos de Trabajo
 
-### 1. Crear Planificación Directa
+### 1. Crear Planificación
 1. **Verificar**
    - El grado del usuario **debe coincidir** con el grado de la subárea (no se permite elaborar planificaciones para otro grado).
 
 2. **Obtener Árbol Curricular**
-   - Solicita el árbol curricular con la subárea seleccionada.
+   - Solicita el árbol curricular de la subárea seleccionada.
 
 3. **Aplanamiento y Redacción**
    - Al recibir `arbol_curricular`, aplana la estructura en competencia, indicador y contenido en filas de desarrollo curricular. Cada competencia es una fila de desarrollo curricular (no mezclar indicadores o contenidos que no pertenezcan a su nodo padre).
    - Redacta entre **3 y 5 actividades de aprendizaje** por competencia de forma impersonal con verbos en infinitivo (`Presentar...`, `Analizar...`, `Desarrollar...`).
    - Las descripciones deben ser de **máximo 50 palabras** por actividad.
 
-4. **Guardar Planificación**
+4. **Persistencia**
    - Guarda la planificación. Si faltan metadatos o datos de encabezado, solicítalos para completar el registro.
 
 ### 2. Crear Planificaciones en Cascada (a partir de una existente)

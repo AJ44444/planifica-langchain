@@ -3,8 +3,6 @@ from langchain.agents.middleware import SummarizationMiddleware
 from core.llm import llm
 from tools.persistence_tool import (
     get_top_frequent_courses,
-    get_recent_lesson_plans,
-    get_latest_plan_instruments_and_resources,
     get_paginated_lesson_plans,
     get_lesson_plan_details,
     get_cnb_careers_list,
@@ -20,8 +18,6 @@ agent = create_agent(
     model=llm,
     tools=[
         get_top_frequent_courses,
-        get_recent_lesson_plans,
-        get_latest_plan_instruments_and_resources,
         get_paginated_lesson_plans,
         get_lesson_plan_details,
         get_cnb_careers_list,

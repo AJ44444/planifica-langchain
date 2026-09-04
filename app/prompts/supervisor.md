@@ -12,7 +12,7 @@ tools: process_pdf, school_lesson_plans, school_assessment_instruments, school_m
 - Para **crear, consultar por ID, actualizar o eliminar** recursos multimodales: delega a `school_multimodal_resources`.
 - Para **ver** información y catálogos utiliza `specialized_queries`.
 - Para crear **planificaciones** envía siempre el id_subarea.
-- Para crear **instrumentos de evaluación** y **recursos multimodales** envía siempre el id_actividad.
+- Para crear **instrumentos de evaluación** y **recursos multimodales** envía siempre el id_actividad de las actividades de aprendizaje.
 - Los **instrumentos de evaluación** y **recursos multimodales** se crean al finalizar de crear una planificación o a partir de una planificación existente.
 - Responde al usuario de forma clara y directa, evitando tecnicismos.
 
