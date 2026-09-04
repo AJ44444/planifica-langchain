@@ -11,7 +11,6 @@ from agents.school_assessment_instruments_agent import agent as assessment_agent
 from agents.school_multimodal_resources_agent import agent as multimodal_agent
 from agents.specialized_queries_agent import agent as specialized_queries_agent
 from middleware.security_middleware import SecurityGuardrailMiddleware
-from workflows.lesson_planning_workflow import lesson_planning_workflow
 from core.validator import validate_subagent_response
 
 
@@ -38,10 +37,10 @@ def process_pdf(request: str, config: RunnableConfig) -> str:
 @tool("school_lesson_plans")
 def school_lesson_plans(request: str, config: RunnableConfig) -> str:
     """
-    Gestiona la consulta por ID, actualización o eliminación de planificaciones de clase existentes.
+    Gestiona la creación, consulta por ID, actualización o eliminación de planificaciones de clase.
 
     Args:
-        request (str): Instrucción para consultar, actualizar o eliminar planificaciones.
+        request (str): Instrucción para crear, consultar, actualizar o eliminar planificaciones.
         config (RunnableConfig): Configuración de ejecución y contexto de LangGraph.
 
     Returns:
@@ -53,26 +52,6 @@ def school_lesson_plans(request: str, config: RunnableConfig) -> str:
         return validate_subagent_response("planificador_clases_cnb", raw_output)
     except Exception as e:
         return validate_subagent_response("planificador_clases_cnb", e)
-
-
-@tool("complete_lesson_planning_workflow")
-async def complete_lesson_planning_workflow(request: str, config: RunnableConfig) -> str:
-    """
-    Ejecuta el flujo completo para crear y elaborar nuevas planificaciones docentes con instrumentos y recursos.
-
-    Args:
-        request (str): Instrucción con los requerimientos y parámetros clave del plan a crear.
-        config (RunnableConfig): Configuración de ejecución y contexto de LangGraph.
-
-    Returns:
-        str: Planificación completa elaborada junto a sus instrumentos de evaluación y recursos multimodales.
-    """
-    try:
-        res = await lesson_planning_workflow.ainvoke({"request": request.strip()}, config=config)
-        raw_output = res.get("final_output", "No se obtuvo respuesta del workflow de planificación completa.")
-        return validate_subagent_response("lesson_planning_workflow", raw_output)
-    except Exception as e:
-        return validate_subagent_response("lesson_planning_workflow", e)
 
 
 @tool("school_assessment_instruments")
@@ -140,7 +119,6 @@ main_agent = create_agent(
     tools=[
         process_pdf,
         school_lesson_plans,
-        complete_lesson_planning_workflow,
         school_assessment_instruments,
         school_multimodal_resources,
         specialized_queries
