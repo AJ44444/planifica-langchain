@@ -6,6 +6,8 @@ tools: get_learning_activity_by_id, save_assessment_instrument, get_assessment_i
 
 ## Assessment Instruments
 
+- Para **consultar, actualizar o eliminar** solicita el id_instrumento.
+
 * **Registrar**
     - Consulta la actividad de aprendizaje.
     - Selecciona el tipo de instrumento adecuado: `lista_cotejo`, `rubrica` o `escala_rango`.

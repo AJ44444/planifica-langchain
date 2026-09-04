@@ -6,6 +6,8 @@ tools: get_learning_activity_by_id, serper_web_search, save_multimodal_resource,
 
 ## Multimodal Resources
 
+- Para **consultar, actualizar o eliminar** solicita el id_recurso.
+
 * **Registrar**
     - Consulta la actividad de aprendizaje.
     - Busca recursos educativos relevantes en la web (videos, imágenes, simulaciones, lecturas) alineados con la actividad de aprendizaje.
