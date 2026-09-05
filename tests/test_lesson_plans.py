@@ -4,7 +4,7 @@ import sys
 import json
 from unittest.mock import patch
 
-# Asegurar que el paquete app esté accesible en sys.path
+# Ensure app package is accessible in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app")))
 
 from tools.vector_tool import search_curriculum_vector_db, get_embedding_model
@@ -12,7 +12,7 @@ from core.config import get_env_variable
 
 
 def test_embedding_model_dimensionality():
-    """Verifica que el modelo de embeddings esté configurado con el modelo gemini-embedding-2 y dimensión 768."""
+    """Verifies that embedding model is configured with gemini-embedding-2 and dimension 768."""
     with patch.dict(os.environ, {"GOOGLE_API_KEY": "mock_key"}):
         emb_model = get_embedding_model()
         assert emb_model.model == "models/gemini-embedding-2"
@@ -21,7 +21,7 @@ def test_embedding_model_dimensionality():
 
 def test_vector_search_mocked_tree():
     """
-    2.1 Planificación: Verificar que la búsqueda de vectores requiere id_subarea_relacionada y entrega el árbol del currículum.
+    Verifies that vector search requires id_subarea_relacionada and returns curriculum tree.
     """
     res_str = search_curriculum_vector_db.invoke({
         "query": "comunicación",
@@ -30,9 +30,9 @@ def test_vector_search_mocked_tree():
     })
     res_dict = json.loads(res_str)
     assert res_dict.get("status") == "error"
-    assert "obligatorio" in res_dict.get("message", "")
+    assert "required" in res_dict.get("message", "")
 
-    # Validar formato con ObjectId de 24 caracteres hex
+    # Validate format with 24-character hex ObjectId
     res_str2 = search_curriculum_vector_db.invoke({
         "query": "comunicación",
         "id_subarea_relacionada": "123_invalid_id",
@@ -70,12 +70,12 @@ def test_vector_search_mocked_tree():
 
 def test_vector_search_live_tree():
     """
-    2.1 Planificación: Búsqueda vectorial real en MongoDB (se omite si no hay credenciales en .env).
+    Real MongoDB vector search (skipped if MONGODB_URI or GOOGLE_API_KEY absent).
     """
     mongodb_uri = get_env_variable("MONGODB_URI")
     api_key = get_env_variable("GOOGLE_API_KEY")
     if not mongodb_uri or "test" in mongodb_uri or not api_key or "test" in api_key:
-        pytest.skip("MONGODB_URI o GOOGLE_API_KEY no configuradas con credenciales reales para consulta en vivo.")
+        pytest.skip("MONGODB_URI or GOOGLE_API_KEY not configured with live credentials.")
 
     result_json_str = search_curriculum_vector_db.invoke({
         "query": "competencia comunicación y lenguaje redacción",
@@ -90,7 +90,7 @@ def test_vector_search_live_tree():
 
 
 def test_tree_merging_logic():
-    """Verifica la lógica de fusión (merge) cuando dos contenidos pertenecen al mismo indicador."""
+    """Verifies tree merging logic when two contents belong to the same indicator."""
     from tools.vector_tool import fetch_subarea_nodes_from_db, build_merged_curriculum_tree
     from unittest.mock import MagicMock
 

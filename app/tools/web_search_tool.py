@@ -7,14 +7,14 @@ from middleware.security_middleware import sanitize_external_text
 
 def get_serper_wrapper(search_type: str = "search", k: int = 5) -> GoogleSerperAPIWrapper:
     """
-    Crea una instancia del cliente de búsqueda GoogleSerperAPIWrapper.
+    Creates an instance of the GoogleSerperAPIWrapper search client.
 
     Args:
-        search_type (str): Tipo de búsqueda ('search', 'videos', 'images').
-        k (int): Cantidad de resultados deseados.
+        search_type (str): Type of search ('search', 'videos', 'images').
+        k (int): Number of desired results.
 
     Returns:
-        GoogleSerperAPIWrapper: Cliente de búsqueda configurado.
+        GoogleSerperAPIWrapper: Configured search client instance.
     """
     serper_key = get_env_variable("SERPER_API_KEY")
     return GoogleSerperAPIWrapper(
@@ -29,15 +29,15 @@ def get_serper_wrapper(search_type: str = "search", k: int = 5) -> GoogleSerperA
 @tool("serper_web_search")
 def serper_web_search(query: str, search_type: str = "search", num_results: int = 5) -> str:
     """
-    Realiza búsquedas en la web utilizando el motor Serper Google Search.
+    Performs web searches using the Serper Google Search engine.
 
     Args:
-        query (str): Consulta o palabras clave de búsqueda.
-        search_type (str, opcional): Tipo de búsqueda ('search', 'videos', 'images'). Por defecto 'search'.
-        num_results (int, opcional): Cantidad de resultados a retornar. Por defecto 5.
+        query (str): Search query or keywords.
+        search_type (str, optional): Search type ('search', 'videos', 'images'). Defaults to 'search'.
+        num_results (int, optional): Number of results to return. Defaults to 5.
 
     Returns:
-        str: Cadena en formato JSON con la lista de resultados encontrados (título, enlace, snippet, tipo).
+        str: JSON formatted string containing the list of search results (title, link, snippet, type).
     """
     try:
         serper_key = get_env_variable("SERPER_API_KEY")
@@ -83,5 +83,5 @@ def serper_web_search(query: str, search_type: str = "search", num_results: int 
     except Exception as e:
         return json.dumps({
             "status": "error",
-            "message": f"Error al ejecutar la búsqueda: {str(e)}"
+            "message": f"Error executing web search: {str(e)}"
         }, ensure_ascii=False)

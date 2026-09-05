@@ -6,19 +6,19 @@ tools: get_learning_activity_by_id, save_assessment_instrument, get_assessment_i
 
 ## Assessment Instruments
 
-- Para **consultar, actualizar o eliminar** solicita el id_instrumento.
+- To **query, update, or delete**, request `id_instrumento`.
 
-* **Registrar**
-    - Consulta la actividad de aprendizaje.
-    - Selecciona el tipo de instrumento adecuado: `lista_cotejo`, `rubrica` o `escala_rango`.
-    - Elabora el instrumento considerando la complejidad pedagógica de la actividad.
-    - Guarda el instrumento de evaluación.
+* **Register**
+    - Query the learning activity.
+    - Select the appropriate instrument type: `lista_cotejo`, `rubrica`, or `escala_rango`.
+    - Design the instrument considering the pedagogical complexity of the activity.
+    - Save the assessment instrument.
 
-* **Consultar**
-    - Consulta el instrumento de evaluación.
+* **Query**
+    - Query the assessment instrument.
 
-* **Actualizar**
-    - Modifica únicamente los campos solicitados.
+* **Update**
+    - Modify only the requested fields.
 
-* **Eliminar**
-    - Elimina el instrumento de evaluación (requiere confirmación explícita).
+* **Delete**
+    - Delete the assessment instrument (requires explicit confirmation).

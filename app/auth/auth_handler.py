@@ -25,13 +25,13 @@ MAX_THREADS_PER_MINUTE = 5
 
 def verify_google_id_token(id_token: str) -> Dict[str, Any]:
     """
-    Verifica la autenticidad y vigencia de un token ID de Google OAuth.
+    Verifies the authenticity and validity of a Google OAuth ID token.
 
     Args:
-        id_token (str): Cadena de token ID emitida por Google.
+        id_token (str): Google OAuth ID token string.
 
     Returns:
-        Dict[str, Any]: Carga útil (payload) del token validado con los datos del usuario.
+        Dict[str, Any]: Verified token payload containing user details.
     """
     try:
         client_id = get_env_variable("GOOGLE_CLIENT_ID")
@@ -42,26 +42,26 @@ def verify_google_id_token(id_token: str) -> Dict[str, Any]:
             audience=client_id
         )
         if "sub" not in payload:
-            raise ValueError("El token de Google OAuth no contiene el identificador de usuario 'sub'.")
+            raise ValueError("Google OAuth token does not contain user identifier 'sub'.")
 
         return payload
     except Exception as e:
-        raise ValueError(f"Error en la verificación del token de Google OAuth: {str(e)}")
+        raise ValueError(f"Error verifying Google OAuth token: {str(e)}")
 
 
 def create_access_token(user_id: str, email: str, nombres: str = "", rol: str = "docente", expires_in_seconds: int = 300) -> str:
     """
-    Genera un token de acceso JWT firmado para el usuario.
+    Generates a signed JWT access token for the user.
 
     Args:
-        user_id (str): Identificador único del usuario.
-        email (str): Correo electrónico del usuario.
-        nombres (str, opcional): Nombres del usuario.
-        rol (str, opcional): Rol asignado. Por defecto 'docente'.
-        expires_in_seconds (int, opcional): Tiempo de expiración en segundos. Por defecto 300.
+        user_id (str): Unique user identifier.
+        email (str): User email address.
+        nombres (str, optional): User first names.
+        rol (str, optional): Assigned role. Defaults to 'docente'.
+        expires_in_seconds (int, optional): Expiration time in seconds. Defaults to 300.
 
     Returns:
-        str: Token de acceso JWT codificado.
+        str: Encoded JWT access token string.
     """
     jwt_secret = get_env_variable("JWT_SECRET")
     now = datetime.now(timezone.utc)
@@ -79,14 +79,14 @@ def create_access_token(user_id: str, email: str, nombres: str = "", rol: str = 
 
 def create_refresh_token(user_id: str, expires_in_days: int = 7) -> str:
     """
-    Genera y almacena un token de refresco para el usuario.
+    Generates and persists a refresh token for the user.
 
     Args:
-        user_id (str): Identificador único del usuario.
-        expires_in_days (int, opcional): Días de validez del token. Por defecto 7.
+        user_id (str): Unique user identifier.
+        expires_in_days (int, optional): Token validity in days. Defaults to 7.
 
     Returns:
-        str: Cadena única del token de refresco generado.
+        str: Unique generated refresh token string.
     """
     token_str = secrets.token_hex(32)
     save_refresh_token(id_usuario=user_id, refresh_token=token_str, expires_in_days=expires_in_days)
@@ -95,38 +95,38 @@ def create_refresh_token(user_id: str, expires_in_days: int = 7) -> str:
 
 def verify_project_access_token(token: str) -> Dict[str, Any]:
     """
-    Verifica la firma y vigencia de un token de acceso JWT.
+    Verifies the signature and expiration of a JWT access token.
 
     Args:
-        token (str): Token de acceso JWT a validar.
+        token (str): JWT access token to validate.
 
     Returns:
-        Dict[str, Any]: Carga útil del token validado.
+        Dict[str, Any]: Payload of the verified token.
     """
     jwt_secret = get_env_variable("JWT_SECRET")
     try:
         payload = jwt.decode(token, jwt_secret, algorithms=["HS256"])
         if payload.get("type") != "access":
-            raise ValueError("El token proporcionado no es un Access Token de sesión válido.")
+            raise ValueError("The provided token is not a valid session Access Token.")
         return payload
     except jwt.ExpiredSignatureError:
-        raise ValueError("El Access Token ha expirado. Requiere renovación.")
+        raise ValueError("Access Token has expired. Renewal required.")
     except Exception as e:
-        raise ValueError(f"Access Token no válido: {str(e)}")
+        raise ValueError(f"Invalid Access Token: {str(e)}")
 
 
 def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any]:
     """
-    Intercambia un token de Google OAuth por una sesión de usuario con sus respectivos tokens de acceso y refresco.
+    Exchanges a Google OAuth token for a user session with access and refresh tokens.
 
     Args:
-        google_id_token_str (str): Token ID de Google OAuth.
+        google_id_token_str (str): Google OAuth ID token.
 
     Returns:
-        Dict[str, Any]: Diccionario con los tokens emitidos y datos del usuario.
+        Dict[str, Any]: Dictionary containing issued tokens and user data.
     """
     if not check_db_connection():
-        raise ValueError("Acceso Denegado: No hay comunicación activa con la base de datos.")
+        raise ValueError("Access Denied: Database connection is not active.")
 
     google_payload = verify_google_id_token(google_id_token_str)
     google_id = str(google_payload.get("sub", "")).strip()
@@ -137,7 +137,7 @@ def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any
     picture = str(google_payload.get("picture", "")).strip()
 
     if not google_id or not email:
-        raise ValueError("Acceso Denegado: El token de Google OAuth no contiene 'sub' o 'email'.")
+        raise ValueError("Access Denied: Google OAuth token missing 'sub' or 'email'.")
 
     user = get_user_by_google_id(google_id)
     if not user:
@@ -156,7 +156,7 @@ def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any
         user = res.get("user")
 
     if not user or "_id" not in user:
-        raise ValueError("Acceso Denegado: No se pudo verificar ni obtener el perfil del docente en la base de datos.")
+        raise ValueError("Access Denied: Could not verify or retrieve teacher profile from database.")
 
     user_id = str(user["_id"])
     access_token = create_access_token(
@@ -184,25 +184,25 @@ def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any
 
 def refresh_access_token_session(refresh_token_str: str) -> Dict[str, Any]:
     """
-    Renueva la sesión emitiendo un nuevo token de acceso a partir de un token de refresco válido.
+    Renews the session issuing a new access token from a valid refresh token.
 
     Args:
-        refresh_token_str (str): Token de refresco de sesión activa.
+        refresh_token_str (str): Active session refresh token.
 
     Returns:
-        Dict[str, Any]: Diccionario con el nuevo token de acceso.
+        Dict[str, Any]: Dictionary containing the new access token.
     """
     if not check_db_connection():
-        raise ValueError("Acceso Denegado: No hay comunicación activa con la base de datos.")
+        raise ValueError("Access Denied: Database connection is not active.")
 
     doc = get_refresh_token_doc(refresh_token_str)
     if not doc:
-        raise ValueError("Refresh token no válido o expirado. Requiere iniciar sesión nuevamente.")
+        raise ValueError("Invalid or expired refresh token. Please sign in again.")
 
     id_usuario = str(doc.get("id_usuario") or doc.get("user_id", "")).strip()
     user = get_user_profile_doc(id_usuario)
     if not user:
-        raise ValueError("Acceso Denegado: El usuario asociado al refresh token no fue encontrado.")
+        raise ValueError("Access Denied: User associated with refresh token was not found.")
 
     user_id = str(user["_id"])
     new_access_token = create_access_token(
@@ -227,15 +227,15 @@ async def authenticate(
     path: Optional[str] = None
 ) -> Auth.types.MinimalUserDict:
     """
-    Autentica las solicitudes extrayendo y validando la cookie de sesión.
+    Authenticates requests by extracting and validating the session cookie.
 
     Args:
-        authorization (opcional): Encabezado de autorización.
-        headers (opcional): Diccionario de encabezados HTTP.
-        path (opcional): Ruta de la petición solicitada.
+        authorization (optional): Authorization header.
+        headers (optional): HTTP headers dictionary.
+        path (optional): Requested path.
 
     Returns:
-        Auth.types.MinimalUserDict: Diccionario con la identidad y estado de autenticación del usuario.
+        Auth.types.MinimalUserDict: Dictionary containing user identity and authentication status.
     """
     path_str = str(path.decode("utf-8") if isinstance(path, bytes) else (path or "")).strip()
     path_clean = path_str if path_str.startswith("/") else f"/{path_str}"
@@ -261,7 +261,7 @@ async def authenticate(
     if not token:
         raise Auth.exceptions.HTTPException(
             status_code=401,
-            detail="Acceso Denegado: Cookie 'access_token' no proporcionada."
+            detail="Access Denied: 'access_token' cookie not provided."
         )
 
     try:
@@ -276,24 +276,24 @@ async def authenticate(
     except Exception as jwt_err:
         raise Auth.exceptions.HTTPException(
             status_code=401,
-            detail=f"Acceso Denegado: {str(jwt_err)}"
+            detail=f"Access Denied: {str(jwt_err)}"
         )
 
 
 @auth.on.threads
 async def authorize_threads(ctx: Auth.types.AuthContext, value: dict = None):
     """
-    Valida los permisos de acceso a hilos de conversación filtrando por el propietario.
+    Validates thread access permissions by filtering by owner.
 
     Args:
-        ctx (Auth.types.AuthContext): Contexto de autenticación del usuario.
-        value (dict, opcional): Datos del hilo de conversación.
+        ctx (Auth.types.AuthContext): User authentication context.
+        value (dict, optional): Conversation thread data.
 
     Returns:
-        dict: Filtro de propiedad con el identificador del usuario.
+        dict: Ownership filter containing user ID.
     """
     if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
-        raise Auth.exceptions.HTTPException(status_code=401, detail="Acceso Denegado: Usuario no autenticado.")
+        raise Auth.exceptions.HTTPException(status_code=401, detail="Access Denied: User not authenticated.")
 
     user_id = ctx.user.identity
     if isinstance(value, dict):
@@ -306,17 +306,17 @@ async def authorize_threads(ctx: Auth.types.AuthContext, value: dict = None):
 @auth.on.threads.create
 async def limit_thread_creation_rate(ctx: Auth.types.AuthContext, value: dict):
     """
-    Aplica el control de tasa en la creación de hilos asignando la propiedad del hilo al usuario.
+    Applies thread creation rate limiting and assigns thread ownership to the user.
 
     Args:
-        ctx (Auth.types.AuthContext): Contexto de autenticación del usuario.
-        value (dict): Datos del nuevo hilo a crear.
+        ctx (Auth.types.AuthContext): User authentication context.
+        value (dict): New thread data.
 
     Returns:
-        dict: Filtro de propiedad asignado al hilo.
+        dict: Ownership filter assigned to thread.
     """
     if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
-        raise Auth.exceptions.HTTPException(status_code=401, detail="Acceso Denegado: Usuario no autenticado.")
+        raise Auth.exceptions.HTTPException(status_code=401, detail="Access Denied: User not authenticated.")
 
     user_id = ctx.user.identity
     now = time.time()
@@ -326,7 +326,7 @@ async def limit_thread_creation_rate(ctx: Auth.types.AuthContext, value: dict):
     if len(recent_threads) >= MAX_THREADS_PER_MINUTE:
         raise Auth.exceptions.HTTPException(
             status_code=429,
-            detail=f"Límite de tasa excedido: Se permite crear un máximo de {MAX_THREADS_PER_MINUTE} hilos por minuto."
+            detail=f"Rate limit exceeded: Maximum of {MAX_THREADS_PER_MINUTE} threads per minute allowed."
         )
 
     recent_threads.append(now)
@@ -342,14 +342,14 @@ async def limit_thread_creation_rate(ctx: Auth.types.AuthContext, value: dict):
 @auth.on.store
 async def authorize_store(ctx: Auth.types.AuthContext, value: dict):
     """
-    Restringe el acceso al almacén persistente delimitando el espacio de nombres por usuario.
+    Restricts persistent store access by namespacing by user ID.
 
     Args:
-        ctx (Auth.types.AuthContext): Contexto de autenticación.
-        value (dict): Datos y espacio de nombres del elemento en el almacén.
+        ctx (Auth.types.AuthContext): Authentication context.
+        value (dict): Store item data and namespace.
     """
     if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
-        raise Auth.exceptions.HTTPException(status_code=401, detail="Acceso Denegado: Usuario no autenticado.")
+        raise Auth.exceptions.HTTPException(status_code=401, detail="Access Denied: User not authenticated.")
 
     user_id = ctx.user.identity
     namespace = value.get("namespace", ())
@@ -360,14 +360,14 @@ async def authorize_store(ctx: Auth.types.AuthContext, value: dict):
 @auth.on
 async def default_authorization_policy(ctx: Auth.types.AuthContext, value: dict = None):
     """
-    Evalúa la política global de autorización para solicitudes entrantes.
+    Evaluates global authorization policy for incoming requests.
 
     Args:
-        ctx (Auth.types.AuthContext): Contexto de autenticación.
-        value (dict, opcional): Datos adicionales de la solicitud.
+        ctx (Auth.types.AuthContext): Authentication context.
+        value (dict, optional): Additional request data.
 
     Returns:
-        bool: True si la solicitud está autorizada, False en caso contrario.
+        bool: True if authorized, False otherwise.
     """
     if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
         return False

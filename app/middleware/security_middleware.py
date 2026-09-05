@@ -1,10 +1,9 @@
 import re
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 from langchain.agents.middleware import AgentMiddleware
 from langchain_core.messages import BaseMessage
 
 
-# Patrones de inyección de prompt, jailbreak y comandos maliciosos conocidos
 FORBIDDEN_INJECTION_PATTERNS: List[str] = [
     r"ignore\s+(all\s+)?previous\s+instructions",
     r"ignora\s+(todas\s+)?(tus\s+)?instrucciones",
@@ -22,23 +21,22 @@ FORBIDDEN_INJECTION_PATTERNS: List[str] = [
 
 def sanitize_external_text(text: str, wrap_xml: bool = False) -> str:
     """
-    Sanitiza el contenido devuelto por fuentes externas (búsquedas web, parseo de PDF, etc.)
-    eliminando intentos de inyección de instrucciones indirectas y opcionalmente delimitándolo en etiquetas XML.
-    
+    Sanitizes content returned by external sources (web search, PDF parsing, etc.)
+    neutralizing indirect instruction injection attempts and optionally wrapping in XML tags.
+
     Args:
-        text (str): Texto bruto obtenido de una herramienta o fuente externa.
-        wrap_xml (bool): Si es True, envuelve el texto en <untrusted_external_content>.
+        text (str): Raw text obtained from a tool or external source.
+        wrap_xml (bool): If True, wraps text in <untrusted_external_content>.
 
     Returns:
-        str: Texto sanitizado.
+        str: Sanitized text.
     """
     if not text:
         return text
 
     clean_text = str(text)
-    # Neutralizar patrones sospechosos de anulación en contenido de herramientas externas
     for pattern in FORBIDDEN_INJECTION_PATTERNS:
-        clean_text = re.sub(pattern, "[CONTENIDO_RESTRINGIDO]", clean_text, flags=re.IGNORECASE)
+        clean_text = re.sub(pattern, "[RESTRICTED_CONTENT]", clean_text, flags=re.IGNORECASE)
 
     clean_text = clean_text.strip()
     if wrap_xml:
@@ -48,15 +46,15 @@ def sanitize_external_text(text: str, wrap_xml: bool = False) -> str:
 
 class SecurityGuardrailMiddleware(AgentMiddleware):
     """
-    Middleware determinista de seguridad para agentes de LangChain.
-    Intercepta las solicitudes del usuario y las respuestas de herramientas para detectar:
-    1. Intenciones de Prompt Injection (directo e indirecto).
-    2. Intentos de salto de políticas de seguridad y jailbreaks.
+    Deterministic security middleware for LangChain agents.
+    Intercepts user requests and tool responses to detect:
+    1. Direct and indirect Prompt Injection attempts.
+    2. Security policy bypass and jailbreak attempts.
     """
 
     def before_agent(self, state: Dict[str, Any], *args, **kwargs) -> Any:
         """
-        Valida la entrada del usuario antes de que el agente comience la ejecución.
+        Validates user input before agent execution begins.
         """
         messages = state.get("messages", [])
         if not messages:
@@ -74,14 +72,14 @@ class SecurityGuardrailMiddleware(AgentMiddleware):
             for pattern in FORBIDDEN_INJECTION_PATTERNS:
                 if re.search(pattern, lower_content):
                     raise ValueError(
-                        "Acceso Denegado por Políticas de Seguridad: "
-                        "Se detectó un intento de manipulación de instrucciones o inyección de prompt."
+                        "Access Denied by Security Policy: "
+                        "Prompt injection or instruction manipulation attempt detected."
                     )
 
         return state
 
     def before_model(self, state: Dict[str, Any], *args, **kwargs) -> Any:
         """
-        Garantiza la envoltura y sanitización antes de la llamada al modelo LLM.
+        Ensures wrapping and sanitization before LLM invocation.
         """
         return state

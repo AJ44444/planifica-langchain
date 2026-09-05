@@ -4,7 +4,7 @@ import sys
 import json
 from unittest.mock import patch, MagicMock
 
-# Asegurar que el paquete app esté accesible en sys.path
+# Ensure app package is accessible in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app")))
 
 from tools.web_search_tool import serper_web_search
@@ -13,7 +13,7 @@ from core.config import get_env_variable
 
 def test_serper_web_search_mocked_results():
     """
-    3.1 Recursos: Verificar que la búsqueda web (SERPER) entregue resultados estructurados.
+    Verifies that web search (SERPER) returns structured results.
     """
     mock_raw_results = {
         "organic": [
@@ -48,11 +48,11 @@ def test_serper_web_search_mocked_results():
 
 def test_serper_web_search_live_results():
     """
-    3.1 Recursos: Búsqueda web real con la API de SERPER (se omite si no hay SERPER_API en .env).
+    Real web search with SERPER API (skipped if SERPER_API_KEY absent).
     """
     serper = os.getenv("SERPER_API_KEY")
     if not serper or "test" in serper:
-        pytest.skip("SERPER_API no configurada con credenciales reales en .env para prueba de búsqueda en vivo.")
+        pytest.skip("SERPER_API_KEY not configured with live credentials in .env for live test.")
 
     res_json = serper_web_search.invoke({
         "query": "experimentos de física secundaria CNB Guatemala",

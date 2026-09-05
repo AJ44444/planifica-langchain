@@ -1,3 +1,6 @@
+"""
+Sub-agent responsible for designing and managing assessment instruments.
+"""
 from langchain.agents import create_agent
 from langchain.agents.middleware import SummarizationMiddleware
 from core.llm import llm

@@ -7,13 +7,13 @@ PROMPTS_DIR = os.path.join(APP_DIR, "prompts")
 
 def load_prompt(filename: str) -> str:
     """
-    Lee y carga el contenido de un archivo Markdown (.md) de prompt de sistema desde la carpeta 'prompts' con decodificación UTF-8.
+    Reads and loads system prompt content from a Markdown (.md) file in the 'prompts' directory using UTF-8 encoding.
 
     Args:
-        filename (str): Nombre del archivo Markdown (con o sin extensión .md).
+        filename (str): Name of the Markdown file (with or without .md extension).
 
     Returns:
-        str: Contenido textual del prompt de sistema.
+        str: Textual content of the system prompt.
     """
     if not filename.endswith(".md"):
         filename = f"{filename}.md"

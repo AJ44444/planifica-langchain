@@ -1,167 +1,154 @@
 from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, Field
 
-
-# ==============================================================================
-# 1. MODELOS DE DATOS DE PLANIFICACIÓN Y ESTRUCTURAS CURRICULARES DE SUBÁREA
-# ==============================================================================
-
 class Contenido(BaseModel):
-    """Modelo de contenido temático."""
-    id_contenido: str = Field(..., description="Identificador del contenido.")
-    descripcion: str = Field(..., description="Descripción del contenido.")
+    """Thematic content model."""
+    id_contenido: str = Field(..., description="Content identifier.")
+    descripcion: str = Field(..., description="Description of the thematic content.")
 
 
 class IndicadorLogro(BaseModel):
-    """Modelo de indicador de logro."""
-    id_indicador: str = Field(..., description="Identificador del indicador de logro.")
-    descripcion: str = Field(..., description="Descripción del indicador de logro.")
-    contenidos: List[Contenido] = Field(default_factory=list, description="Lista de contenidos asociados.")
+    """Achievement indicator model."""
+    id_indicador: str = Field(..., description="Achievement indicator identifier.")
+    descripcion: str = Field(..., description="Description of the achievement indicator.")
+    contenidos: List[Contenido] = Field(default_factory=list, description="List of associated thematic contents.")
 
 
 class CompetenciaEspecifica(BaseModel):
-    """Modelo de competencia específica."""
-    id_competencia: str = Field(..., description="Identificador de la competencia.")
-    descripcion: str = Field(..., description="Descripción de la competencia.")
-    indicadores_logro: List[IndicadorLogro] = Field(default_factory=list, description="Lista de indicadores de logro.")
+    """Specific competency model."""
+    id_competencia: str = Field(..., description="Competency identifier.")
+    descripcion: str = Field(..., description="Description of the competency.")
+    indicadores_logro: List[IndicadorLogro] = Field(default_factory=list, description="List of achievement indicators.")
 
 
 class Subarea(BaseModel):
-    """Modelo de subárea curricular."""
-    nombre_subarea: str = Field(..., description="Nombre de la subárea curricular.")
-    competencias: List[CompetenciaEspecifica] = Field(default_factory=list, description="Lista de competencias de la subárea.")
+    """Curricular subarea model."""
+    nombre_subarea: str = Field(..., description="Name of the curricular subarea.")
+    competencias: List[CompetenciaEspecifica] = Field(default_factory=list, description="List of subarea competencies.")
 
 
 class EncabezadoPlan(BaseModel):
-    """Encabezado informativo de una planificación docente."""
-    centro_educativo: str = Field(..., description="Nombre del centro educativo.")
-    lugar: str = Field(..., description="Ubicación geográfica (municipio/departamento).")
-    grado: str = Field(..., description="Grado académico (ej. '4to', 'Primero Básico').")
-    seccion: str = Field(..., description="Sección académica (ej. 'A').")
-    duracion: str = Field(..., description="Duración (ej. '1 semana', '1 bimestre').")
-    cantidad_periodos: int = Field(..., description="Cantidad total de periodos de clase.")
-    duracion_periodos: int = Field(..., description="Duración de cada periodo en minutos.")
+    """Informational header of a lesson plan."""
+    centro_educativo: str = Field(..., description="Name of the educational center.")
+    lugar: str = Field(..., description="Geographical location (municipality/department).")
+    grado: str = Field(..., description="Academic grade (e.g. '4th', '1st Basic').")
+    seccion: str = Field(..., description="Academic section (e.g. 'A').")
+    duracion: str = Field(..., description="Duration (e.g. '1 week', '1 bimonth').")
+    cantidad_periodos: int = Field(..., description="Total number of class periods.")
+    duracion_periodos: int = Field(..., description="Duration of each period in minutes.")
 
 
 class ActividadAprendizaje(BaseModel):
-    """Actividad de aprendizaje pedagógica."""
-    id_actividad: Optional[str] = Field(default=None, description="ID único de la actividad.")
-    fase: Literal["inicio", "desarrollo", "cierre"] = Field(..., description="Fase pedagógica de la actividad.")
-    descripcion: str = Field(..., description="Descripción impersonal con verbo en infinitivo.")
+    """Pedagogical learning activity."""
+    id_actividad: Optional[str] = Field(default=None, description="Unique activity ID.")
+    fase: Literal["inicio", "desarrollo", "cierre"] = Field(..., description="Pedagogical phase of the activity.")
+    descripcion: str = Field(..., description="Impersonal description starting with an infinitive verb.")
 
 
 class IndicadorPlanItem(BaseModel):
-    """Item de indicador con contenidos asociados."""
-    indicador: str = Field(..., description="Descripción del indicador de logro.")
-    contenidos: List[str] = Field(..., description="Lista de contenidos asociados.")
+    """Indicator item with associated contents."""
+    indicador: str = Field(..., description="Description of the achievement indicator.")
+    contenidos: List[str] = Field(..., description="List of associated thematic contents.")
 
 
 class FilaCurricularPlan(BaseModel):
-    """Fila aplanada de desarrollo curricular."""
-    id_fila: int = Field(..., description="ID ordinal de la fila.")
-    competencia: str = Field(..., description="Descripción de la competencia.")
-    indicadores_logro: List[IndicadorPlanItem] = Field(..., description="Lista de indicadores de logro.")
-    actividades_aprendizaje: List[ActividadAprendizaje] = Field(..., description="Lista de actividades de aprendizaje.")
+    """Flattened curricular development row."""
+    id_fila: int = Field(..., description="Ordinal row ID.")
+    competencia: str = Field(..., description="Description of the competency.")
+    indicadores_logro: List[IndicadorPlanItem] = Field(..., description="List of achievement indicators.")
+    actividades_aprendizaje: List[ActividadAprendizaje] = Field(..., description="List of learning activities.")
 
 
 class PlanificacionClase(BaseModel):
-    """Estructura completa de una planificación docente."""
+    """Complete structure of a teacher's lesson plan."""
     encabezado: EncabezadoPlan
     desarrollo_curricular: List[FilaCurricularPlan]
 
 
 class CriterioEvaluacion(BaseModel):
-    """Criterio de evaluación de un instrumento."""
-    nombre: str = Field(..., description="Nombre del criterio.")
-    definiciones: List[str] = Field(..., description="Definiciones o niveles por desempeño.")
+    """Evaluation criterion for an assessment instrument."""
+    nombre: str = Field(..., description="Name of the criterion.")
+    definiciones: List[str] = Field(..., description="Definitions or performance level descriptions.")
 
 
 class InstrumentoGeneradoDetail(BaseModel):
-    """Detalle técnico del instrumento generado."""
-    escala: List[str] = Field(..., description="Escala de desempeño (ej. ['Excelente', 'Bueno']).")
-    criterios: List[CriterioEvaluacion] = Field(..., description="Lista de criterios.")
+    """Technical details of the generated assessment instrument."""
+    escala: List[str] = Field(..., description="Performance scale (e.g. ['Excellent', 'Good']).")
+    criterios: List[CriterioEvaluacion] = Field(..., description="List of evaluation criteria.")
 
 
 class CurricularAreaModel(BaseModel):
-    """Modelo para representar un Área Curricular."""
-    id_area: str = Field(..., description="Identificador único numérico del área curricular.")
-    nombre_area: str = Field(..., description="Nombre del área curricular.")
-    competencias_area: List[str] = Field(..., description="Lista de competencias del área.")
-    actividades_sugeridas: List[str] = Field(..., description="Lista de actividades sugeridas.")
-    criterios_evaluacion: List[str] = Field(..., description="Lista de criterios de evaluación.")
-    subareas: List[Dict[str, Any]] = Field(..., description="Lista de subáreas pertenecientes al área.")
+    """Model representing a Curricular Area."""
+    id_area: str = Field(..., description="Unique numeric identifier of the curricular area.")
+    nombre_area: str = Field(..., description="Name of the curricular area.")
+    competencias_area: List[str] = Field(..., description="List of area competencies.")
+    actividades_sugeridas: List[str] = Field(..., description="List of suggested activities.")
+    criterios_evaluacion: List[str] = Field(..., description="List of evaluation criteria.")
+    subareas: List[Dict[str, Any]] = Field(..., description="List of subareas belonging to the area.")
 
 
 class MetadatosPlanInput(BaseModel):
-    """Input para metadatos de una planificación."""
-    carrera: str = Field(..., description="Nombre oficial de la carrera (ej. Bachillerato en Computación).")
-    subarea_curricular: str = Field(..., description="Nombre de la subárea curricular.")
-    estado: Optional[str] = Field(default="borrador", description="Estado del documento: 'borrador', 'publicado', 'archivado'.")
+    """Input metadata for a lesson plan."""
+    carrera: str = Field(..., description="Official career name (e.g. High School in Computer Science).")
+    subarea_curricular: str = Field(..., description="Name of the curricular subarea.")
+    estado: Optional[str] = Field(default="borrador", description="Document status: 'borrador', 'publicado', 'archivado'.")
 
-
-# ==============================================================================
-# 2. ESQUEMAS DE ENTRADA ESTRICTAMENTE TIPADOS PARA HERRAMIENTAS SAVE (args_schema)
-# ==============================================================================
 
 class SaveCurricularStructureInput(BaseModel):
     """Input strictly typed for saving parsed CNB curricular structure."""
-    nombre_carrera: str = Field(..., description="Nombre oficial de la carrera (ej. Bachillerato en Computación).")
-    nombre_area: str = Field(..., description="Nombre del área curricular.")
-    competencias_area: List[str] = Field(default_factory=list, description="Lista de competencias del área.")
-    actividades_sugeridas: List[str] = Field(default_factory=list, description="Lista de actividades sugeridas del área.")
-    criterios_evaluacion_sugeridos: List[str] = Field(default_factory=list, description="Lista de criterios de evaluación sugeridos.")
-    subareas: List[Subarea] = Field(..., description="Lista de subáreas pertenecientes al área con sus competencias e indicadores.")
+    nombre_carrera: str = Field(..., description="Official career name (e.g. High School in Computer Science).")
+    nombre_area: str = Field(..., description="Name of the curricular area.")
+    competencias_area: List[str] = Field(default_factory=list, description="List of area competencies.")
+    actividades_sugeridas: List[str] = Field(default_factory=list, description="List of suggested area activities.")
+    criterios_evaluacion_sugeridos: List[str] = Field(default_factory=list, description="List of suggested evaluation criteria.")
+    subareas: List[Subarea] = Field(..., description="List of subareas belonging to the area with their competencies and indicators.")
 
 
 class SaveLessonPlanInput(BaseModel):
-    """Input estrictamente tipado para guardar una planificación docente en MongoDB."""
-    metadatos: MetadatosPlanInput = Field(..., description="Metadatos de la planificación.")
-    encabezado: EncabezadoPlan = Field(..., description="Datos generales de encabezado del plan.")
-    desarrollo_curricular: List[FilaCurricularPlan] = Field(..., description="Filas aplanadas de desarrollo curricular.")
-    id_usuario: Optional[str] = Field(default="", description="ID del usuario opcional.")
+    """Strictly typed input to save a teacher's lesson plan in MongoDB."""
+    metadatos: MetadatosPlanInput = Field(..., description="Lesson plan metadata.")
+    encabezado: EncabezadoPlan = Field(..., description="General header data of the plan.")
+    desarrollo_curricular: List[FilaCurricularPlan] = Field(..., description="Flattened curricular development rows.")
+    id_usuario: Optional[str] = Field(default="", description="Optional user ID.")
 
 
 class SaveAssessmentInstrumentInput(BaseModel):
-    """Input estrictamente tipado para guardar un instrumento de evaluación."""
-    id_actividad: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la actividad evaluada.")
-    tipo: Literal["rubrica", "lista_cotejo", "escala_rango"] = Field(..., description="Tipo de instrumento: 'lista_cotejo', 'rubrica', 'escala_rango'.")
-    titulo: str = Field(..., description="Título descriptivo del instrumento.")
-    instrumento_generado: InstrumentoGeneradoDetail = Field(..., description="Estructura completa del instrumento generado.")
+    """Strictly typed input to save an assessment instrument."""
+    id_actividad: str = Field(..., description="MongoDB ID (24-character hex) of the evaluated activity.")
+    tipo: Literal["rubrica", "lista_cotejo", "escala_rango"] = Field(..., description="Instrument type: 'lista_cotejo', 'rubrica', 'escala_rango'.")
+    titulo: str = Field(..., description="Descriptive title of the instrument.")
+    instrumento_generado: InstrumentoGeneradoDetail = Field(..., description="Complete structure of the generated instrument.")
 
 
 class SaveMultimodalResourceInput(BaseModel):
-    """Input estrictamente tipado para guardar un recurso multimodal."""
-    id_actividad: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la actividad de aprendizaje.")
-    tipo: Literal["video", "documento", "imagen", "simulacion", "lectura"] = Field(..., description="Tipo de recurso: 'video', 'documento', 'imagen', 'simulacion', 'lectura'.")
-    titulo: str = Field(..., description="Título descriptivo del recurso didáctico.")
-    url: str = Field(..., description="Enlace URL del recurso (web o fuente externa).")
+    """Strictly typed input to save a multimodal resource."""
+    id_actividad: str = Field(..., description="MongoDB ID (24-character hex) of the learning activity.")
+    tipo: Literal["video", "documento", "imagen", "simulacion", "lectura"] = Field(..., description="Resource type: 'video', 'documento', 'imagen', 'simulacion', 'lectura'.")
+    titulo: str = Field(..., description="Descriptive title of the educational resource.")
+    url: str = Field(..., description="URL link of the resource (web or external source).")
 
-
-# ==============================================================================
-# 3. ESQUEMAS DE ENTRADA ESTRICTAMENTE TIPADOS PARA HERRAMIENTAS UPDATE (args_schema)
-# ==============================================================================
 
 class UpdateLessonPlanInput(BaseModel):
-    """Input estrictamente tipado para actualizar una planificación docente. Excluye 'id_usuario'."""
-    id_planificacion: str = Field(..., description="ID de MongoDB (24 caracteres hex) de la planificación a actualizar.")
-    metadatos: Optional[MetadatosPlanInput] = Field(default=None, description="Metadatos actualizados opcionales.")
-    encabezado: Optional[EncabezadoPlan] = Field(default=None, description="Datos de encabezado actualizados opcionales.")
-    desarrollo_curricular: Optional[List[FilaCurricularPlan]] = Field(default=None, description="Desarrollo curricular actualizado opcional.")
+    """Strictly typed input to update a teacher's lesson plan. Excludes 'id_usuario'."""
+    id_planificacion: str = Field(..., description="MongoDB ID (24-character hex) of the lesson plan to update.")
+    metadatos: Optional[MetadatosPlanInput] = Field(default=None, description="Optional updated metadata.")
+    encabezado: Optional[EncabezadoPlan] = Field(default=None, description="Optional updated header data.")
+    desarrollo_curricular: Optional[List[FilaCurricularPlan]] = Field(default=None, description="Optional updated curricular development.")
 
 
 class UpdateAssessmentInstrumentInput(BaseModel):
-    """Input estrictamente tipado para actualizar un instrumento de evaluación. Excluye 'id_planificacion' e 'id_fila'."""
-    id_instrumento: str = Field(..., description="ID de MongoDB (24 caracteres hex) del instrumento a actualizar.")
-    id_actividad: Optional[str] = Field(default=None, description="ID de la actividad evaluada actualizado opcional.")
-    tipo: Optional[Literal["rubrica", "lista_cotejo", "escala_rango"]] = Field(default=None, description="Tipo de instrumento actualizado opcional.")
-    titulo: Optional[str] = Field(default=None, description="Título descriptivo actualizado opcional.")
-    instrumento_generado: Optional[InstrumentoGeneradoDetail] = Field(default=None, description="Estructura completa del instrumento generado actualizada opcional.")
+    """Strictly typed input to update an assessment instrument. Excludes 'id_planificacion' and 'id_fila'."""
+    id_instrumento: str = Field(..., description="MongoDB ID (24-character hex) of the instrument to update.")
+    id_actividad: Optional[str] = Field(default=None, description="Optional updated evaluated activity ID.")
+    tipo: Optional[Literal["rubrica", "lista_cotejo", "escala_rango"]] = Field(default=None, description="Optional updated instrument type.")
+    titulo: Optional[str] = Field(default=None, description="Optional updated descriptive title.")
+    instrumento_generado: Optional[InstrumentoGeneradoDetail] = Field(default=None, description="Optional updated complete structure of the generated instrument.")
 
 
 class UpdateMultimodalResourceInput(BaseModel):
-    """Input estrictamente tipado para actualizar un recurso multimodal. Excluye 'id_planificacion' e 'id_fila'."""
-    id_recurso: str = Field(..., description="ID de MongoDB (24 caracteres hex) del recurso a actualizar.")
-    id_actividad: Optional[str] = Field(default=None, description="ID de la actividad de aprendizaje actualizado opcional.")
-    tipo: Optional[Literal["video", "documento", "imagen", "simulacion", "lectura"]] = Field(default=None, description="Tipo de recurso actualizado opcional.")
-    titulo: Optional[str] = Field(default=None, description="Título descriptivo actualizado opcional.")
-    url: Optional[str] = Field(default=None, description="Enlace URL del recurso actualizado opcional.")
+    """Strictly typed input to update a multimodal resource. Excludes 'id_planificacion' and 'id_fila'."""
+    id_recurso: str = Field(..., description="MongoDB ID (24-character hex) of the resource to update.")
+    id_actividad: Optional[str] = Field(default=None, description="Optional updated learning activity ID.")
+    tipo: Optional[Literal["video", "documento", "imagen", "simulacion", "lectura"]] = Field(default=None, description="Optional updated resource type.")
+    titulo: Optional[str] = Field(default=None, description="Optional updated descriptive title.")
+    url: Optional[str] = Field(default=None, description="Optional updated URL link.")

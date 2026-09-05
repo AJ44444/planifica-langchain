@@ -28,7 +28,7 @@ from tools.persistence_tool import (
 
 
 def test_save_lesson_plan_tool_schema_validation():
-    """Verifica que save_lesson_plan valide correctamente su entrada utilizando el schema Pydantic."""
+    """Verifies that save_lesson_plan correctly validates input using Pydantic schema."""
     assert save_lesson_plan.args_schema == SaveLessonPlanInput
 
     sample_input = {
@@ -79,7 +79,7 @@ def test_save_lesson_plan_tool_schema_validation():
 
 
 def test_save_assessment_instrument_tool_schema_validation():
-    """Verifica que save_assessment_instrument valide su entrada mediante SaveAssessmentInstrumentInput."""
+    """Verifies that save_assessment_instrument validates input via SaveAssessmentInstrumentInput."""
     assert save_assessment_instrument.args_schema == SaveAssessmentInstrumentInput
 
     sample_input = {
@@ -98,7 +98,7 @@ def test_save_assessment_instrument_tool_schema_validation():
     }
 
     mock_db = MagicMock()
-    mock_db["evaluaciones_instrumentos"].insert_one.return_value.inserted_id = ObjectId("60d5ec49f1a2c81234567898")
+    mock_db["instrumentos_evaluacion"].insert_one.return_value.inserted_id = ObjectId("60d5ec49f1a2c81234567898")
 
     with patch("tools.persistence_tool.get_db", return_value=mock_db):
         res_str = save_assessment_instrument.invoke(sample_input)
@@ -108,7 +108,7 @@ def test_save_assessment_instrument_tool_schema_validation():
 
 
 def test_save_multimodal_resource_tool_schema_validation():
-    """Verifica que save_multimodal_resource valide su entrada mediante SaveMultimodalResourceInput."""
+    """Verifies that save_multimodal_resource validates input via SaveMultimodalResourceInput."""
     assert save_multimodal_resource.args_schema == SaveMultimodalResourceInput
 
     sample_input = {
@@ -129,7 +129,7 @@ def test_save_multimodal_resource_tool_schema_validation():
 
 
 def test_get_learning_activity_by_id():
-    """Verifica la recuperación desestructurada de una actividad de aprendizaje por su ID en el pipeline."""
+    """Verifies destructured retrieval of a learning activity by ID in pipeline."""
     mock_db = MagicMock()
     mock_db["planificaciones_generadas"].aggregate.return_value = [
         {
@@ -147,7 +147,7 @@ def test_get_learning_activity_by_id():
 
 
 def test_cnb_catalog_query_tools():
-    """Verifica que las herramientas de consulta del CNB tengan las proyecciones y firmas correctas."""
+    """Verifies that CNB query tools have correct projections and signatures."""
     from tools.persistence_tool import (
         get_cnb_careers_list,
         get_cnb_areas_by_career,
@@ -185,7 +185,7 @@ def test_cnb_catalog_query_tools():
 
 
 def test_update_tools_schema_validation():
-    """Verifica que las herramientas de actualización tengan sus schemas Pydantic de entrada asignados."""
+    """Verifies that update tools have assigned Pydantic args_schemas."""
     assert update_lesson_plan.args_schema == UpdateLessonPlanInput
     assert update_assessment_instrument.args_schema == UpdateAssessmentInstrumentInput
     assert update_multimodal_resource.args_schema == UpdateMultimodalResourceInput

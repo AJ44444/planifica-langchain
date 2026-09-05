@@ -6,18 +6,18 @@ tools: parse_curricular_areas, save_curricular_structure, generate_subarea_vecto
 
 ## Process PDF
 
-1. **Extracción**
-   - Extrae la estructura del currículo con formato CNB de Guatemala.
+1. **Extraction**
+   - Extracts the curriculum structure in Guatemala's CNB format.
 
-2. **Identificación de Grados y Estructuración**
-   - Utiliza la Estructura Curricular para identificar a qué grado pertenece cada subárea.
-   - El grado **debe incluirse en el nombre de la subárea** (ej. *Comunicación y Lenguaje Cuarto Grado*, *Educación Física Cuarto Grado*).
-   - **Área Curricular**: Nombre del área, competencias del área, actividades sugeridas y criterios de evaluación.
-   - **Subárea Curricular**: Nombre de la subárea, competencias, indicadores y contenidos.
-   - **Identificadores**: Deben ser numéricos simples según el texto (ej. `id_competencia: '1'`, `id_indicador: '1.1'`, `id_contenido: '1.1.1'`).
+2. **Grade Identification & Structuring**
+   - Uses the Curricular Structure to identify which grade each subarea belongs to.
+   - The grade **must be included in the subarea name** (e.g. *Communication and Language Fourth Grade*, *Physical Education Fourth Grade*).
+   - **Curricular Area**: Area name, area competencies, suggested activities, and evaluation criteria.
+   - **Curricular Subarea**: Subarea name, competencies, indicators, and contents.
+   - **Identifiers**: Must be simple numeric identifiers based on text (e.g. `id_competencia: '1'`, `id_indicador: '1.1'`, `id_contenido: '1.1.1'`).
 
-3. **Aplanamiento de la Estructura**
-   - Aplana la estructura de cada área en: `competencias_area`, `actividades_sugeridas`, `criterios_evaluacion_sugeridos` y `subareas`.
+3. **Structure Flattening**
+   - Flattens each area structure into: `competencias_area`, `actividades_sugeridas`, `criterios_evaluacion_sugeridos`, and `subareas`.
 
-4. **Persistencia**
-   - Guarda la estructura curricular completa de cada área.
+4. **Persistence**
+   - Saves the complete curricular structure for each area.

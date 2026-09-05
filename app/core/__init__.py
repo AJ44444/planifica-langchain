@@ -1,5 +1,5 @@
 """
-Módulo core de configuración, modelo de lenguaje (LLM), colecciones, esquemas de entrada (tool_inputs) y cargador de prompts.
+Core module for configuration, LLM model setup, collection names, input schemas, and prompt loader.
 """
 
 from .config import (
@@ -18,12 +18,13 @@ from .llm import llm
 from .prompt_loader import load_prompt
 from .collections import (
     AREAS,
-    SUBAREAS,
-    VECTORES,
-    PLANIFICACION,
-    EVALUACION,
-    RECURSOS,
-    USUARIOS,
+    SUB_AREAS,
+    VECTORS,
+    LESSON_PLANS,
+    ASSESSMENT_INSTRUMENTS,
+    MULTIMODAL_RESOURCES,
+    REFRESH_TOKENS,
+    USERS,
 )
 from .tool_inputs import (
     Subarea,
@@ -58,12 +59,13 @@ __all__ = [
     "llm",
     "load_prompt",
     "AREAS",
-    "SUBAREAS",
-    "VECTORES",
-    "PLANIFICACION",
-    "EVALUACION",
-    "RECURSOS",
-    "USUARIOS",
+    "SUB_AREAS",
+    "VECTORS",
+    "LESSON_PLANS",
+    "ASSESSMENT_INSTRUMENTS",
+    "MULTIMODAL_RESOURCES",
+    "REFRESH_TOKENS",
+    "USERS",
     "Subarea",
     "Contenido",
     "IndicadorLogro",

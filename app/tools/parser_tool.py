@@ -8,16 +8,16 @@ from middleware.security_middleware import sanitize_external_text
 
 def convert_pdf_to_markdown(pdf_base64: str) -> str:
     """
-    Convierte un documento PDF codificado en Base64 a formato Markdown.
+    Converts a Base64-encoded PDF document into Markdown format.
 
     Args:
-        pdf_base64 (str): Cadena de caracteres del documento PDF codificada en Base64.
+        pdf_base64 (str): Base64-encoded PDF document string.
 
     Returns:
-        str: Contenido del documento convertido a formato Markdown y sanitizado.
+        str: Document content converted to Markdown format and sanitized.
     """
     if not isinstance(pdf_base64, str) or not pdf_base64.strip():
-        raise ValueError("El parámetro pdf_base64 debe ser una cadena válida codificada en Base64.")
+        raise ValueError("The 'pdf_base64' parameter must be a valid Base64 encoded string.")
 
     clean_b64 = pdf_base64.strip()
     if clean_b64.startswith("data:application/pdf;base64,"):
@@ -39,13 +39,13 @@ def convert_pdf_to_markdown(pdf_base64: str) -> str:
 
 def extract_career_name(document: str) -> str:
     """
-    Extrae el nombre de la carrera o programa académico del documento.
+    Extracts the academic career or program name from the document.
 
     Args:
-        document (str): Contenido del documento en formato Markdown.
+        document (str): Document content in Markdown format.
 
     Returns:
-        str: Nombre de la carrera identificada o 'No identificada'.
+        str: Identified career name or 'Unidentified'.
     """
     lines = document.splitlines()
 
@@ -57,18 +57,18 @@ def extract_career_name(document: str) -> str:
             if val:
                 return val
 
-    return "No identificada"
+    return "Unidentified"
 
 
 def extract_curricular_structure_table(document: str) -> str:
     """
-    Extrae la tabla con la estructura curricular general de la carrera.
+    Extracts the general curricular structure table for the career.
 
     Args:
-        document (str): Contenido del documento en formato Markdown.
+        document (str): Document content in Markdown format.
 
     Returns:
-        str: Bloque de texto Markdown correspondiente a la tabla de estructura curricular.
+        str: Markdown block corresponding to the curricular structure table.
     """
     if not document or not isinstance(document, str):
         return ""
@@ -79,7 +79,7 @@ def extract_curricular_structure_table(document: str) -> str:
     capturing = False
     captured_lines = []
 
-    escaped_career = re.escape(career_name) if career_name != "No identificada" else r'.+'
+    escaped_career = re.escape(career_name) if career_name != "Unidentified" else r'.+'
     table1_pattern = re.compile(
         r'(?i)(?:Tabla\s+(?:No\.?|N°|Nº)?\s*1\b|Estructura\s+de\s+' + escaped_career + r')'
     )
@@ -103,13 +103,13 @@ def extract_curricular_structure_table(document: str) -> str:
 @tool("parse_curricular_areas")
 def parse_curricular_areas(pdf_base64: str) -> List[Dict[str, str]]:
     """
-    Parsea y segmenta un documento PDF en sus correspondientes áreas curriculares.
+    Parses and segmentates a PDF document into its corresponding curricular areas.
 
     Args:
-        pdf_base64 (str): Cadena codificada en Base64 del documento PDF.
+        pdf_base64 (str): Base64 encoded string of the PDF document.
 
     Returns:
-        List[Dict[str, str]]: Lista de diccionarios con la estructura y contenido Markdown de cada área curricular.
+        List[Dict[str, str]]: List of dictionaries containing the structure and Markdown content of each curricular area.
     """
     content = convert_pdf_to_markdown(pdf_base64)
 

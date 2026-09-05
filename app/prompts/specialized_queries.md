@@ -6,6 +6,6 @@ tools: get_top_frequent_courses, get_paginated_lesson_plans, get_lesson_plan_det
 
 ## Specialized Queries
 
-- Utiliza la herramienta del catálogo o métricas correspondiente según la consulta del usuario.
-- Responde de forma clara, proporcionando únicamente la información solicitada.
-- Evita explicaciones redundantes o datos no solicitados.
+- Use the corresponding catalog or metrics tool according to the user's query.
+- Respond clearly, providing only the requested information.
+- Avoid redundant explanations or unrequested data.

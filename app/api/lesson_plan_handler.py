@@ -1,10 +1,11 @@
 import json
+from starlette.requests import Request
 from starlette.responses import JSONResponse
 from tools.persistence_tool import get_paginated_lesson_plans, get_lesson_plan_details
 from auth.auth_handler import verify_project_access_token
 
 
-def extract_user_id_from_request(request) -> str:
+def extract_user_id_from_request(request: Request) -> str:
     token = request.cookies.get("access_token")
     if not token:
         auth_header = request.headers.get("authorization", "")
@@ -19,7 +20,7 @@ def extract_user_id_from_request(request) -> str:
         return ""
 
 
-async def get_paginated_lesson_plans_endpoint(request):
+async def get_paginated_lesson_plans_endpoint(request: Request) -> JSONResponse:
     try:
         if request.method == "OPTIONS":
             return JSONResponse({"status": "ok"}, status_code=200)
@@ -27,7 +28,7 @@ async def get_paginated_lesson_plans_endpoint(request):
         user_id = extract_user_id_from_request(request)
         if not user_id:
             return JSONResponse(
-                {"detail": "Acceso Denegado: Token de acceso no válido o no proporcionado."},
+                {"detail": "Access Denied: Invalid or missing access token."},
                 status_code=401
             )
 
@@ -49,14 +50,14 @@ async def get_paginated_lesson_plans_endpoint(request):
 
         res_data = json.loads(res_str)
         if res_data.get("status") == "error":
-            return JSONResponse({"detail": res_data.get("message", "Error al consultar historial.")}, status_code=400)
+            return JSONResponse({"detail": res_data.get("message", "Error querying history.")}, status_code=400)
 
         return JSONResponse(res_data, status_code=200)
     except Exception as e:
-        return JSONResponse({"detail": f"Error interno del servidor: {str(e)}"}, status_code=500)
+        return JSONResponse({"detail": f"Internal server error: {str(e)}"}, status_code=500)
 
 
-async def get_lesson_plan_details_endpoint(request):
+async def get_lesson_plan_details_endpoint(request: Request) -> JSONResponse:
     try:
         if request.method == "OPTIONS":
             return JSONResponse({"status": "ok"}, status_code=200)
@@ -64,13 +65,13 @@ async def get_lesson_plan_details_endpoint(request):
         user_id = extract_user_id_from_request(request)
         if not user_id:
             return JSONResponse(
-                {"detail": "Acceso Denegado: Token de acceso no válido o no proporcionado."},
+                {"detail": "Access Denied: Invalid or missing access token."},
                 status_code=401
             )
 
         id_planificacion = request.path_params.get("id_planificacion", "").strip()
         if not id_planificacion:
-            return JSONResponse({"detail": "El parámetro 'id_planificacion' es obligatorio."}, status_code=400)
+            return JSONResponse({"detail": "Parameter 'id_planificacion' is required."}, status_code=400)
 
         res_str = get_lesson_plan_details.func(
             id_planificacion=id_planificacion,
@@ -79,8 +80,8 @@ async def get_lesson_plan_details_endpoint(request):
 
         res_data = json.loads(res_str)
         if res_data.get("status") == "error":
-            return JSONResponse({"detail": res_data.get("message", "Planificación no encontrada.")}, status_code=404)
+            return JSONResponse({"detail": res_data.get("message", "Lesson plan not found.")}, status_code=404)
 
         return JSONResponse(res_data, status_code=200)
     except Exception as e:
-        return JSONResponse({"detail": f"Error interno del servidor: {str(e)}"}, status_code=500)
+        return JSONResponse({"detail": f"Internal server error: {str(e)}"}, status_code=500)

@@ -8,15 +8,15 @@ supervisor_graph = main_agent
 
 def run_workflow(query: str, thread_id: str, id_usuario: str = "") -> str:
     """
-    Ejecuta una consulta a través del flujo supervisor y sus subagentes.
+    Executes a query through the supervisor workflow and its sub-agents.
 
     Args:
-        query (str): Consulta o instrucción del usuario en lenguaje natural.
-        thread_id (str): Identificador del hilo de conversación para mantener el contexto.
-        id_usuario (str, opcional): Identificador del usuario.
+        query (str): User request or instruction in natural language.
+        thread_id (str): Thread identifier to maintain conversation context.
+        id_usuario (str, optional): User identifier.
 
     Returns:
-        str: Respuesta textual producida por el supervisor o subagentes.
+        str: Textual response produced by the supervisor or sub-agents.
     """
     config = {"configurable": {"thread_id": thread_id, "id_usuario": id_usuario}}
     initial_input = {"messages": [HumanMessage(content=query)]}
@@ -30,20 +30,20 @@ def run_workflow(query: str, thread_id: str, id_usuario: str = "") -> str:
             return last_message.content
         elif isinstance(last_message, dict):
             return last_message.get("content", str(last_message))
-    return "No se obtuvo respuesta del sistema."
+    return "No response obtained from the system."
 
 
 def stream_workflow(query: str, thread_id: str, id_usuario: str = "") -> Generator[Dict[str, Any], None, None]:
     """
-    Transmite eventos en tiempo real de la ejecución del flujo del supervisor y sus subagentes.
+    Streams real-time events from the execution of the supervisor workflow and its sub-agents.
 
     Args:
-        query (str): Consulta o instrucción del usuario.
-        thread_id (str): Identificador del hilo de conversación.
-        id_usuario (str, opcional): Identificador del usuario.
+        query (str): User request or instruction.
+        thread_id (str): Conversation thread identifier.
+        id_usuario (str, optional): User identifier.
 
     Yields:
-        Dict[str, Any]: Eventos transmitidos por el flujo durante la ejecución.
+        Dict[str, Any]: Events streamed by the workflow during execution.
     """
     config = {"configurable": {"thread_id": thread_id, "id_usuario": id_usuario}}
     initial_input = {"messages": [HumanMessage(content=query)]}

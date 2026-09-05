@@ -16,96 +16,96 @@ from middleware.security_middleware import SecurityGuardrailMiddleware
 @tool("process_pdf")
 def process_pdf(request: str, config: RunnableConfig) -> str:
     """
-    Procesa y analiza documentos PDF escolares para extraer su estructura curricular.
+    Processes and analyzes school PDF documents to extract their curricular structure.
 
     Args:
-        request (str): Instrucción con los datos del documento PDF a procesar.
-        config (RunnableConfig): Configuración de ejecución y contexto de LangGraph.
+        request (str): Instruction containing details of the PDF document to process.
+        config (RunnableConfig): Execution configuration and LangGraph context.
 
     Returns:
-        str: Resultado del procesamiento con el estado y la estructura curricular extraída.
+        str: Processing result containing status and extracted curricular structure.
     """
     try:
         res = pdf_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
-        return res["messages"][-1].content if res.get("messages") else "No se obtuvo respuesta."
+        return res["messages"][-1].content if res.get("messages") else "No response obtained."
     except Exception as e:
-        return f"Error al procesar PDF: {str(e)}"
+        return f"Error processing PDF: {str(e)}"
 
 
 @tool("school_lesson_plans")
 def school_lesson_plans(request: str, config: RunnableConfig) -> str:
     """
-    Gestiona la creación, consulta por ID, actualización o eliminación de planificaciones de clase.
+    Manages creation, query by ID, updating, or deletion of lesson plans.
 
     Args:
-        request (str): Instrucción para crear, consultar, actualizar o eliminar planificaciones.
-        config (RunnableConfig): Configuración de ejecución y contexto de LangGraph.
+        request (str): Instruction to create, query, update, or delete lesson plans.
+        config (RunnableConfig): Execution configuration and LangGraph context.
 
     Returns:
-        str: Resultado de la gestión de la planificación solicitada.
+        str: Result of the requested lesson plan management operation.
     """
     try:
         res = lesson_plans_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
-        return res["messages"][-1].content if res.get("messages") else "No se obtuvo respuesta."
+        return res["messages"][-1].content if res.get("messages") else "No response obtained."
     except Exception as e:
-        return f"Error en gestión de planificaciones: {str(e)}"
+        return f"Error managing lesson plans: {str(e)}"
 
 
 @tool("school_assessment_instruments")
 def school_assessment_instruments(request: str, config: RunnableConfig) -> str:
     """
-    Diseña, consulta, actualiza o elimina instrumentos de evaluación independientes (rúbricas, listas de cotejo).
+    Designs, queries, updates, or deletes independent assessment instruments (rubrics, checklists, rating scales).
 
     Args:
-        request (str): Instrucción con los detalles del instrumento a gestionar o crear.
-        config (RunnableConfig): Configuración de ejecución y contexto de LangGraph.
+        request (str): Instruction with details of the assessment instrument to manage or create.
+        config (RunnableConfig): Execution configuration and LangGraph context.
 
     Returns:
-        str: Resultado con la información del instrumento de evaluación procesado.
+        str: Result with information about the processed assessment instrument.
     """
     try:
         res = assessment_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
-        return res["messages"][-1].content if res.get("messages") else "No se obtuvo respuesta."
+        return res["messages"][-1].content if res.get("messages") else "No response obtained."
     except Exception as e:
-        return f"Error en instrumentos de evaluación: {str(e)}"
+        return f"Error in assessment instruments: {str(e)}"
 
 
 @tool("school_multimodal_resources")
 def school_multimodal_resources(request: str, config: RunnableConfig) -> str:
     """
-    Busca, consulta, actualiza o elimina recursos multimodales independientes (videos, documentos, imágenes).
+    Searches, queries, updates, or deletes independent multimodal resources (videos, documents, images).
 
     Args:
-        request (str): Instrucción con los requerimientos del recurso a buscar o gestionar.
-        config (RunnableConfig): Configuración de ejecución y contexto de LangGraph.
+        request (str): Instruction with resource requirements to search or manage.
+        config (RunnableConfig): Execution configuration and LangGraph context.
 
     Returns:
-        str: Resultado con los recursos multimodales encontrados o procesados.
+        str: Result with found or processed multimodal resources.
     """
     try:
         res = multimodal_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
-        return res["messages"][-1].content if res.get("messages") else "No se obtuvo respuesta."
+        return res["messages"][-1].content if res.get("messages") else "No response obtained."
     except Exception as e:
-        return f"Error en recursos multimodales: {str(e)}"
+        return f"Error in multimodal resources: {str(e)}"
 
 
 @tool("specialized_queries")
 def specialized_queries(request: str, config: RunnableConfig) -> str:
     """
-    Atiende consultas del panel docente, métricas, catálogo del CNB e historial paginado de planificaciones.
+    Handles teacher dashboard queries, metrics, CNB catalog, and paginated lesson plan history.
 
     Args:
-        request (str): Instrucción o consulta a realizar sobre el catálogo o métricas.
-        config (RunnableConfig): Configuración de ejecución y contexto de LangGraph.
+        request (str): Instruction or query regarding catalog or metrics.
+        config (RunnableConfig): Execution configuration and LangGraph context.
 
     Returns:
-        str: Respuesta detallada a la consulta solicitada.
+        str: Detailed response to the requested query.
     """
     try:
         res = specialized_queries_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
-        return res["messages"][-1].content if res.get("messages") else "No se obtuvo respuesta."
+        return res["messages"][-1].content if res.get("messages") else "No response obtained."
     except Exception as e:
-        return f"Error en consultas especializadas: {str(e)}"
+        return f"Error in specialized queries: {str(e)}"
 
 
 main_agent = create_agent(

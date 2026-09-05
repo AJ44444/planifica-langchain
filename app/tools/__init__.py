@@ -1,5 +1,5 @@
 """
-Módulo de herramientas del sistema Planifica (Parseo de PDF, Búsqueda Vectorial, Búsqueda Web SERPER y Persistencia MongoDB).
+System tools module for Planifica (PDF Parsing, Vector Search, SERPER Web Search, and MongoDB Persistence).
 """
 
 from .parser_tool import (

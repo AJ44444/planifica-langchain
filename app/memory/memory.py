@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 def get_checkpointer() -> BaseCheckpointSaver:
     """
-    Retorna el Checkpointer adecuado según el entorno de ejecución:
-    - En producción (DATABASE_URI configurada): Instancia PostgresSaver e inicializa automáticamente las tablas de checkpointing y storage con setup().
-    - En desarrollo local/pruebas (sin DATABASE_URI): Instancia MemorySaver.
+    Returns the appropriate Checkpointer based on the execution environment:
+    - In production (DATABASE_URI configured): Instantiates PostgresSaver and automatically initializes checkpointing and storage tables with setup().
+    - In local development/testing (without DATABASE_URI): Instantiates MemorySaver.
     """
     if DATABASE_URI:
         try:
@@ -31,12 +31,12 @@ def get_checkpointer() -> BaseCheckpointSaver:
                 store = PostgresStore(pool)
                 store.setup()
             except Exception as store_err:
-                logger.warning(f"Advertencia al inicializar PostgresStore: {store_err}")
+                logger.warning(f"Warning initializing PostgresStore: {store_err}")
 
-            logger.info("Checkpointer y Store de PostgreSQL inicializados exitosamente.")
+            logger.info("PostgreSQL Checkpointer and Store successfully initialized.")
             return checkpointer
         except Exception as e:
-            logger.warning(f"No se pudo inicializar PostgresSaver ({e}). Usando MemorySaver como respaldo.")
+            logger.warning(f"Could not initialize PostgresSaver ({e}). Using MemorySaver as fallback.")
             return MemorySaver()
 
     return MemorySaver()

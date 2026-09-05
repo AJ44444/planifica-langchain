@@ -18,14 +18,14 @@ def client():
 
 
 def test_get_paginated_lesson_plans_endpoint_unauthenticated(client):
-    """Verifica que /api/lesson-plans rechace peticiones no autenticadas con 401."""
+    """Verifies that /api/lesson-plans rejects unauthenticated requests with 401."""
     response = client.get("/api/lesson-plans")
     assert response.status_code == 401
-    assert "Acceso Denegado" in response.json()["detail"]
+    assert "Access Denied" in response.json()["detail"]
 
 
 def test_get_paginated_lesson_plans_endpoint_success(client):
-    """Verifica que /api/lesson-plans retorne el historial paginado del usuario autenticado."""
+    """Verifies that /api/lesson-plans returns paginated history for authenticated user."""
     user_id = "60d5ec49f1a2c8123456789a"
     token = create_access_token(user_id=user_id, email="docente@escuela.edu.gt")
 
@@ -48,14 +48,14 @@ def test_get_paginated_lesson_plans_endpoint_success(client):
 
 
 def test_get_lesson_plan_details_endpoint_unauthenticated(client):
-    """Verifica que /api/lesson-plans/{id_planificacion} rechace peticiones no autenticadas con 401."""
+    """Verifies that /api/lesson-plans/{id_planificacion} rejects unauthenticated requests with 401."""
     response = client.get("/api/lesson-plans/60d5ec49f1a2c8123456789b")
     assert response.status_code == 401
-    assert "Acceso Denegado" in response.json()["detail"]
+    assert "Access Denied" in response.json()["detail"]
 
 
 def test_get_lesson_plan_details_endpoint_success(client):
-    """Verifica que /api/lesson-plans/{id_planificacion} retorne el detalle completo."""
+    """Verifies that /api/lesson-plans/{id_planificacion} returns full details."""
     user_id = "60d5ec49f1a2c8123456789a"
     plan_id = "60d5ec49f1a2c8123456789b"
     token = create_access_token(user_id=user_id, email="docente@escuela.edu.gt")

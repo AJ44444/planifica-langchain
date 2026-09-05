@@ -4,7 +4,7 @@ import sys
 from unittest.mock import patch, MagicMock
 from bson import ObjectId
 
-# Asegurar que el paquete app esté accesible en sys.path
+# Ensure app package is accessible in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app")))
 os.environ["JWT_SECRET"] = "test_jwt_secret_key_12345"
 
@@ -22,7 +22,7 @@ from auth.auth_handler import (
 
 def test_create_and_verify_access_token_5_min_expiration():
     """
-    Verifica que create_access_token cree un JWT firmado con expiración exacta de 5 minutos (300 s).
+    Verifies that create_access_token creates a signed JWT with an exact 5-minute expiration (300 s).
     """
     token = create_access_token(user_id="60d5ec49f1a2c8123456789a", email="test@escuela.edu.gt", nombres="Docente Test")
     payload = verify_project_access_token(token)
@@ -35,9 +35,7 @@ def test_create_and_verify_access_token_5_min_expiration():
 
 def test_exchange_google_token_for_session_returns_jwt_and_refresh_token():
     """
-    Verifica que exchange_google_token_for_session verifique el token de Google y emita:
-    1. access_token de 5 min (expires_in: 300).
-    2. refresh_token de 7 días.
+    Verifies that exchange_google_token_for_session verifies Google token and issues access and refresh tokens.
     """
     mock_google_payload = {
         "sub": "google_user_exchange_123",
@@ -68,15 +66,13 @@ def test_exchange_google_token_for_session_returns_jwt_and_refresh_token():
         assert session["token_type"] == "Bearer"
         assert session["user"]["id_usuario"] == "60d5ec49f1a2c8123456789c"
 
-        # Verificar que el access_token retornado sea válido y tenga los 5 min
         jwt_payload = verify_project_access_token(session["access_token"])
         assert jwt_payload["sub"] == "60d5ec49f1a2c8123456789c"
 
 
 def test_refresh_access_token_session_success():
     """
-    Verifica que refresh_access_token_session intercambie un refresh token válido (7 días) por un nuevo Access Token (5 min).
-    Usa los campos estándar id_usuario, refresh_token, fecha_creacion, fecha_expiracion.
+    Verifies that refresh_access_token_session exchanges a valid refresh token for a new Access Token.
     """
     mock_refresh_doc = {
         "_id": "token_doc_id",
@@ -106,7 +102,7 @@ def test_refresh_access_token_session_success():
 @pytest.mark.anyio
 async def test_auth_middleware_with_cookie_access_token():
     """
-    Verifica que el middleware authenticate() acepte el Access Token desde el encabezado Cookie.
+    Verifies that authenticate() middleware accepts Access Token from Cookie header.
     """
     access_token = create_access_token(
         user_id="60d5ec49f1a2c8123456789a",
@@ -125,7 +121,7 @@ async def test_auth_middleware_with_cookie_access_token():
 @pytest.mark.anyio
 async def test_auth_middleware_rejects_bearer_token_without_cookie():
     """
-    Verifica que el middleware authenticate() rechace encabezados Bearer token ya que únicamente acepta cookies.
+    Verifies that authenticate() middleware rejects Bearer header token as it only accepts cookies.
     """
     access_token = create_access_token(
         user_id="60d5ec49f1a2c8123456789a",
@@ -138,13 +134,13 @@ async def test_auth_middleware_rejects_bearer_token_without_cookie():
         await authenticate(authorization=f"Bearer {access_token}")
 
     assert exc_info.value.status_code == 401
-    assert "Acceso Denegado" in exc_info.value.detail
+    assert "Access Denied" in exc_info.value.detail
 
 
 @pytest.mark.anyio
 async def test_auth_middleware_allows_public_auth_routes():
     """
-    Verifica que el middleware authenticate() permita el acceso a rutas públicas (/auth/login, /auth/refresh, /auth/logout) sin requerir cookie access_token.
+    Verifies that authenticate() middleware allows public routes without requiring access_token cookie.
     """
     result_login = await authenticate(path="/auth/login")
     assert result_login["identity"] == "anonymous"
@@ -158,7 +154,6 @@ async def test_auth_middleware_allows_public_auth_routes():
     assert result_logout["identity"] == "anonymous"
     assert result_logout["is_authenticated"] is False
 
-    # Verificar que cualquier otra ruta que no sea /auth/login, /auth/refresh o /auth/logout requiera autenticación
     with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
         await authenticate(path="/threads")
     assert exc_info.value.status_code == 401
@@ -167,7 +162,7 @@ async def test_auth_middleware_allows_public_auth_routes():
 @pytest.mark.anyio
 async def test_server_endpoints_set_secure_httponly_cookies():
     """
-    Verifica que /auth/login y /auth/refresh devuelvan las cookies seguras HttpOnly, SameSite=lax y Secure.
+    Verifies that /auth/login and /auth/refresh return secure HttpOnly, SameSite=lax, and Secure cookies.
     """
     from starlette.testclient import TestClient
     from server import app
@@ -200,7 +195,6 @@ async def test_server_endpoints_set_secure_httponly_cookies():
         assert "access_token" in response.cookies
         assert "refresh_token" in response.cookies
 
-        # Verificar encabezados Set-Cookie
         set_cookie_headers = response.headers.get_list("set-cookie")
         assert any("httponly" in h.lower() for h in set_cookie_headers)
         assert any("samesite=lax" in h.lower() for h in set_cookie_headers)
@@ -210,18 +204,18 @@ async def test_server_endpoints_set_secure_httponly_cookies():
 @pytest.mark.anyio
 async def test_auth_middleware_rejects_non_project_tokens():
     """
-    Verifica que el middleware authenticate() rechace cualquier token que no sea un JWT propio del proyecto.
+    Verifies that authenticate() middleware rejects non-project JWT tokens.
     """
     with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
         await authenticate(authorization="Bearer raw_invalid_or_google_token_123")
 
     assert exc_info.value.status_code == 401
-    assert "Acceso Denegado" in exc_info.value.detail
+    assert "Access Denied" in exc_info.value.detail
 
 
 def test_verify_google_id_token_valid():
     """
-    Verifica que verify_google_id_token retorne el payload verificado de Google OAuth.
+    Verifies that verify_google_id_token returns verified Google OAuth payload.
     """
     mock_payload = {
         "sub": "112233445566778899",
@@ -241,44 +235,42 @@ def test_verify_google_id_token_valid():
 
 def test_verify_google_id_token_invalid():
     """
-    Verifica que verify_google_id_token eleve ValueError cuando el token de Google es inválido o expirado.
+    Verifies that verify_google_id_token raises ValueError when Google token is invalid or expired.
     """
     with patch("auth.auth_handler.google_id_token_verifier.verify_oauth2_token", side_effect=ValueError("Token expirado")):
         with pytest.raises(ValueError) as exc_info:
             verify_google_id_token("invalid_expired_token")
-        assert "Error en la verificación del token de Google OAuth" in str(exc_info.value)
+        assert "Error verifying Google OAuth token" in str(exc_info.value)
 
 
 @pytest.mark.anyio
 async def test_auth_middleware_missing_header():
     """
-    Verifica que authenticate() rechace peticiones sin encabezado Authorization.
+    Verifies that authenticate() rejects requests without authorization headers.
     """
     with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
         await authenticate(authorization=None, headers=None)
     assert exc_info.value.status_code == 401
-    assert "Acceso Denegado" in exc_info.value.detail
+    assert "Access Denied" in exc_info.value.detail
 
 
 @pytest.mark.anyio
 async def test_auth_middleware_db_inactive_401():
     """
-    Verifica que si la comunicación con la base de datos no está activa, la autenticación falle
-    respondiendo con un error HTTP 401 de Acceso Denegado.
+    Verifies that if database communication is inactive, authentication fails with HTTP 401 Access Denied.
     """
     with patch("auth.auth_handler.check_db_connection", return_value=False):
         with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
             await authenticate(authorization="Bearer valid_id_token_xyz")
 
         assert exc_info.value.status_code == 401
-        assert "Acceso Denegado" in exc_info.value.detail
+        assert "Access Denied" in exc_info.value.detail
 
 
 @pytest.mark.anyio
 async def test_auth_middleware_user_missing_id_401():
     """
-    Verifica que si el usuario retornado de la BD no es válido o carece de _id, la autenticación
-    eleve un error HTTP 401 de Acceso Denegado.
+    Verifies that if returned database user is invalid or missing _id, authentication raises HTTP 401.
     """
     mock_google_payload = {
         "sub": "google_user_no_id",
@@ -293,12 +285,12 @@ async def test_auth_middleware_user_missing_id_401():
             await authenticate(authorization="Bearer token_invalid_user")
 
         assert exc_info.value.status_code == 401
-        assert "Acceso Denegado" in exc_info.value.detail
+        assert "Access Denied" in exc_info.value.detail
 
 
 def test_get_env_variable_success():
     """
-    Verifica que get_env_variable retorne el valor de una variable de entorno configurada.
+    Verifies that get_env_variable returns value of a configured environment variable.
     """
     from core.config import get_env_variable
     with patch.dict(os.environ, {"TEST_CONFIG_VAR": "valor_prueba_123"}):
@@ -308,7 +300,7 @@ def test_get_env_variable_success():
 
 def test_get_env_variable_missing_raises_value_error():
     """
-    Verifica que get_env_variable eleve un ValueError si la variable de entorno no está configurada o está vacía.
+    Verifies that get_env_variable raises ValueError if environment variable is missing or empty.
     """
     from core.config import get_env_variable
     with patch.dict(os.environ, {}, clear=True):
@@ -317,13 +309,13 @@ def test_get_env_variable_missing_raises_value_error():
         with pytest.raises(ValueError) as exc_info:
             get_env_variable("MISSING_VAR_XYZ")
         assert "MISSING_VAR_XYZ" in str(exc_info.value)
-        assert "no está configurada" in str(exc_info.value)
+        assert "is not configured" in str(exc_info.value)
 
 
 @pytest.mark.anyio
 async def test_auth_on_resource_isolation_between_users():
     """
-    Verifica que el decorador @auth.on.threads e @auth.on.store aíslen estrictamente los recursos entre Usuario A y Usuario B.
+    Verifies that @auth.on.threads and @auth.on.store decorators strictly isolate resources between User A and User B.
     """
     from auth.auth_handler import authorize_threads, authorize_store
 
@@ -339,7 +331,6 @@ async def test_auth_on_resource_isolation_between_users():
     ctx_user_a = MockCtx("user_id_A_123")
     ctx_user_b = MockCtx("user_id_B_456")
 
-    # 1. Prueba de aislamiento de Hilos (Threads)
     payload_a = {}
     filters_a = await authorize_threads(ctx_user_a, payload_a)
     assert payload_a["metadata"]["owner"] == "user_id_A_123"
@@ -350,10 +341,8 @@ async def test_auth_on_resource_isolation_between_users():
     assert payload_b["metadata"]["owner"] == "user_id_B_456"
     assert filters_b == {"owner": "user_id_B_456"}
 
-    # Garantizar que el filtro del Usuario A impide acceder a los recursos del Usuario B
     assert filters_a["owner"] != filters_b["owner"]
 
-    # 2. Prueba de aislamiento de Tienda (BaseStore)
     store_val_a = {"namespace": ("memories", "pref")}
     await authorize_store(ctx_user_a, store_val_a)
     assert store_val_a["namespace"] == ("user_id_A_123", "memories", "pref")
@@ -363,4 +352,3 @@ async def test_auth_on_resource_isolation_between_users():
     assert store_val_b["namespace"] == ("user_id_B_456", "memories", "pref")
 
     assert store_val_a["namespace"] != store_val_b["namespace"]
-

@@ -6,19 +6,19 @@ tools: get_learning_activity_by_id, serper_web_search, save_multimodal_resource,
 
 ## Multimodal Resources
 
-- Para **consultar, actualizar o eliminar** solicita el id_recurso.
+- To **query, update, or delete**, request `id_recurso`.
 
-* **Registrar**
-    - Consulta la actividad de aprendizaje.
-    - Busca recursos educativos relevantes en la web (videos, imágenes, simulaciones, lecturas) alineados con la actividad de aprendizaje.
-    - Selecciona los recursos más adecuados.
-    - Guarda el recurso didáctico.
+* **Register**
+    - Query the learning activity.
+    - Search for relevant educational resources on the web (videos, images, simulations, readings) aligned with the learning activity.
+    - Select the most suitable resources.
+    - Save the educational resource.
 
-* **Consultar**
-    - Consulta el recurso didáctico.
+* **Query**
+    - Query the educational resource.
 
-* **Actualizar**
-    - Modifica únicamente los campos solicitados.
+* **Update**
+    - Modify only the requested fields.
 
-* **Eliminar**
-    - Elimina el recurso didáctico (requiere confirmación explícita).
+* **Delete**
+    - Delete the educational resource (requires explicit confirmation).
