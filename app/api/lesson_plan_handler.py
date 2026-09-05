@@ -5,15 +5,6 @@ from auth.auth_handler import verify_project_access_token
 
 
 def extract_user_id_from_request(request) -> str:
-    """
-    Extrae y verifica el identificador de usuario a partir del token de acceso en las cookies o encabezados.
-
-    Args:
-        request: Objeto de solicitud de Starlette.
-
-    Returns:
-        str: Identificador de usuario único o cadena vacía si no está autenticado.
-    """
     token = request.cookies.get("access_token")
     if not token:
         auth_header = request.headers.get("authorization", "")
@@ -29,15 +20,6 @@ def extract_user_id_from_request(request) -> str:
 
 
 async def get_paginated_lesson_plans_endpoint(request):
-    """
-    Endpoint para obtener el historial paginado de planificaciones docentes del usuario autenticado.
-
-    Args:
-        request: Objeto Request de Starlette.
-
-    Returns:
-        JSONResponse: Respuesta en formato JSON con el historial de planificaciones paginadas.
-    """
     try:
         if request.method == "OPTIONS":
             return JSONResponse({"status": "ok"}, status_code=200)
@@ -75,15 +57,6 @@ async def get_paginated_lesson_plans_endpoint(request):
 
 
 async def get_lesson_plan_details_endpoint(request):
-    """
-    Endpoint para obtener el detalle completo de una planificación docente junto a sus instrumentos y recursos.
-
-    Args:
-        request: Objeto Request de Starlette.
-
-    Returns:
-        JSONResponse: Respuesta en formato JSON con la información detallada de la planificación.
-    """
     try:
         if request.method == "OPTIONS":
             return JSONResponse({"status": "ok"}, status_code=200)
