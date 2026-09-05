@@ -2,7 +2,7 @@ from langchain.agents import create_agent
 from langchain.agents.middleware import SummarizationMiddleware
 from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
-from memory.mongodb_memory import checkpointer
+from app.memory.memory import checkpointer
 from core.llm import llm
 from core import load_prompt
 from agents.process_pdf_agent import agent as pdf_agent

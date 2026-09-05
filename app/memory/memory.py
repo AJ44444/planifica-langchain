@@ -18,18 +18,15 @@ def get_checkpointer() -> BaseCheckpointSaver:
     """
     if DATABASE_URI:
         try:
-            # Crear pool de conexiones persistente para PostgreSQL
             pool = ConnectionPool(
                 conninfo=DATABASE_URI,
                 max_size=20,
                 kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row}
             )
 
-            # Inicialización de tablas de checkpointing (checkpoints, checkpoint_blobs, checkpoint_writes, checkpoint_migrations)
             checkpointer = PostgresSaver(pool)
             checkpointer.setup()
 
-            # Inicialización de tablas de almacenamiento y vectores (store, store_vectors, store_migrations)
             try:
                 store = PostgresStore(pool)
                 store.setup()
@@ -45,5 +42,4 @@ def get_checkpointer() -> BaseCheckpointSaver:
     return MemorySaver()
 
 
-# Instancia global exportada del checkpointer
 checkpointer = get_checkpointer()
