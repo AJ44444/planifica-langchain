@@ -59,11 +59,11 @@ async def get_paginated_lesson_plans_endpoint(request):
         except (ValueError, TypeError):
             limit = 10
 
-        res_str = get_paginated_lesson_plans.invoke({
-            "id_usuario": user_id,
-            "page": page,
-            "limit": limit
-        })
+        res_str = get_paginated_lesson_plans.func(
+            id_usuario=user_id,
+            page=page,
+            limit=limit
+        )
 
         res_data = json.loads(res_str)
         if res_data.get("status") == "error":
@@ -99,10 +99,10 @@ async def get_lesson_plan_details_endpoint(request):
         if not id_planificacion:
             return JSONResponse({"detail": "El parámetro 'id_planificacion' es obligatorio."}, status_code=400)
 
-        res_str = get_lesson_plan_details.invoke({
-            "id_planificacion": id_planificacion,
-            "id_usuario": user_id
-        })
+        res_str = get_lesson_plan_details.func(
+            id_planificacion=id_planificacion,
+            id_usuario=user_id
+        )
 
         res_data = json.loads(res_str)
         if res_data.get("status") == "error":
