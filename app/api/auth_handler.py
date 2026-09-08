@@ -24,7 +24,8 @@ async def login_with_google(request: Request) -> JSONResponse:
             httponly=True,
             samesite="lax",
             secure=True,
-            path="/"
+            path="/",
+            domain=".planifica.study"
         )
 
         response.set_cookie(
@@ -34,7 +35,8 @@ async def login_with_google(request: Request) -> JSONResponse:
             httponly=True,
             samesite="lax",
             secure=True,
-            path="/"
+            path="/",
+            domain=".planifica.study"
         )
 
         return response
@@ -66,7 +68,8 @@ async def refresh_token_endpoint(request: Request) -> JSONResponse:
             httponly=True,
             samesite="lax",
             secure=True,
-            path="/"
+            path="/",
+            domain=".planifica.study"
         )
 
         return response
@@ -81,6 +84,6 @@ async def logout(request: Request) -> JSONResponse:
         return JSONResponse({"status": "ok"}, status_code=200)
 
     response = JSONResponse({"status": "success", "message": "Logged out successfully."})
-    response.delete_cookie(key="access_token", path="/", httponly=True, samesite="lax", secure=True)
-    response.delete_cookie(key="refresh_token", path="/", httponly=True, samesite="lax", secure=True)
+    response.delete_cookie(key="access_token", path="/", httponly=True, samesite="lax", secure=True, domain=".planifica.study")
+    response.delete_cookie(key="refresh_token", path="/", httponly=True, samesite="lax", secure=True, domain=".planifica.study")
     return response
