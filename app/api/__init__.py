@@ -9,6 +9,7 @@ from .auth_handler import (
     login_with_google,
     refresh_token_endpoint,
     logout,
+    verify_session,
 )
 
 __all__ = [
@@ -17,4 +18,5 @@ __all__ = [
     "login_with_google",
     "refresh_token_endpoint",
     "logout",
+    "verify_session",
 ]

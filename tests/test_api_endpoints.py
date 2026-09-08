@@ -17,6 +17,28 @@ def client():
     return TestClient(app)
 
 
+def test_verify_session_endpoint_unauthenticated(client):
+    """Verifies that GET /auth/verify returns 401 Unauthorized when no cookie is provided."""
+    response = client.get("/auth/verify")
+    assert response.status_code == 401
+    assert "Access Denied" in response.json()["detail"]
+
+
+def test_verify_session_endpoint_authenticated(client):
+    """Verifies that GET /auth/verify returns 200 OK with user info when a valid cookie is provided."""
+    user_id = "60d5ec49f1a2c8123456789a"
+    token = create_access_token(user_id=user_id, email="docente.verify@escuela.edu.gt", nombres="Docente Verify")
+
+    client.cookies.set("access_token", token)
+    response = client.get("/auth/verify")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "authenticated"
+    assert data["authenticated"] is True
+    assert data["user"]["id_usuario"] == user_id
+    assert data["user"]["email"] == "docente.verify@escuela.edu.gt"
+
+
 def test_get_paginated_lesson_plans_endpoint_unauthenticated(client):
     """Verifies that /api/lesson-plans rejects unauthenticated requests with 401."""
     response = client.get("/api/lesson-plans")

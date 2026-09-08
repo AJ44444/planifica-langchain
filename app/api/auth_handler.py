@@ -1,6 +1,10 @@
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from auth.auth_handler import exchange_google_token_for_session, refresh_access_token_session
+from auth.auth_handler import (
+    exchange_google_token_for_session,
+    refresh_access_token_session,
+    verify_project_access_token
+)
 
 
 async def login_with_google(request: Request) -> JSONResponse:
@@ -24,8 +28,7 @@ async def login_with_google(request: Request) -> JSONResponse:
             httponly=True,
             samesite="lax",
             secure=True,
-            path="/",
-            domain="planifica.study"
+            path="/"
         )
 
         response.set_cookie(
@@ -35,8 +38,7 @@ async def login_with_google(request: Request) -> JSONResponse:
             httponly=True,
             samesite="lax",
             secure=True,
-            path="/",
-            domain="planifica.study"
+            path="/"
         )
 
         return response
@@ -68,8 +70,7 @@ async def refresh_token_endpoint(request: Request) -> JSONResponse:
             httponly=True,
             samesite="lax",
             secure=True,
-            path="/",
-            domain="planifica.study"
+            path="/"
         )
 
         return response
@@ -84,6 +85,44 @@ async def logout(request: Request) -> JSONResponse:
         return JSONResponse({"status": "ok"}, status_code=200)
 
     response = JSONResponse({"status": "success", "message": "Logged out successfully."})
-    response.delete_cookie(key="access_token", path="/", httponly=True, samesite="lax", secure=True, domain="planifica.study")
-    response.delete_cookie(key="refresh_token", path="/", httponly=True, samesite="lax", secure=True, domain="planifica.study")
+    response.delete_cookie(key="access_token", path="/", httponly=True, samesite="lax", secure=True)
+    response.delete_cookie(key="refresh_token", path="/", httponly=True, samesite="lax", secure=True)
     return response
+
+
+async def verify_session(request: Request) -> JSONResponse:
+    if request.method == "OPTIONS":
+        return JSONResponse({"status": "ok"}, status_code=200)
+
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+
+    if not token:
+        return JSONResponse(
+            {"detail": "Access Denied: 'access_token' cookie not provided."},
+            status_code=401
+        )
+
+    try:
+        payload = verify_project_access_token(token)
+        return JSONResponse(
+            {
+                "status": "authenticated",
+                "authenticated": True,
+                "user": {
+                    "id_usuario": str(payload.get("sub", "")),
+                    "email": str(payload.get("email", "")),
+                    "nombres": str(payload.get("nombres", "")),
+                    "rol": str(payload.get("rol", "docente"))
+                }
+            },
+            status_code=200
+        )
+    except Exception as e:
+        return JSONResponse(
+            {"detail": f"Access Denied: {str(e)}"},
+            status_code=401
+        )

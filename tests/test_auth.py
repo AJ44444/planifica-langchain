@@ -154,6 +154,10 @@ async def test_auth_middleware_allows_public_auth_routes():
     assert result_logout["identity"] == "anonymous"
     assert result_logout["is_authenticated"] is False
 
+    result_verify = await authenticate(path="/auth/verify")
+    assert result_verify["identity"] == "anonymous"
+    assert result_verify["is_authenticated"] is False
+
     with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
         await authenticate(path="/threads")
     assert exc_info.value.status_code == 401
