@@ -81,7 +81,6 @@ class CurricularAreaModel(BaseModel):
     """Model representing a Curricular Area."""
     id_area: str = Field(..., description="Unique numeric identifier of the curricular area.")
     nombre_area: str = Field(..., description="Name of the curricular area.")
-    competencias_area: List[str] = Field(..., description="List of area competencies.")
     actividades_sugeridas: List[str] = Field(..., description="List of suggested activities.")
     criterios_evaluacion: List[str] = Field(..., description="List of evaluation criteria.")
     subareas: List[Dict[str, Any]] = Field(..., description="List of subareas belonging to the area.")
@@ -98,7 +97,6 @@ class SaveCurricularStructureInput(BaseModel):
     """Input strictly typed for saving parsed CNB curricular structure."""
     nombre_carrera: str = Field(..., description="Official career name (e.g. High School in Computer Science).")
     nombre_area: str = Field(..., description="Name of the curricular area.")
-    competencias_area: List[str] = Field(default_factory=list, description="List of area competencies.")
     actividades_sugeridas: List[str] = Field(default_factory=list, description="List of suggested area activities.")
     criterios_evaluacion_sugeridos: List[str] = Field(default_factory=list, description="List of suggested evaluation criteria.")
     subareas: List[Subarea] = Field(..., description="List of subareas belonging to the area with their competencies and indicators.")

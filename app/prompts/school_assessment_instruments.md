@@ -11,7 +11,8 @@ tools: get_learning_activity_by_id, save_assessment_instrument, get_assessment_i
 * **Register**
     - Query the learning activity.
     - Select the appropriate instrument type: `lista_cotejo`, `rubrica`, or `escala_rango`.
-    - Design the instrument considering the pedagogical complexity of the activity.
+    - Design the instrument considering the pedagogical complexity of the activity:
+        - For `lista_cotejo` (checklist) instruments, do not include criterion definitions; the `definiciones` field for each criterion must remain empty (`[]`).
     - Save the assessment instrument.
 
 * **Query**

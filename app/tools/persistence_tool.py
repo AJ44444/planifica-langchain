@@ -1,9 +1,8 @@
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Union, Dict, Any, List, Optional
 from bson import ObjectId
-from bson.timestamp import Timestamp
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 from langchain_core.tools import tool
@@ -33,16 +32,6 @@ from core.tool_inputs import (
     UpdateAssessmentInstrumentInput,
     UpdateMultimodalResourceInput,
 )
-
-
-def _get_bson_timestamp() -> Timestamp:
-    """
-    Generates a MongoDB BSON Timestamp object.
-
-    Returns:
-        Timestamp: Current BSON timestamp.
-    """
-    return Timestamp(int(time.time()), 1)
 
 
 def get_mongo_client(timeout_ms: Optional[int] = None) -> MongoClient:
@@ -166,20 +155,6 @@ def extract_teacher_name_from_config(config: Optional[Any] = None, user_id: str 
     return "Docente"
 
 
-class JSONEncoderCustom(json.JSONEncoder):
-    """
-    Custom JSON encoder for MongoDB ObjectId, Timestamp, and datetime objects.
-    """
-    def default(self, o):
-        if isinstance(o, ObjectId):
-            return str(o)
-        if isinstance(o, Timestamp):
-            return o.time
-        if isinstance(o, datetime):
-            return o.isoformat()
-        return super().default(o)
-
-
 def _to_dict(obj: Any) -> dict:
     """
     Converts a Pydantic model or dictionary object into a standard Python dictionary.
@@ -268,10 +243,9 @@ def insert_cnb_area_doc(data: dict) -> ObjectId:
     doc = {
         "nombre_carrera": carrera,
         "nombre_area": str(data.get("nombre_area", "")).strip(),
-        "competencias_area": _format_items(data.get("competencias_area")),
         "actividades_sugeridas": _format_items(data.get("actividades_sugeridas")),
         "criterios_evaluacion": _format_items(data.get("criterios_evaluacion_sugeridos")),
-        "fecha_creacion": _get_bson_timestamp()
+        "fecha_creacion": datetime.now(timezone.utc)
     }
     res = db[AREAS].insert_one(doc)
     return res.inserted_id
@@ -292,7 +266,7 @@ def insert_cnb_subarea_doc(data: dict) -> ObjectId:
         "id_area": _ensure_object_id(data.get("id_area")),
         "nombre_subarea": str(data.get("nombre_subarea", "")).strip(),
         "competencias": data.get("competencias", []),
-        "fecha_creacion": _get_bson_timestamp()
+        "fecha_creacion": datetime.now(timezone.utc)
     }
     res = db[SUB_AREAS].insert_one(doc)
     return res.inserted_id
@@ -317,7 +291,7 @@ def insert_cnb_vector_doc(data: dict) -> ObjectId:
         "texto_a_buscar": str(data.get("texto_a_buscar", "")).strip(),
         "vector_embedding": data.get("vector_embedding", []),
         "vector_estado": bool(data.get("vector_estado", False)),
-        "fecha_creacion": _get_bson_timestamp()
+        "fecha_creacion": datetime.now(timezone.utc)
     }
     res = db[VECTORS].insert_one(doc)
     return res.inserted_id
@@ -327,7 +301,6 @@ def insert_cnb_vector_doc(data: dict) -> ObjectId:
 def save_curricular_structure(
     nombre_carrera: str,
     nombre_area: str,
-    competencias_area: List[str],
     actividades_sugeridas: List[str],
     criterios_evaluacion_sugeridos: List[str],
     subareas: List[Union[dict, Subarea]]
@@ -338,7 +311,6 @@ def save_curricular_structure(
     Args:
         nombre_carrera (str): Official career name.
         nombre_area (str): Curricular area name.
-        competencias_area (List[str]): Area competencies.
         actividades_sugeridas (List[str]): Suggested area activities.
         criterios_evaluacion_sugeridos (List[str]): Suggested evaluation criteria.
         subareas (List[Union[dict, Subarea]]): Subareas belonging to the area.
@@ -351,7 +323,6 @@ def save_curricular_structure(
         area_data = {
             "nombre_carrera": nombre_carrera,
             "nombre_area": nombre_area,
-            "competencias_area": competencias_area,
             "actividades_sugeridas": actividades_sugeridas,
             "criterios_evaluacion_sugeridos": criterios_evaluacion_sugeridos,
         }
@@ -431,7 +402,7 @@ def save_curricular_structure(
             "subareas_insertadas": subareas_inserted,
             "nodos_vectoriales_creados": vectores_nodes_created
         }
-        return json.dumps(response, cls=JSONEncoderCustom, ensure_ascii=False)
+        return json.dumps(response, default=str, ensure_ascii=False)
 
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error saving curricular structure: {str(e)}"})
@@ -469,7 +440,7 @@ def save_lesson_plan(
         metadatos_doc = {
             "carrera": str(meta_dict.get("carrera", "")),
             "subarea_curricular": str(meta_dict.get("subarea_curricular", "")),
-            "fecha_creacion": _get_bson_timestamp(),
+            "fecha_creacion": datetime.now(timezone.utc),
             "estado": str(meta_dict.get("estado", "finalizado"))
         }
 
@@ -511,7 +482,7 @@ def save_lesson_plan(
             "message": "Teacher lesson plan created successfully.",
             "id_planificacion": str(res.inserted_id),
             "id_usuario": str(user_obj_id)
-        }, cls=JSONEncoderCustom, ensure_ascii=False)
+        }, default=str, ensure_ascii=False)
 
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error creating lesson plan: {str(e)}"})
@@ -543,7 +514,7 @@ def get_planification_by_id(id_planificacion: str, config: RunnableConfig = None
         if not plan:
             return json.dumps({"status": "error", "message": f"Access denied or lesson plan '{id_planificacion}' not found."})
 
-        return json.dumps({"status": "success", "planificacion": plan}, cls=JSONEncoderCustom, ensure_ascii=False)
+        return json.dumps({"status": "success", "planificacion": plan}, default=str, ensure_ascii=False)
 
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error retrieving lesson plan: {str(e)}"})
@@ -580,7 +551,7 @@ def get_learning_activity_by_id(id_actividad: str) -> str:
         if not results:
             return json.dumps({"status": "error", "message": f"Learning activity '{id_actividad}' not found."})
 
-        return json.dumps({"status": "success", "actividad": results[0]}, cls=JSONEncoderCustom, ensure_ascii=False)
+        return json.dumps({"status": "success", "actividad": results[0]}, default=str, ensure_ascii=False)
 
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error retrieving learning activity: {str(e)}"})
@@ -729,7 +700,7 @@ def get_cnb_area_by_id(id_area: str) -> str:
         area = db[AREAS].find_one({"_id": obj_id})
         if not area:
             return json.dumps({"status": "error", "message": f"Curricular area '{id_area}' not found."})
-        return json.dumps({"status": "success", "area": area}, cls=JSONEncoderCustom, ensure_ascii=False)
+        return json.dumps({"status": "success", "area": area}, default=str, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error retrieving curricular area: {str(e)}"})
 
@@ -751,7 +722,7 @@ def get_cnb_subarea_by_id(id_subarea: str) -> str:
         subarea = db[SUB_AREAS].find_one({"_id": obj_id})
         if not subarea:
             return json.dumps({"status": "error", "message": f"Curricular subarea '{id_subarea}' not found."})
-        return json.dumps({"status": "success", "subarea": subarea}, cls=JSONEncoderCustom, ensure_ascii=False)
+        return json.dumps({"status": "success", "subarea": subarea}, default=str, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error retrieving curricular subarea: {str(e)}"})
 
@@ -773,7 +744,7 @@ def get_cnb_vector_by_id(id_vector: str) -> str:
         vec = db[VECTORS].find_one({"_id": obj_id})
         if not vec:
             return json.dumps({"status": "error", "message": f"Vector '{id_vector}' not found."})
-        return json.dumps({"status": "success", "vector": vec}, cls=JSONEncoderCustom, ensure_ascii=False)
+        return json.dumps({"status": "success", "vector": vec}, default=str, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error retrieving vector record: {str(e)}"})
 
@@ -865,7 +836,7 @@ def save_assessment_instrument(
             "status": "success",
             "message": "Assessment instrument saved successfully.",
             "id_instrumento": str(res.inserted_id)
-        }, cls=JSONEncoderCustom, ensure_ascii=False)
+        }, default=str, ensure_ascii=False)
 
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error saving assessment instrument: {str(e)}"})
@@ -888,7 +859,7 @@ def get_assessment_instrument_by_id(id_instrumento: str) -> str:
         inst = db[ASSESSMENT_INSTRUMENTS].find_one({"_id": obj_id})
         if not inst:
             return json.dumps({"status": "error", "message": f"Instrument '{id_instrumento}' not found."})
-        return json.dumps({"status": "success", "instrumento": inst}, cls=JSONEncoderCustom, ensure_ascii=False)
+        return json.dumps({"status": "success", "instrumento": inst}, default=str, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error retrieving assessment instrument: {str(e)}"})
 
@@ -1004,7 +975,7 @@ def save_multimodal_resource(
             "status": "success",
             "message": "Multimodal resource saved successfully.",
             "id_recurso": str(res.inserted_id)
-        }, cls=JSONEncoderCustom, ensure_ascii=False)
+        }, default=str, ensure_ascii=False)
 
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error saving multimodal resource: {str(e)}"})
@@ -1027,7 +998,7 @@ def get_multimodal_resource_by_id(id_recurso: str) -> str:
         rec = db[MULTIMODAL_RESOURCES].find_one({"_id": obj_id})
         if not rec:
             return json.dumps({"status": "error", "message": f"Resource '{id_recurso}' not found."})
-        return json.dumps({"status": "success", "recurso": rec}, cls=JSONEncoderCustom, ensure_ascii=False)
+        return json.dumps({"status": "success", "recurso": rec}, default=str, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error reading multimodal resource: {str(e)}"})
 
@@ -1137,7 +1108,7 @@ def get_top_frequent_courses(config: RunnableConfig = None, id_usuario: str = ""
         ]
 
         results = list(db[LESSON_PLANS].aggregate(pipeline))
-        return json.dumps({"status": "success", "id_usuario": effective_id, "top_cursos": results}, cls=JSONEncoderCustom, ensure_ascii=False)
+        return json.dumps({"status": "success", "id_usuario": effective_id, "top_cursos": results}, default=str, ensure_ascii=False)
 
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error querying top courses: {str(e)}"})
@@ -1194,7 +1165,7 @@ def get_paginated_lesson_plans(config: RunnableConfig = None, id_usuario: str = 
             "pagina_actual": page,
             "registros_por_pagina": limit,
             "planificaciones": plans
-        }, cls=JSONEncoderCustom, ensure_ascii=False)
+        }, default=str, ensure_ascii=False)
 
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error in paginated history: {str(e)}"})
@@ -1241,7 +1212,7 @@ def get_lesson_plan_details(id_planificacion: str, config: RunnableConfig = None
             "planificacion": plan,
             "instrumentos_evaluacion": instruments,
             "recursos_multimodales": resources
-        }, cls=JSONEncoderCustom, ensure_ascii=False, indent=2)
+        }, default=str, ensure_ascii=False, indent=2)
 
     except Exception as e:
         return json.dumps({"status": "error", "message": f"Error retrieving full lesson plan details: {str(e)}"})
@@ -1381,18 +1352,19 @@ def create_user_doc(data: dict) -> dict:
 
         existing = db[USERS].find_one({"google_id": google_id})
         if existing:
-            db[USERS].update_one({"_id": existing["_id"]}, {"$set": {"ultimo_acceso": _get_bson_timestamp()}})
+            db[USERS].update_one({"_id": existing["_id"]}, {"$set": {"ultimo_acceso": datetime.now(timezone.utc)}})
             existing["_id"] = str(existing["_id"])
             return {"status": "info", "message": "Existing user.", "user": existing, "id_usuario": existing["_id"]}
 
+        now_dt = datetime.now(timezone.utc)
         user_doc = {
             "google_id": google_id,
             "nombres": str(data.get("nombres", "")),
             "apellidos": str(data.get("apellidos", "")),
             "email": email,
             "estado": str(data.get("estado", "activo")),
-            "fecha_creacion": _get_bson_timestamp(),
-            "ultimo_acceso": _get_bson_timestamp(),
+            "fecha_creacion": now_dt,
+            "ultimo_acceso": now_dt,
             "foto_perfil": str(data.get("foto_perfil", "")),
             "rol": str(data.get("rol", "docente"))
         }
@@ -1464,7 +1436,7 @@ def update_user_profile_doc(id_usuario: str, update_data: dict) -> bool:
         db = get_db()
         obj_id = ObjectId(id_usuario.strip())
         updates = _clean_updates(update_data)
-        updates["ultimo_acceso"] = _get_bson_timestamp()
+        updates["ultimo_acceso"] = datetime.now(timezone.utc)
 
         res = db[USERS].update_one({"_id": obj_id}, {"$set": updates})
         return res.matched_count > 0
@@ -1506,13 +1478,12 @@ def save_refresh_token(id_usuario: str, refresh_token: str, expires_in_days: int
     try:
         db = get_db()
         user_obj_id = _ensure_object_id(id_usuario)
-        now = time.time()
-        expires_at_epoch = now + (expires_in_days * 86400)
+        now_dt = datetime.now(timezone.utc)
         doc = {
             "id_usuario": user_obj_id,
             "refresh_token": str(refresh_token).strip(),
-            "fecha_creacion": _get_bson_timestamp(),
-            "fecha_expiracion": Timestamp(int(expires_at_epoch), 1)
+            "fecha_creacion": now_dt,
+            "fecha_expiracion": now_dt + timedelta(days=expires_in_days)
         }
         db[REFRESH_TOKENS].update_one(
             {"id_usuario": user_obj_id},

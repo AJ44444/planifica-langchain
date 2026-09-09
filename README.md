@@ -69,7 +69,6 @@ planifica-langchain/
 ├── Dockerfile                  # Contenedor de producción para LangGraph Server
 ├── langgraph.json              # Configuración oficial de LangGraph Server
 ├── pyproject.toml              # Dependencias del proyecto
-└── main.py                     # Runner CLI de desarrollo local
 ```
 
 ---

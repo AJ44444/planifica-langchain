@@ -157,7 +157,7 @@ def test_cnb_catalog_query_tools():
     mock_areas_coll = MagicMock()
     mock_areas_coll.distinct.return_value = ["Ciclo Básico", "Bachillerato en Ciencias y Letras"]
     mock_areas_coll.count_documents.return_value = 1
-    mock_area_doc = {"_id": ObjectId("60d5ec49f1a2c81234567811"), "nombre_area": "Matemáticas", "competencias_area": ["Comp 1"]}
+    mock_area_doc = {"_id": ObjectId("60d5ec49f1a2c81234567811"), "nombre_area": "Matemáticas"}
     mock_areas_coll.find.return_value.skip.return_value.limit.return_value = [mock_area_doc]
 
     mock_subareas_coll = MagicMock()

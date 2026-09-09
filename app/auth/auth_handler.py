@@ -228,33 +228,19 @@ async def authenticate(
 ) -> Auth.types.MinimalUserDict:
     """
     Authenticates requests by extracting and validating the session cookie.
-
-    Args:
-        authorization (optional): Authorization header.
-        headers (optional): HTTP headers dictionary.
-        path (optional): Requested path.
-
-    Returns:
-        Auth.types.MinimalUserDict: Dictionary containing user identity and authentication status.
     """
-    path_str = str(path.decode("utf-8") if isinstance(path, bytes) else (path or "")).strip()
-    path_clean = path_str if path_str.startswith("/") else f"/{path_str}"
-    path_normalized = path_clean.rstrip("/") if len(path_clean) > 1 else path_clean
-    if path_normalized in {"/auth/login", "/auth/refresh", "/auth/logout", "/auth/verify"}:
-        return {
-            "identity": "anonymous",
-            "is_authenticated": False
-        }
+    path_str = path.decode("utf-8") if isinstance(path, bytes) else (path or "")
+    if path_str.rstrip("/") in {"/auth/login", "/auth/refresh", "/auth/logout", "/auth/verify"}:
+        return {"identity": "anonymous", "is_authenticated": False}
 
     token = None
     if headers:
-        cookie_header = headers.get(b"cookie") or headers.get("cookie")
-        if cookie_header:
-            if isinstance(cookie_header, bytes):
-                cookie_header = cookie_header.decode("utf-8")
+        raw_cookie = headers.get(b"cookie") or headers.get("cookie") or ""
+        cookie_str = raw_cookie.decode("utf-8") if isinstance(raw_cookie, bytes) else raw_cookie
+        if "access_token=" in cookie_str:
             from http.cookies import SimpleCookie
             cookie_parser = SimpleCookie()
-            cookie_parser.load(cookie_header)
+            cookie_parser.load(cookie_str)
             if "access_token" in cookie_parser:
                 token = cookie_parser["access_token"].value.strip()
 

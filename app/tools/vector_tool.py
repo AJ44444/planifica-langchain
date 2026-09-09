@@ -145,43 +145,27 @@ def vector_search_cnb(
     if len(subarea_str) != 24:
         raise ValueError("Parameter 'id_subarea_relacionada' must be a valid 24-character hex MongoDB ObjectId.")
 
-    db = get_db()
-    query_vector = generate_embedding(query)
-
-    vector_search_stage: Dict[str, Any] = {
-        "index": "vector_index_cnb",
-        "path": "vector_embedding",
-        "queryVector": query_vector,
-        "numCandidates": limit * 10,
-        "limit": limit,
-        "filter": {
-            "id_subarea_relacionada": {
-                "$eq": ObjectId(subarea_str)
-            }
+    vector_store = get_vector_store()
+    pre_filter = {
+        "id_subarea_relacionada": {
+            "$eq": ObjectId(subarea_str)
         }
     }
 
-    pipeline = [
-        {"$vectorSearch": vector_search_stage},
-        {
-            "$project": {
-                "_id": 1,
-                "id_subarea_relacionada": 1,
-                "nombre_subarea": 1,
-                "tipo_nodo": 1,
-                "referencia_jerarquica": 1,
-                "texto_a_buscar": 1,
-                "score": {"$meta": "vectorSearchScore"}
-            }
-        }
-    ]
+    docs_and_scores = vector_store.similarity_search_with_score(
+        query=query,
+        k=limit,
+        pre_filter=pre_filter
+    )
 
-    cursor = db[VECTORS].aggregate(pipeline)
     results = []
-    for doc in cursor:
-        doc["_id"] = str(doc["_id"])
-        doc["id_subarea_relacionada"] = str(doc["id_subarea_relacionada"])
-        results.append(doc)
+    for doc, score in docs_and_scores:
+        res_item = dict(doc.metadata)
+        res_item["_id"] = str(res_item.get("_id") or doc.id)
+        res_item["id_subarea_relacionada"] = str(res_item.get("id_subarea_relacionada", ""))
+        res_item["texto_a_buscar"] = doc.page_content
+        res_item["score"] = float(score)
+        results.append(res_item)
 
     return results
 

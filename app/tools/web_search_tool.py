@@ -40,7 +40,6 @@ def serper_web_search(query: str, search_type: str = "search", num_results: int 
         str: JSON formatted string containing the list of search results (title, link, snippet, type).
     """
     try:
-        serper_key = get_env_variable("SERPER_API_KEY")
         wrapper = get_serper_wrapper(search_type=search_type, k=num_results)
         raw_results = wrapper.results(query)
 
