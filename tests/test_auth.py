@@ -55,7 +55,7 @@ def test_exchange_google_token_for_session_returns_jwt_and_refresh_token():
 
     with patch("auth.auth_handler.check_db_connection", return_value=True), \
          patch("auth.auth_handler.verify_google_id_token", return_value=mock_google_payload), \
-         patch("auth.auth_handler.get_user_by_google_id", return_value=mock_user_doc), \
+         patch("auth.auth_handler.create_user_doc", return_value={"status": "info", "user": mock_user_doc}), \
          patch("auth.auth_handler.save_refresh_token", return_value=True):
 
         session = exchange_google_token_for_session("valid_google_id_token_test")

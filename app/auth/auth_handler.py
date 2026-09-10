@@ -139,21 +139,19 @@ def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any
     if not google_id or not email:
         raise ValueError("Access Denied: Google OAuth token missing 'sub' or 'email'.")
 
-    user = get_user_by_google_id(google_id)
-    if not user:
-        nombres = given_name if given_name else name
-        apellidos = family_name if family_name else ""
-        new_user_payload = {
-            "google_id": google_id,
-            "email": email,
-            "nombres": nombres,
-            "apellidos": apellidos,
-            "foto_perfil": picture,
-            "rol": "docente",
-            "estado": "activo"
-        }
-        res = create_user_doc(new_user_payload)
-        user = res.get("user")
+    nombres = given_name if given_name else name
+    apellidos = family_name if family_name else ""
+    user_payload = {
+        "google_id": google_id,
+        "email": email,
+        "nombres": nombres,
+        "apellidos": apellidos,
+        "foto_perfil": picture,
+        "rol": "docente",
+        "estado": "activo"
+    }
+    res = create_user_doc(user_payload)
+    user = res.get("user")
 
     if not user or "_id" not in user:
         raise ValueError("Access Denied: Could not verify or retrieve teacher profile from database.")
