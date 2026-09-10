@@ -1,5 +1,4 @@
 import json
-import time
 from datetime import datetime, timezone, timedelta
 from typing import Union, Dict, Any, List, Optional
 from bson import ObjectId
@@ -244,8 +243,7 @@ def insert_cnb_area_doc(data: dict) -> ObjectId:
         "nombre_carrera": carrera,
         "nombre_area": str(data.get("nombre_area", "")).strip(),
         "actividades_sugeridas": _format_items(data.get("actividades_sugeridas")),
-        "criterios_evaluacion": _format_items(data.get("criterios_evaluacion_sugeridos")),
-        "fecha_creacion": datetime.now(timezone.utc)
+        "criterios_evaluacion": _format_items(data.get("criterios_evaluacion_sugeridos"))
     }
     res = db[AREAS].insert_one(doc)
     return res.inserted_id
@@ -265,8 +263,7 @@ def insert_cnb_subarea_doc(data: dict) -> ObjectId:
     doc = {
         "id_area": _ensure_object_id(data.get("id_area")),
         "nombre_subarea": str(data.get("nombre_subarea", "")).strip(),
-        "competencias": data.get("competencias", []),
-        "fecha_creacion": datetime.now(timezone.utc)
+        "competencias": data.get("competencias", [])
     }
     res = db[SUB_AREAS].insert_one(doc)
     return res.inserted_id
@@ -290,8 +287,7 @@ def insert_cnb_vector_doc(data: dict) -> ObjectId:
         "referencia_jerarquica": data.get("referencia_jerarquica", []),
         "texto_a_buscar": str(data.get("texto_a_buscar", "")).strip(),
         "vector_embedding": data.get("vector_embedding", []),
-        "vector_estado": bool(data.get("vector_estado", False)),
-        "fecha_creacion": datetime.now(timezone.utc)
+        "vector_estado": bool(data.get("vector_estado", False))
     }
     res = db[VECTORS].insert_one(doc)
     return res.inserted_id
@@ -1513,12 +1509,13 @@ def get_refresh_token_doc(refresh_token: str) -> Optional[dict]:
         doc = db[REFRESH_TOKENS].find_one({"refresh_token": token_str})
         if not doc:
             return None
-        now = time.time()
+        now = datetime.now(timezone.utc)
         exp = doc.get("fecha_expiracion")
-        if not exp or not hasattr(exp, "time"):
+        if not exp or not isinstance(exp, datetime):
             return None
-        exp_time = exp.time
-        if exp_time < now:
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+        if exp < now:
             db[REFRESH_TOKENS].delete_one({"_id": doc["_id"]})
             return None
         doc["_id"] = str(doc["_id"])
