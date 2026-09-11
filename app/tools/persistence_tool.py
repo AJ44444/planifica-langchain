@@ -465,9 +465,9 @@ def save_lesson_plan(
                 "grado": str(enc_dict.get("grado", "")),
                 "seccion": str(enc_dict.get("seccion", "")),
                 "nombre_docente": teacher_name,
-                "duracion": str(enc_dict.get("duracion", "1 día")),
-                "cantidad_periodos": int(enc_dict.get("cantidad_periodos", 1)),
-                "duracion_periodos": int(enc_dict.get("duracion_periodos", 40))
+                "duracion": str(enc_dict.get("duracion", "")),
+                "cantidad_periodos": int(enc_dict.get("cantidad_periodos", 0)),
+                "duracion_periodos": int(enc_dict.get("duracion_periodos", 0))
             },
             "desarrollo_curricular": formatted_desarrollo
         }

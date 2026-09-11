@@ -10,7 +10,6 @@ from langgraph_sdk import Auth
 from core.config import get_env_variable
 from tools.persistence_tool import (
     create_user_doc,
-    get_user_by_google_id,
     get_user_profile_doc,
     check_db_connection,
     save_refresh_token,
@@ -43,6 +42,8 @@ def verify_google_id_token(id_token: str) -> Dict[str, Any]:
         )
         if "sub" not in payload:
             raise ValueError("Google OAuth token does not contain user identifier 'sub'.")
+        if "email" not in payload:
+            raise ValueError("Google OAuth token does not contain user email.")
 
         return payload
     except Exception as e:
@@ -129,6 +130,7 @@ def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any
         raise ValueError("Access Denied: Database connection is not active.")
 
     google_payload = verify_google_id_token(google_id_token_str)
+
     google_id = str(google_payload.get("sub", "")).strip()
     email = str(google_payload.get("email", "")).strip().lower()
     name = str(google_payload.get("name", "")).strip()
@@ -136,11 +138,9 @@ def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any
     family_name = str(google_payload.get("family_name", "")).strip()
     picture = str(google_payload.get("picture", "")).strip()
 
-    if not google_id or not email:
-        raise ValueError("Access Denied: Google OAuth token missing 'sub' or 'email'.")
-
     nombres = given_name if given_name else name
     apellidos = family_name if family_name else ""
+
     user_payload = {
         "google_id": google_id,
         "email": email,
@@ -150,6 +150,7 @@ def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any
         "rol": "docente",
         "estado": "activo"
     }
+    
     res = create_user_doc(user_payload)
     user = res.get("user")
 

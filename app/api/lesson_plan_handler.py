@@ -8,10 +8,6 @@ from auth.auth_handler import verify_project_access_token
 def extract_user_id_from_request(request: Request) -> str:
     token = request.cookies.get("access_token")
     if not token:
-        auth_header = request.headers.get("authorization", "")
-        if auth_header.startswith("Bearer "):
-            token = auth_header[7:].strip()
-    if not token:
         return ""
     try:
         payload = verify_project_access_token(token)

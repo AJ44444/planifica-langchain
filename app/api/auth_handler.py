@@ -96,11 +96,6 @@ async def verify_session(request: Request) -> JSONResponse:
 
     token = request.cookies.get("access_token")
     if not token:
-        auth_header = request.headers.get("authorization", "")
-        if auth_header.startswith("Bearer "):
-            token = auth_header[7:].strip()
-
-    if not token:
         return JSONResponse(
             {"detail": "Access Denied: 'access_token' cookie not provided."},
             status_code=401

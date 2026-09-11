@@ -24,6 +24,14 @@ def test_verify_session_endpoint_unauthenticated(client):
     assert "Access Denied" in response.json()["detail"]
 
 
+def test_verify_session_endpoint_rejects_bearer_token(client):
+    """Verifies that GET /auth/verify rejects Bearer token in Authorization header when cookie is missing."""
+    token = create_access_token(user_id="60d5ec49f1a2c8123456789a", email="docente.verify@escuela.edu.gt")
+    response = client.get("/auth/verify", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 401
+    assert "Access Denied" in response.json()["detail"]
+
+
 def test_verify_session_endpoint_authenticated(client):
     """Verifies that GET /auth/verify returns 200 OK with user info when a valid cookie is provided."""
     user_id = "60d5ec49f1a2c8123456789a"

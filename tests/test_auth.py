@@ -191,7 +191,7 @@ async def test_server_endpoints_set_secure_httponly_cookies():
 
     with patch("auth.auth_handler.check_db_connection", return_value=True), \
          patch("auth.auth_handler.verify_google_id_token", return_value=mock_google_payload), \
-         patch("auth.auth_handler.get_user_by_google_id", return_value=mock_user_doc), \
+         patch("auth.auth_handler.create_user_doc", return_value={"status": "info", "user": mock_user_doc}), \
          patch("auth.auth_handler.save_refresh_token", return_value=True):
 
         response = client.post("/auth/login", json={"id_token": "valid_google_token_123"})
@@ -282,7 +282,6 @@ async def test_auth_middleware_user_missing_id_401():
     }
     with patch("auth.auth_handler.check_db_connection", return_value=True), \
          patch("auth.auth_handler.verify_google_id_token", return_value=mock_google_payload), \
-         patch("auth.auth_handler.get_user_by_google_id", return_value=None), \
          patch("auth.auth_handler.create_user_doc", return_value={"status": "error", "user": None}):
 
         with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
