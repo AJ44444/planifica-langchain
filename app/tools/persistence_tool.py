@@ -444,9 +444,9 @@ def save_lesson_plan(
         }
 
         formatted_desarrollo = []
-        for fila in desarrollo_curricular:
-            fila_dict = _to_dict(fila)
-            acts = fila_dict.get("actividades_aprendizaje", [])
+        for item in desarrollo_curricular:
+            item_dict = _to_dict(item)
+            acts = item_dict.get("actividades_aprendizaje", [])
             formatted_acts = []
             for act in acts:
                 act_dict = _to_dict(act)
@@ -454,8 +454,8 @@ def save_lesson_plan(
                 act_dict["id_actividad"] = _ensure_object_id(act_id_val) if act_id_val else ObjectId()
                 formatted_acts.append(act_dict)
 
-            fila_dict["actividades_aprendizaje"] = formatted_acts
-            formatted_desarrollo.append(fila_dict)
+            item_dict["actividades_aprendizaje"] = formatted_acts
+            formatted_desarrollo.append(item_dict)
 
         teacher_name = extract_teacher_name_from_config(config, effective_id) or "Docente"
 
@@ -661,8 +661,8 @@ def delete_lesson_plan(id_planificacion: str, config: RunnableConfig = None, id_
             }, ensure_ascii=False)
 
         activity_ids = []
-        for fila in plan.get("desarrollo_curricular", []):
-            for act in fila.get("actividades_aprendizaje", []):
+        for item in plan.get("desarrollo_curricular", []):
+            for act in item.get("actividades_aprendizaje", []):
                 act_id = act.get("id_actividad")
                 if act_id:
                     activity_ids.append(_ensure_object_id(act_id))
@@ -1197,8 +1197,8 @@ def get_lesson_plan_details(id_planificacion: str, config: RunnableConfig = None
             return json.dumps({"status": "error", "message": "Access denied or lesson plan not found for this user."})
 
         activity_ids = []
-        for fila in plan.get("desarrollo_curricular", []):
-            for act in fila.get("actividades_aprendizaje", []):
+        for item in plan.get("desarrollo_curricular", []):
+            for act in item.get("actividades_aprendizaje", []):
                 act_id = act.get("id_actividad")
                 if act_id:
                     activity_ids.append(_ensure_object_id(act_id))

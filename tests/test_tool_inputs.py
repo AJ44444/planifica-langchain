@@ -48,7 +48,6 @@ def test_save_lesson_plan_tool_schema_validation():
         },
         "desarrollo_curricular": [
             {
-                "id_fila": 1,
                 "competencia": "Resuelve problemas matemáticos",
                 "indicadores_logro": [
                     {

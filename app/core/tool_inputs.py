@@ -53,7 +53,6 @@ class IndicadorPlanItem(BaseModel):
 
 class FilaCurricularPlan(BaseModel):
     """Flattened curricular development row."""
-    id_fila: int = Field(..., description="Ordinal row ID.")
     competencia: str = Field(..., description="Description of the competency.")
     indicadores_logro: List[IndicadorPlanItem] = Field(..., description="List of achievement indicators.")
     actividades_aprendizaje: List[ActividadAprendizaje] = Field(..., description="List of learning activities.")
@@ -135,7 +134,7 @@ class UpdateLessonPlanInput(BaseModel):
 
 
 class UpdateAssessmentInstrumentInput(BaseModel):
-    """Strictly typed input to update an assessment instrument. Excludes 'id_planificacion' and 'id_fila'."""
+    """Strictly typed input to update an assessment instrument. Excludes 'id_planificacion'."""
     id_instrumento: str = Field(..., description="MongoDB ID (24-character hex) of the instrument to update.")
     id_actividad: Optional[str] = Field(default=None, description="Optional updated evaluated activity ID.")
     tipo: Optional[Literal["rubrica", "lista_cotejo", "escala_rango"]] = Field(default=None, description="Optional updated instrument type.")
@@ -144,7 +143,7 @@ class UpdateAssessmentInstrumentInput(BaseModel):
 
 
 class UpdateMultimodalResourceInput(BaseModel):
-    """Strictly typed input to update a multimodal resource. Excludes 'id_planificacion' and 'id_fila'."""
+    """Strictly typed input to update a multimodal resource. Excludes 'id_planificacion'."""
     id_recurso: str = Field(..., description="MongoDB ID (24-character hex) of the resource to update.")
     id_actividad: Optional[str] = Field(default=None, description="Optional updated learning activity ID.")
     tipo: Optional[Literal["video", "documento", "imagen", "simulacion", "lectura"]] = Field(default=None, description="Optional updated resource type.")
