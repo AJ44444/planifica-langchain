@@ -1,7 +1,8 @@
 import jwt
 import secrets
+import asyncio
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 import time
 from collections import defaultdict
 from google.oauth2 import id_token as google_id_token_verifier
@@ -12,14 +13,27 @@ from tools.persistence_tool import (
     create_user_doc,
     get_user_profile_doc,
     check_db_connection,
-    save_refresh_token,
-    get_refresh_token_doc,
+    save_session_doc,
+    get_session_by_session_id,
+    update_session_tokens,
+    delete_session_by_session_id,
 )
 
 auth = Auth()
 
 THREAD_CREATION_LOGS = defaultdict(list)
 MAX_THREADS_PER_MINUTE = 5
+
+_SESSION_LOCKS: Dict[str, asyncio.Lock] = {}
+_LOCKS_GUARD = asyncio.Lock()
+
+
+async def _get_session_lock(session_id: str) -> asyncio.Lock:
+    """Retrieves or creates a dedicated async lock per session_id."""
+    async with _LOCKS_GUARD:
+        if session_id not in _SESSION_LOCKS:
+            _SESSION_LOCKS[session_id] = asyncio.Lock()
+        return _SESSION_LOCKS[session_id]
 
 
 def verify_google_id_token(id_token: str) -> Dict[str, Any]:
@@ -78,22 +92,6 @@ def create_access_token(user_id: str, email: str, nombres: str = "", rol: str = 
     return jwt.encode(payload, jwt_secret, algorithm="HS256")
 
 
-def create_refresh_token(user_id: str, expires_in_days: int = 7) -> str:
-    """
-    Generates and persists a refresh token for the user.
-
-    Args:
-        user_id (str): Unique user identifier.
-        expires_in_days (int, optional): Token validity in days. Defaults to 7.
-
-    Returns:
-        str: Unique generated refresh token string.
-    """
-    token_str = secrets.token_hex(32)
-    save_refresh_token(id_usuario=user_id, refresh_token=token_str, expires_in_days=expires_in_days)
-    return token_str
-
-
 def verify_project_access_token(token: str) -> Dict[str, Any]:
     """
     Verifies the signature and expiration of a JWT access token.
@@ -118,13 +116,13 @@ def verify_project_access_token(token: str) -> Dict[str, Any]:
 
 def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any]:
     """
-    Exchanges a Google OAuth token for a user session with access and refresh tokens.
+    Exchanges a Google OAuth token for a user session with session_id, access and refresh tokens.
 
     Args:
         google_id_token_str (str): Google OAuth ID token.
 
     Returns:
-        Dict[str, Any]: Dictionary containing issued tokens and user data.
+        Dict[str, Any]: Dictionary containing session_id, tokens, and user data.
     """
     if not check_db_connection():
         raise ValueError("Access Denied: Database connection is not active.")
@@ -158,6 +156,7 @@ def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any
         raise ValueError("Access Denied: Could not verify or retrieve teacher profile from database.")
 
     user_id = str(user["_id"])
+    session_id = secrets.token_hex(32)
     access_token = create_access_token(
         user_id=user_id,
         email=user.get("email", email),
@@ -165,12 +164,21 @@ def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any
         rol=user.get("rol", "docente"),
         expires_in_seconds=300
     )
-    refresh_token = create_refresh_token(user_id=user_id, expires_in_days=7)
+    refresh_token = secrets.token_hex(32)
+
+    save_session_doc(
+        id_usuario=user_id,
+        session_id=session_id,
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in_days=7
+    )
 
     return {
+        "session_id": session_id,
         "access_token": access_token,
         "refresh_token": refresh_token,
-        "expires_in": 300,
+        "expires_in": 604800,
         "token_type": "Bearer",
         "user": {
             "id_usuario": user_id,
@@ -181,42 +189,61 @@ def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any
     }
 
 
-def refresh_access_token_session(refresh_token_str: str) -> Dict[str, Any]:
+async def get_or_refresh_session(session_id: str) -> Dict[str, Any]:
     """
-    Renews the session issuing a new access token from a valid refresh token.
+    Retrieves and validates active session for session_id.
+    If access_token is expired but refresh_token is valid (7 days),
+    locks concurrent requests, generates fresh access_token, and rotates refresh_token.
 
     Args:
-        refresh_token_str (str): Active session refresh token.
+        session_id (str): Unique session identifier cookie.
 
     Returns:
-        Dict[str, Any]: Dictionary containing the new access token.
+        Dict[str, Any]: Verified JWT payload of active/refreshed access_token.
     """
-    if not check_db_connection():
-        raise ValueError("Access Denied: Database connection is not active.")
+    sid = str(session_id).strip()
+    if not sid:
+        raise ValueError("Access Denied: 'session_id' cookie not provided.")
 
-    doc = get_refresh_token_doc(refresh_token_str)
-    if not doc:
-        raise ValueError("Invalid or expired refresh token. Please sign in again.")
+    lock = await _get_session_lock(sid)
+    async with lock:
+        session_doc = get_session_by_session_id(sid)
+        if not session_doc:
+            raise ValueError("Access Denied: Invalid or expired session. Please log in again.")
 
-    id_usuario = str(doc.get("id_usuario") or doc.get("user_id", "")).strip()
-    user = get_user_profile_doc(id_usuario)
-    if not user:
-        raise ValueError("Access Denied: User associated with refresh token was not found.")
+        access_token = str(session_doc.get("access_token", "")).strip()
 
-    user_id = str(user["_id"])
-    new_access_token = create_access_token(
-        user_id=user_id,
-        email=user.get("email", ""),
-        nombres=user.get("nombres", ""),
-        rol=user.get("rol", "docente"),
-        expires_in_seconds=300
-    )
+        if access_token:
+            try:
+                jwt_payload = verify_project_access_token(access_token)
+                return jwt_payload
+            except ValueError:
+                pass
 
-    return {
-        "access_token": new_access_token,
-        "expires_in": 300,
-        "token_type": "Bearer"
-    }
+        user_id = str(session_doc.get("id_usuario", "")).strip()
+        user = get_user_profile_doc(user_id)
+        if not user:
+            delete_session_by_session_id(sid)
+            raise ValueError("Access Denied: User associated with session was not found.")
+
+        new_access_token = create_access_token(
+            user_id=str(user["_id"]),
+            email=user.get("email", ""),
+            nombres=user.get("nombres", ""),
+            rol=user.get("rol", "docente"),
+            expires_in_seconds=300
+        )
+        new_refresh_token = secrets.token_hex(32)
+
+        updated = update_session_tokens(
+            session_id=sid,
+            new_access_token=new_access_token,
+            new_refresh_token=new_refresh_token
+        )
+        if not updated:
+            raise ValueError("Access Denied: Failed to renew session tokens.")
+
+        return verify_project_access_token(new_access_token)
 
 
 @auth.authenticate
@@ -226,31 +253,31 @@ async def authenticate(
     path: Optional[str] = None
 ) -> Auth.types.MinimalUserDict:
     """
-    Authenticates requests by extracting and validating the session cookie.
+    Authenticates requests by extracting and validating the session_id cookie.
     """
     path_str = path.decode("utf-8") if isinstance(path, bytes) else (path or "")
-    if path_str.rstrip("/") in {"/auth/login", "/auth/refresh", "/auth/logout", "/auth/verify"}:
+    if path_str.rstrip("/") in {"/auth/login", "/auth/logout", "/auth/verify"}:
         return {"identity": "anonymous", "is_authenticated": False}
 
-    token = None
+    session_id = None
     if headers:
         raw_cookie = headers.get(b"cookie") or headers.get("cookie") or ""
         cookie_str = raw_cookie.decode("utf-8") if isinstance(raw_cookie, bytes) else raw_cookie
-        if "access_token=" in cookie_str:
+        if "session_id=" in cookie_str:
             from http.cookies import SimpleCookie
             cookie_parser = SimpleCookie()
             cookie_parser.load(cookie_str)
-            if "access_token" in cookie_parser:
-                token = cookie_parser["access_token"].value.strip()
+            if "session_id" in cookie_parser:
+                session_id = cookie_parser["session_id"].value.strip()
 
-    if not token:
+    if not session_id:
         raise Auth.exceptions.HTTPException(
             status_code=401,
-            detail="Access Denied: 'access_token' cookie not provided."
+            detail="Access Denied: 'session_id' cookie not provided."
         )
 
     try:
-        jwt_payload = verify_project_access_token(token)
+        jwt_payload = await get_or_refresh_session(session_id)
         return {
             "identity": str(jwt_payload["sub"]),
             "is_authenticated": True,

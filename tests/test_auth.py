@@ -1,20 +1,21 @@
 import pytest
 import os
 import sys
+from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock
 from bson import ObjectId
 
 # Ensure app package is accessible in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app")))
 os.environ["JWT_SECRET"] = "test_jwt_secret_key_12345"
+os.environ["SESSION_SECRET"] = "test_session_secret_key_12345"
+os.environ["REFRESH_SECRET"] = "test_refresh_secret_key_12345"
 
 from auth.auth_handler import (
     verify_google_id_token,
     create_access_token,
-    create_refresh_token,
     verify_project_access_token,
     exchange_google_token_for_session,
-    refresh_access_token_session,
     authenticate,
     Auth,
 )
@@ -35,7 +36,7 @@ def test_create_and_verify_access_token_5_min_expiration():
 
 def test_exchange_google_token_for_session_returns_jwt_and_refresh_token():
     """
-    Verifies that exchange_google_token_for_session verifies Google token and issues access and refresh tokens.
+    Verifies that exchange_google_token_for_session verifies Google token and issues session_id, access and refresh tokens.
     """
     mock_google_payload = {
         "sub": "google_user_exchange_123",
@@ -56,13 +57,14 @@ def test_exchange_google_token_for_session_returns_jwt_and_refresh_token():
     with patch("auth.auth_handler.check_db_connection", return_value=True), \
          patch("auth.auth_handler.verify_google_id_token", return_value=mock_google_payload), \
          patch("auth.auth_handler.create_user_doc", return_value={"status": "info", "user": mock_user_doc}), \
-         patch("auth.auth_handler.save_refresh_token", return_value=True):
+         patch("auth.auth_handler.save_session_doc", return_value=True):
 
         session = exchange_google_token_for_session("valid_google_id_token_test")
 
+        assert "session_id" in session
         assert "access_token" in session
         assert "refresh_token" in session
-        assert session["expires_in"] == 300
+        assert session["expires_in"] == 604800
         assert session["token_type"] == "Bearer"
         assert session["user"]["id_usuario"] == "60d5ec49f1a2c8123456789c"
 
@@ -70,58 +72,129 @@ def test_exchange_google_token_for_session_returns_jwt_and_refresh_token():
         assert jwt_payload["sub"] == "60d5ec49f1a2c8123456789c"
 
 
-def test_refresh_access_token_session_success():
-    """
-    Verifies that refresh_access_token_session exchanges a valid refresh token for a new Access Token.
-    """
-    mock_refresh_doc = {
-        "_id": "token_doc_id",
-        "id_usuario": "60d5ec49f1a2c8123456789c",
-        "refresh_token": "valid_refresh_token_hex_123",
-        "expires_at": 9999999999.0
-    }
-    mock_user_doc = {
-        "_id": ObjectId("60d5ec49f1a2c8123456789c"),
-        "email": "docente.session@escuela.edu.gt",
-        "nombres": "Lucía",
-        "rol": "docente"
-    }
-
-    with patch("auth.auth_handler.check_db_connection", return_value=True), \
-         patch("auth.auth_handler.get_refresh_token_doc", return_value=mock_refresh_doc), \
-         patch("auth.auth_handler.get_user_profile_doc", return_value=mock_user_doc):
-
-        new_session = refresh_access_token_session("valid_refresh_token_hex_123")
-
-        assert "access_token" in new_session
-        assert new_session["expires_in"] == 300
-        jwt_payload = verify_project_access_token(new_session["access_token"])
-        assert jwt_payload["sub"] == "60d5ec49f1a2c8123456789c"
-
-
 @pytest.mark.anyio
-async def test_auth_middleware_with_cookie_access_token():
+async def test_auth_middleware_with_cookie_session_id():
     """
-    Verifies that authenticate() middleware accepts Access Token from Cookie header.
+    Verifies that authenticate() middleware accepts session_id from Cookie header and verifies active access_token.
     """
+    user_id = "60d5ec49f1a2c8123456789a"
     access_token = create_access_token(
-        user_id="60d5ec49f1a2c8123456789a",
+        user_id=user_id,
         email="docente.cookie@escuela.edu.gt",
         nombres="Marta Cookie",
         rol="docente"
     )
+    mock_session_doc = {
+        "_id": "sess_123",
+        "id_usuario": user_id,
+        "session_id": "valid_session_id_123",
+        "access_token": access_token,
+        "refresh_token": "ref_123",
+        "fecha_expiracion": datetime.now(timezone.utc) + timedelta(days=7)
+    }
 
-    result = await authenticate(headers={"cookie": f"access_token={access_token}"})
+    with patch("auth.auth_handler.get_session_by_session_id", return_value=mock_session_doc):
+        result = await authenticate(headers={"cookie": "session_id=valid_session_id_123"})
 
-    assert result.get("identity") == "60d5ec49f1a2c8123456789a"
-    assert result.get("is_authenticated") is True
-    assert result.get("email") == "docente.cookie@escuela.edu.gt"
+        assert result.get("identity") == user_id
+        assert result.get("is_authenticated") is True
+        assert result.get("email") == "docente.cookie@escuela.edu.gt"
+
+
+@pytest.mark.anyio
+async def test_auth_middleware_transparent_refresh_and_rotation():
+    """
+    Verifies that when access_token in DB is expired, authenticate() locks, refreshes access_token, and rotates refresh_token.
+    """
+    from auth.auth_handler import get_or_refresh_session
+    user_id = "60d5ec49f1a2c8123456789a"
+
+    expired_access_token = create_access_token(
+        user_id=user_id,
+        email="docente.refreshed@escuela.edu.gt",
+        nombres="Docente Refreshed",
+        expires_in_seconds=-10
+    )
+    mock_session_doc = {
+        "_id": "sess_123",
+        "id_usuario": user_id,
+        "session_id": "session_id_to_refresh",
+        "access_token": expired_access_token,
+        "refresh_token": "old_refresh_token",
+        "fecha_expiracion": datetime.now(timezone.utc) + timedelta(days=7)
+    }
+    mock_user_doc = {
+        "_id": ObjectId(user_id),
+        "email": "docente.refreshed@escuela.edu.gt",
+        "nombres": "Docente Refreshed",
+        "rol": "docente"
+    }
+
+    with patch("auth.auth_handler.get_session_by_session_id", return_value=mock_session_doc), \
+         patch("auth.auth_handler.get_user_profile_doc", return_value=mock_user_doc), \
+         patch("auth.auth_handler.update_session_tokens", return_value=True) as mock_update:
+
+        payload = await get_or_refresh_session("session_id_to_refresh")
+
+        assert payload["sub"] == user_id
+        assert payload["email"] == "docente.refreshed@escuela.edu.gt"
+        assert mock_update.called
+        kwargs = mock_update.call_args[1]
+        assert kwargs["session_id"] == "session_id_to_refresh"
+        assert kwargs["new_access_token"] != expired_access_token
+        assert kwargs["new_refresh_token"] != "old_refresh_token"
+
+
+def test_update_session_tokens_does_not_extend_expiration():
+    """
+    Verifies that update_session_tokens only updates access_token and refresh_token without altering fecha_expiracion.
+    """
+    from tools.persistence_tool import update_session_tokens
+    mock_db = MagicMock()
+    mock_collection = MagicMock()
+    mock_db.__getitem__.return_value = mock_collection
+    mock_collection.update_one.return_value.modified_count = 1
+
+    with patch("tools.persistence_tool.get_db", return_value=mock_db):
+        res = update_session_tokens("sid_123", "new_acc_tok", "new_ref_tok")
+        assert res is True
+        mock_collection.update_one.assert_called_once()
+        call_args = mock_collection.update_one.call_args
+        set_dict = call_args[0][1]["$set"]
+        assert "access_token" in set_dict
+        assert "refresh_token" in set_dict
+        assert "fecha_expiracion" not in set_dict
+
+
+def test_hmac_binary_hashing_for_sessions():
+    """
+    Verifies that hash_session_id and hash_refresh_token return BSON Binary objects with HMAC-SHA256 digests.
+    """
+    import hmac
+    import hashlib
+    import bson
+    from tools.persistence_tool import hash_session_id, hash_refresh_token
+
+    sid_hex = "a1b2c3d4e5f67890"
+    ref_hex = "0987654321fedcba"
+
+    sid_bin = hash_session_id(sid_hex)
+    ref_bin = hash_refresh_token(ref_hex)
+
+    assert isinstance(sid_bin, bson.Binary)
+    assert isinstance(ref_bin, bson.Binary)
+
+    expected_sid_digest = hmac.new("test_session_secret_key_12345".encode("utf-8"), sid_hex.encode("utf-8"), hashlib.sha256).digest()
+    expected_ref_digest = hmac.new("test_refresh_secret_key_12345".encode("utf-8"), ref_hex.encode("utf-8"), hashlib.sha256).digest()
+
+    assert bytes(sid_bin) == expected_sid_digest
+    assert bytes(ref_bin) == expected_ref_digest
 
 
 @pytest.mark.anyio
 async def test_auth_middleware_rejects_bearer_token_without_cookie():
     """
-    Verifies that authenticate() middleware rejects Bearer header token as it only accepts cookies.
+    Verifies that authenticate() middleware rejects Bearer header token as it only accepts session_id cookies.
     """
     access_token = create_access_token(
         user_id="60d5ec49f1a2c8123456789a",
@@ -140,15 +213,11 @@ async def test_auth_middleware_rejects_bearer_token_without_cookie():
 @pytest.mark.anyio
 async def test_auth_middleware_allows_public_auth_routes():
     """
-    Verifies that authenticate() middleware allows public routes without requiring access_token cookie.
+    Verifies that authenticate() middleware allows public routes without requiring session_id cookie.
     """
     result_login = await authenticate(path="/auth/login")
     assert result_login["identity"] == "anonymous"
     assert result_login["is_authenticated"] is False
-
-    result_refresh = await authenticate(path="/auth/refresh")
-    assert result_refresh["identity"] == "anonymous"
-    assert result_refresh["is_authenticated"] is False
 
     result_logout = await authenticate(path="/auth/logout")
     assert result_logout["identity"] == "anonymous"
@@ -166,7 +235,7 @@ async def test_auth_middleware_allows_public_auth_routes():
 @pytest.mark.anyio
 async def test_server_endpoints_set_secure_httponly_cookies():
     """
-    Verifies that /auth/login and /auth/refresh return secure HttpOnly, SameSite=lax, and Secure cookies.
+    Verifies that /auth/login returns secure HttpOnly session_id cookie with 7-day duration.
     """
     from starlette.testclient import TestClient
     from server import app
@@ -192,17 +261,15 @@ async def test_server_endpoints_set_secure_httponly_cookies():
     with patch("auth.auth_handler.check_db_connection", return_value=True), \
          patch("auth.auth_handler.verify_google_id_token", return_value=mock_google_payload), \
          patch("auth.auth_handler.create_user_doc", return_value={"status": "info", "user": mock_user_doc}), \
-         patch("auth.auth_handler.save_refresh_token", return_value=True):
+         patch("auth.auth_handler.save_session_doc", return_value=True):
 
         response = client.post("/auth/login", json={"id_token": "valid_google_token_123"})
         assert response.status_code == 200
-        assert "access_token" in response.cookies
-        assert "refresh_token" in response.cookies
+        assert "session_id" in response.cookies
 
         set_cookie_headers = response.headers.get_list("set-cookie")
-        assert any("httponly" in h.lower() for h in set_cookie_headers)
-        assert any("samesite=lax" in h.lower() for h in set_cookie_headers)
-        assert any("secure" in h.lower() for h in set_cookie_headers)
+        assert any("session_id" in h and "httponly" in h.lower() for h in set_cookie_headers)
+        assert any("max-age=604800" in h.lower() for h in set_cookie_headers)
 
 
 @pytest.mark.anyio

@@ -7,7 +7,6 @@ from .lesson_plan_handler import (
 )
 from .auth_handler import (
     login_with_google,
-    refresh_token_endpoint,
     logout,
     verify_session,
 )
@@ -16,7 +15,6 @@ __all__ = [
     "get_paginated_lesson_plans_endpoint",
     "get_lesson_plan_details_endpoint",
     "login_with_google",
-    "refresh_token_endpoint",
     "logout",
     "verify_session",
 ]

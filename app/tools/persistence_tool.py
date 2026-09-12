@@ -1,4 +1,7 @@
 import json
+import hmac
+import hashlib
+import bson
 from datetime import datetime, timezone, timedelta
 from typing import Union, Dict, Any, List, Optional
 from bson import ObjectId
@@ -1459,14 +1462,43 @@ def delete_user_profile_doc(id_usuario: str) -> bool:
         return False
 
 
-def save_refresh_token(id_usuario: str, refresh_token: str, expires_in_days: int = 7) -> bool:
+def hash_session_id(session_id_hex: str) -> bson.Binary:
     """
-    Saves or updates a session refresh token for a user.
+    Computes HMAC-SHA256 binary digest of session_id_hex using SESSION_SECRET.
+    Returns BSON Binary object for MongoDB storage and querying.
+    """
+    secret = get_env_variable("SESSION_SECRET").encode("utf-8")
+    digest = hmac.new(secret, str(session_id_hex).strip().encode("utf-8"), hashlib.sha256).digest()
+    return bson.Binary(digest)
+
+
+def hash_refresh_token(refresh_token_hex: str) -> bson.Binary:
+    """
+    Computes HMAC-SHA256 binary digest of refresh_token_hex using REFRESH_SECRET.
+    Returns BSON Binary object for MongoDB storage and querying.
+    """
+    secret = get_env_variable("REFRESH_SECRET").encode("utf-8")
+    digest = hmac.new(secret, str(refresh_token_hex).strip().encode("utf-8"), hashlib.sha256).digest()
+    return bson.Binary(digest)
+
+
+def save_session_doc(
+    id_usuario: str,
+    session_id: str,
+    access_token: str,
+    refresh_token: str,
+    expires_in_days: int = 7
+) -> bool:
+    """
+    Saves or updates a user session document in the refresh_tokens collection.
+    Stores session_id and refresh_token as HMAC binary digests (BSON Binary).
 
     Args:
         id_usuario (str): Unique user identifier.
-        refresh_token (str): Issued refresh token.
-        expires_in_days (int, optional): Token validity in days. Defaults to 7.
+        session_id (str): Unique session identifier hex string (cookie).
+        access_token (str): Signed access token string.
+        refresh_token (str): Session refresh token hex string.
+        expires_in_days (int, optional): Expiration validity in days. Defaults to 7.
 
     Returns:
         bool: True if stored successfully, False otherwise.
@@ -1475,14 +1507,19 @@ def save_refresh_token(id_usuario: str, refresh_token: str, expires_in_days: int
         db = get_db()
         user_obj_id = _ensure_object_id(id_usuario)
         now_dt = datetime.now(timezone.utc)
+        session_bin = hash_session_id(session_id)
+        refresh_bin = hash_refresh_token(refresh_token)
+
         doc = {
             "id_usuario": user_obj_id,
-            "refresh_token": str(refresh_token).strip(),
+            "session_id": session_bin,
+            "access_token": str(access_token).strip(),
+            "refresh_token": refresh_bin,
             "fecha_creacion": now_dt,
             "fecha_expiracion": now_dt + timedelta(days=expires_in_days)
         }
         db[REFRESH_TOKENS].update_one(
-            {"id_usuario": user_obj_id},
+            {"session_id": session_bin},
             {"$set": doc},
             upsert=True
         )
@@ -1491,22 +1528,24 @@ def save_refresh_token(id_usuario: str, refresh_token: str, expires_in_days: int
         return False
 
 
-def get_refresh_token_doc(refresh_token: str) -> Optional[dict]:
+def get_session_by_session_id(session_id: str) -> Optional[dict]:
     """
-    Validates and retrieves an active refresh token document.
+    Retrieves and validates an active session document by session_id hex.
+    Computes HMAC binary digest of incoming session_id hex and queries DB.
 
     Args:
-        refresh_token (str): Refresh token to validate.
+        session_id (str): Unique session identifier cookie hex value.
 
     Returns:
-        Optional[dict]: Active refresh token data or None if invalid/expired.
+        Optional[dict]: Active session document data or None if missing/expired.
     """
     try:
         db = get_db()
-        token_str = str(refresh_token).strip()
-        if not token_str:
+        sid_str = str(session_id).strip()
+        if not sid_str:
             return None
-        doc = db[REFRESH_TOKENS].find_one({"refresh_token": token_str})
+        session_bin = hash_session_id(sid_str)
+        doc = db[REFRESH_TOKENS].find_one({"session_id": session_bin})
         if not doc:
             return None
         now = datetime.now(timezone.utc)
@@ -1524,3 +1563,64 @@ def get_refresh_token_doc(refresh_token: str) -> Optional[dict]:
         return doc
     except Exception:
         return None
+
+
+def update_session_tokens(
+    session_id: str,
+    new_access_token: str,
+    new_refresh_token: str
+) -> bool:
+    """
+    Updates access_token and rotates refresh_token for session_id without extending session expiration.
+    Computes HMAC binary digest of new_refresh_token.
+
+    Args:
+        session_id (str): Session identifier hex.
+        new_access_token (str): Freshly generated access token.
+        new_refresh_token (str): Newly rotated refresh token hex.
+
+    Returns:
+        bool: True if updated successfully, False otherwise.
+    """
+    try:
+        db = get_db()
+        sid_str = str(session_id).strip()
+        if not sid_str:
+            return False
+        session_bin = hash_session_id(sid_str)
+        new_refresh_bin = hash_refresh_token(new_refresh_token)
+
+        res = db[REFRESH_TOKENS].update_one(
+            {"session_id": session_bin},
+            {
+                "$set": {
+                    "access_token": str(new_access_token).strip(),
+                    "refresh_token": new_refresh_bin
+                }
+            }
+        )
+        return res.modified_count > 0 or res.matched_count > 0
+    except Exception:
+        return False
+
+
+def delete_session_by_session_id(session_id: str) -> bool:
+    """
+    Deletes the session document matching session_id hex from refresh_tokens collection.
+
+    Args:
+        session_id (str): Unique session identifier hex.
+
+    Returns:
+        bool: True if deleted successfully, False otherwise.
+    """
+    try:
+        db = get_db()
+        sid_str = str(session_id).strip()
+        if not sid_str:
+            return False
+        session_bin = hash_session_id(sid_str)
+        res = db[REFRESH_TOKENS].delete_one({"session_id": session_bin})
+        return res.deleted_count > 0
+    except Exception:
+        return False

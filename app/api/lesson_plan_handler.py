@@ -2,15 +2,15 @@ import json
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from tools.persistence_tool import get_paginated_lesson_plans, get_lesson_plan_details
-from auth.auth_handler import verify_project_access_token
+from auth.auth_handler import get_or_refresh_session
 
 
-def extract_user_id_from_request(request: Request) -> str:
-    token = request.cookies.get("access_token")
-    if not token:
+async def extract_user_id_from_request(request: Request) -> str:
+    session_id = request.cookies.get("session_id")
+    if not session_id:
         return ""
     try:
-        payload = verify_project_access_token(token)
+        payload = await get_or_refresh_session(session_id)
         return str(payload.get("sub", "")).strip()
     except Exception:
         return ""
@@ -21,7 +21,7 @@ async def get_paginated_lesson_plans_endpoint(request: Request) -> JSONResponse:
         if request.method == "OPTIONS":
             return JSONResponse({"status": "ok"}, status_code=200)
 
-        user_id = extract_user_id_from_request(request)
+        user_id = await extract_user_id_from_request(request)
         if not user_id:
             return JSONResponse(
                 {"detail": "Access Denied: Invalid or missing access token."},
@@ -58,7 +58,7 @@ async def get_lesson_plan_details_endpoint(request: Request) -> JSONResponse:
         if request.method == "OPTIONS":
             return JSONResponse({"status": "ok"}, status_code=200)
 
-        user_id = extract_user_id_from_request(request)
+        user_id = await extract_user_id_from_request(request)
         if not user_id:
             return JSONResponse(
                 {"detail": "Access Denied: Invalid or missing access token."},

@@ -16,8 +16,8 @@
         "cookieAuth": {
           "type": "apiKey",
           "in": "cookie",
-          "name": "access_token",
-          "description": "Cookie HTTP segura (HttpOnly, SameSite=Lax, Secure) que contiene el Access Token JWT de sesión (expiración 5 min)"
+          "name": "session_id",
+          "description": "Cookie HTTP segura (HttpOnly, SameSite=Lax, Secure) que contiene el session_id de la sesión (duración 7 días)"
         }
       },
       "security": [
