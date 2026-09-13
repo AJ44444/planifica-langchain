@@ -1,6 +1,7 @@
 import io
 import re
 import base64
+from markitdown import MarkItDown, StreamInfo
 from typing import List, Dict
 from langchain_core.tools import tool
 from middleware.security_middleware import sanitize_external_text
