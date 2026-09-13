@@ -3,7 +3,7 @@ import os
 import sys
 import io
 import base64
-from markitdown import MarkItDown
+import pypdfium2 as pdfium
 
 # Ensure app package is accessible in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app")))
@@ -21,21 +21,19 @@ REAL_CNB_FILE = os.path.join(TEST_FILES_DIR, "cnb.md")
 PYPROJECT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "pyproject.toml"))
 
 
-def test_markitdown_presence():
+def test_pypdfium2_presence():
     """
-    Verifies the presence and initialization of Microsoft's MarkItDown library
-    and correct configuration of 'markitdown[pdf]' dependency in pyproject.toml.
+    Verifies the presence and initialization of pypdfium2 library
+    and correct configuration of 'pypdfium2' dependency in pyproject.toml.
     """
-    md = MarkItDown()
-    assert md is not None, "MarkItDown could not be instantiated."
-    assert callable(getattr(md, "convert", None)), "MarkItDown does not contain 'convert' method."
+    assert hasattr(pdfium, "PdfDocument"), "pypdfium2 does not contain PdfDocument class."
 
     assert os.path.exists(PYPROJECT_PATH), f"pyproject.toml not found at {PYPROJECT_PATH}."
     with open(PYPROJECT_PATH, "r", encoding="utf-8") as f:
         pyproject_content = f.read()
     
-    assert "markitdown[pdf]" in pyproject_content, (
-        "Dependency 'markitdown[pdf]' with PDF support is not configured in pyproject.toml."
+    assert "pypdfium2" in pyproject_content, (
+        "Dependency 'pypdfium2' is not configured in pyproject.toml."
     )
 
 

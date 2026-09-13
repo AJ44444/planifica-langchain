@@ -1,7 +1,6 @@
-import io
 import re
 import base64
-from markitdown import MarkItDown, StreamInfo
+import pypdfium2
 from typing import List, Dict
 from langchain_core.tools import tool
 from middleware.security_middleware import sanitize_external_text
@@ -9,7 +8,8 @@ from middleware.security_middleware import sanitize_external_text
 
 def convert_pdf_to_markdown(pdf_base64: str) -> str:
     """
-    Converts a Base64-encoded PDF document into Markdown format.
+    Converts a Base64-encoded PDF document into Markdown/Text format using pypdfium2,
+    removing double newlines and sanitizing external text.
 
     Args:
         pdf_base64 (str): Base64-encoded PDF document string.
@@ -27,15 +27,27 @@ def convert_pdf_to_markdown(pdf_base64: str) -> str:
     try:
         pdf_bytes = base64.b64decode(clean_b64)
         if pdf_bytes.startswith(b"%PDF"):
-            stream = io.BytesIO(pdf_bytes)
-            md = MarkItDown()
-            result = md.convert(stream, stream_info=StreamInfo(mimetype="application/pdf", extension=".pdf"))
-            return sanitize_external_text(result.text_content, wrap_xml=True)
+            pdf = pypdfium2.PdfDocument(pdf_bytes)
+            extracted_pages = []
+            for page_idx in range(len(pdf)):
+                page = pdf[page_idx]
+                textpage = page.get_textpage()
+                page_text = textpage.get_text_range()
+                if page_text.strip():
+                    extracted_pages.append(page_text)
+            full_text = "\n".join(extracted_pages)
+            text_normalized = full_text.replace("\r\n", "\n").replace("\r", "\n")
+            text_no_double_newlines = re.sub(r"\n{2,}", "\n", text_normalized).strip()
+            return sanitize_external_text(text_no_double_newlines, wrap_xml=True)
         else:
             text_content = pdf_bytes.decode("utf-8", errors="ignore")
-            return sanitize_external_text(text_content, wrap_xml=True)
+            text_normalized = text_content.replace("\r\n", "\n").replace("\r", "\n")
+            text_no_double_newlines = re.sub(r"\n{2,}", "\n", text_normalized).strip()
+            return sanitize_external_text(text_no_double_newlines, wrap_xml=True)
     except Exception:
-        return sanitize_external_text(clean_b64, wrap_xml=True)
+        text_normalized = clean_b64.replace("\r\n", "\n").replace("\r", "\n")
+        text_no_double_newlines = re.sub(r"\n{2,}", "\n", text_normalized).strip()
+        return sanitize_external_text(text_no_double_newlines, wrap_xml=True)
 
 
 def extract_career_name(document: str) -> str:
