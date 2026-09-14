@@ -1,7 +1,8 @@
 import re
 import base64
+import unicodedata
 import pypdfium2
-from typing import List, Dict
+from typing import List, Dict, Union
 from langchain_core.tools import tool
 from middleware.security_middleware import sanitize_external_text
 
@@ -75,27 +76,23 @@ def extract_career_name(document: str) -> str:
 
 def extract_curricular_structure_table(document: str) -> str:
     """
-    Extracts the general curricular structure table for the career.
+    Extracts the general curricular structure table for the career strictly matching 'Tabla No. 1: Estructura de ...'.
 
     Args:
         document (str): Document content in Markdown format.
 
     Returns:
-        str: Markdown block corresponding to the curricular structure table.
+        str: Markdown block corresponding to the curricular structure table or 'Unidentified'.
     """
     if not document or not isinstance(document, str):
-        return ""
+        return "Unidentified"
 
-    career_name = extract_career_name(document)
     lines = document.splitlines()
 
     capturing = False
     captured_lines = []
 
-    escaped_career = re.escape(career_name) if career_name != "Unidentified" else r'.+'
-    table1_pattern = re.compile(
-        r'(?i)(?:Tabla\s+(?:No\.?|N°|Nº)?\s*1\b|Estructura\s+de\s+' + escaped_career + r')'
-    )
+    table1_pattern = re.compile(r'(?i)Tabla\s+(?:No\.?|N°|Nº)?\s*1\s*:\s*Estructura\s+de\s+')
     closing_pattern = re.compile(
         r'(?i)(?:Tabla\s+(?:No\.?|N°|Nº)?\s*2\b|^(?:#+\s*)?(?:Área|Area)\s+curricular\s+de\s+)'
     )
@@ -110,11 +107,26 @@ def extract_curricular_structure_table(document: str) -> str:
                 break
             captured_lines.append(line)
 
-    return "\n".join(captured_lines).strip()
+    result = "\n".join(captured_lines).strip()
+    return result if result else "Unidentified"
+
+
+def slugify(title: str) -> str:
+    """
+    Generates a clean, dynamic .md filename from an area title.
+    Example: 'Área de Comunicación y Lenguaje L 1' -> 'comunicacion_y_lenguaje_l1.md'
+    """
+    clean = re.sub(r'^(?:Área|Area)\s+de\s+', '', title, flags=re.IGNORECASE).strip()
+    clean = re.sub(r'\s*\([^)]*\)', '', clean).strip()
+    nfkd = unicodedata.normalize('NFD', clean)
+    ascii_str = ''.join([c for c in nfkd if not unicodedata.combining(c)])
+    slug = re.sub(r'[^a-zA-Z0-9]+', '_', ascii_str).strip('_').lower()
+    slug = re.sub(r'_l_(\d+)$', r'_l\1', slug)
+    return f"{slug}.md"
 
 
 @tool("parse_curricular_areas")
-def parse_curricular_areas(pdf_base64: str) -> List[Dict[str, str]]:
+def parse_curricular_areas(pdf_base64: str) -> Union[List[Dict[str, str]], str]:
     """
     Parses and segmentates a PDF document into its corresponding curricular areas.
 
@@ -122,119 +134,183 @@ def parse_curricular_areas(pdf_base64: str) -> List[Dict[str, str]]:
         pdf_base64 (str): Base64 encoded string of the PDF document.
 
     Returns:
-        List[Dict[str, str]]: List of dictionaries containing the structure and Markdown content of each curricular area.
+        Union[List[Dict[str, str]], str]: List of dictionaries containing the structure and Markdown content of each curricular area, or 'Unidentified' if no areas/structure found.
     """
     content = convert_pdf_to_markdown(pdf_base64)
-
     career_name = extract_career_name(content)
-
     structure_table = extract_curricular_structure_table(content)
 
-    lines = content.splitlines(keepends=True)
-    n_lines = len(lines)
+    areas_list = []
 
-    md_heading_indices = []
-    for i, line in enumerate(lines):
-        if re.match(r'^#+\s*(?:Área|Area)\s+curricular\s+de\s+', line.strip(), re.IGNORECASE):
-            md_heading_indices.append(i)
+    # Primary flow: Diversificado (requires identified career and structure table)
+    if career_name != "Unidentified" and structure_table != "Unidentified":
+        lines = content.splitlines(keepends=True)
+        n_lines = len(lines)
 
-    areas_meta = []
+        md_heading_indices = []
+        for i, line in enumerate(lines):
+            if re.match(r'^#+\s*(?:Área|Area)\s+curricular\s+de\s+', line.strip(), re.IGNORECASE):
+                md_heading_indices.append(i)
 
-    if len(md_heading_indices) >= 2:
-        for k, idx in enumerate(md_heading_indices):
-            line_str = lines[idx].strip()
-            title = re.sub(r'^#+\s*', '', line_str)
-            clean_name = re.sub(r'^(?:Área|Area)\s+curricular\s+de\s+', '', title, flags=re.IGNORECASE).strip()
-            full_title = title if re.match(r'^(?:Área|Area)\s+curricular\s+de\s+', title, re.IGNORECASE) else f'Área Curricular de {clean_name}'
-            areas_meta.append({
-                'start_idx': idx,
-                'header_idx': idx,
-                'full_title': full_title,
-                'clean_name': clean_name
-            })
-    else:
-        current_active_area = None
-        start_search = min(1000, n_lines)
+        areas_meta = []
 
-        for i in range(start_search, n_lines):
-            line = lines[i].strip()
-            if re.match(r'^(?:#+\s*)?(?:Área|Area)\s+curricular\s+de\s+', line, re.IGNORECASE):
-                title = line
-                if i + 1 < n_lines:
-                    l_next = lines[i+1].strip()
-                    if not l_next.startswith('Descriptor') and not l_next.isdigit() and not re.match(r'^(?:#+\s*)?(?:Área|Area)', l_next):
-                        if i + 2 < n_lines and lines[i+2].strip() == 'Descriptor':
-                            title = line + ' ' + l_next
-
-                has_descriptor = False
-                for k in range(1, 5):
-                    if i + k < n_lines and lines[i+k].strip() == 'Descriptor':
-                        has_descriptor = True
-                        break
-                if not has_descriptor:
-                    continue
-
-                clean_name = re.sub(r'^(?:#+\s*)?(?:Área|Area)\s+curricular\s+de\s+', '', title, flags=re.IGNORECASE).strip()
-
-                if current_active_area is not None and clean_name.lower() == current_active_area.lower():
-                    continue
-
-                start_idx = i
-                if i > 0 and lines[i-1].strip().isdigit():
-                    start_idx = i - 1
-                elif i > 1 and lines[i-2].strip().isdigit():
-                    start_idx = i - 2
-
-                if re.match(r'^(?:Área|Area)\s+curricular\s+de\s+', title, re.IGNORECASE):
-                    full_title = title
-                else:
-                    full_title = f'Área Curricular de {clean_name}'
-
+        if len(md_heading_indices) >= 2:
+            for k, idx in enumerate(md_heading_indices):
+                line_str = lines[idx].strip()
+                title = re.sub(r'^#+\s*', '', line_str)
+                clean_name = re.sub(r'^(?:Área|Area)\s+curricular\s+de\s+', '', title, flags=re.IGNORECASE).strip()
+                full_title = title if re.match(r'^(?:Área|Area)\s+curricular\s+de\s+', title, re.IGNORECASE) else f'Área Curricular de {clean_name}'
                 areas_meta.append({
-                    'start_idx': start_idx,
-                    'header_idx': i,
+                    'start_idx': idx,
+                    'header_idx': idx,
                     'full_title': full_title,
                     'clean_name': clean_name
                 })
-                current_active_area = clean_name
-
-    for k in range(len(areas_meta)):
-        if k < len(areas_meta) - 1:
-            areas_meta[k]['end_idx'] = areas_meta[k+1]['start_idx']
         else:
-            last_start = areas_meta[k]['start_idx']
-            end_idx = n_lines
-            for j in range(last_start + 10, n_lines):
-                l_str = lines[j].strip()
-                if re.match(r'^(?:3\s+)?Tercera\s+parte', l_str, re.IGNORECASE) or re.match(r'^#+\s*(?:3\s+)?Tercera\s+parte', l_str, re.IGNORECASE):
-                    end_idx = j
-                    break
-            areas_meta[k]['end_idx'] = end_idx
+            current_active_area = None
+            start_search = min(1000, n_lines)
 
-    structure_item = {
-        'index': 0,
-        'career_name': career_name,
-        'area_title': 'Estructura Curricular',
-        'clean_name': 'Estructura Curricular',
-        'content': structure_table
-    }
+            for i in range(start_search, n_lines):
+                line = lines[i].strip()
+                if re.match(r'^(?:#+\s*)?(?:Área|Area)\s+curricular\s+de\s+', line, re.IGNORECASE):
+                    title = line
+                    if i + 1 < n_lines:
+                        l_next = lines[i+1].strip()
+                        if not l_next.startswith('Descriptor') and not l_next.isdigit() and not re.match(r'^(?:#+\s*)?(?:Área|Area)', l_next):
+                            if i + 2 < n_lines and lines[i+2].strip() == 'Descriptor':
+                                title = line + ' ' + l_next
 
-    areas_list = [structure_item]
-    for idx, area in enumerate(areas_meta, 1):
-        s_idx = area['start_idx']
-        e_idx = area['end_idx']
-        full_title = area['full_title']
+                    has_descriptor = False
+                    for k in range(1, 5):
+                        if i + k < n_lines and lines[i+k].strip() == 'Descriptor':
+                            has_descriptor = True
+                            break
+                    if not has_descriptor:
+                        continue
 
-        header = f"# {career_name}\n## {full_title}\n\n"
-        raw_body = "".join(lines[s_idx:e_idx])
-        full_area_content = header + raw_body
+                    clean_name = re.sub(r'^(?:#+\s*)?(?:Área|Area)\s+curricular\s+de\s+', '', title, flags=re.IGNORECASE).strip()
 
-        areas_list.append({
-            'index': idx,
-            'career_name': career_name,
-            'area_title': full_title,
-            'clean_name': area['clean_name'],
-            'content': full_area_content
-        })
+                    if current_active_area is not None and clean_name.lower() == current_active_area.lower():
+                        continue
+
+                    start_idx = i
+                    if i > 0 and lines[i-1].strip().isdigit():
+                        start_idx = i - 1
+                    elif i > 1 and lines[i-2].strip().isdigit():
+                        start_idx = i - 2
+
+                    if re.match(r'^(?:Área|Area)\s+curricular\s+de\s+', title, re.IGNORECASE):
+                        full_title = title
+                    else:
+                        full_title = f'Área Curricular de {clean_name}'
+
+                    areas_meta.append({
+                        'start_idx': start_idx,
+                        'header_idx': i,
+                        'full_title': full_title,
+                        'clean_name': clean_name
+                    })
+                    current_active_area = clean_name
+
+        for k in range(len(areas_meta)):
+            if k < len(areas_meta) - 1:
+                areas_meta[k]['end_idx'] = areas_meta[k+1]['start_idx']
+            else:
+                last_start = areas_meta[k]['start_idx']
+                end_idx = n_lines
+                for j in range(last_start + 10, n_lines):
+                    l_str = lines[j].strip()
+                    if re.match(r'^(?:3\s+)?Tercera\s+parte', l_str, re.IGNORECASE) or re.match(r'^#+\s*(?:3\s+)?Tercera\s+parte', l_str, re.IGNORECASE):
+                        end_idx = j
+                        break
+                areas_meta[k]['end_idx'] = end_idx
+
+        if areas_meta:
+            structure_item = {
+                'index': 0,
+                'career_name': career_name,
+                'area_title': 'Estructura Curricular',
+                'clean_name': 'Estructura Curricular',
+                'content': structure_table
+            }
+            areas_list.append(structure_item)
+            for idx, area in enumerate(areas_meta, 1):
+                s_idx = area['start_idx']
+                e_idx = area['end_idx']
+                full_title = area['full_title']
+
+                header = f"# {career_name}\n## {full_title}\n\n"
+                raw_body = "".join(lines[s_idx:e_idx])
+                full_area_content = header + raw_body
+
+                areas_list.append({
+                    'index': idx,
+                    'career_name': career_name,
+                    'area_title': full_title,
+                    'clean_name': area['clean_name'],
+                    'content': full_area_content
+                })
+
+    # Alternative flow: Fallback for Primaria / non-Diversificado structures
+    if not areas_list:
+        regex_header_area = re.compile(
+            r'^[ \t]*#*[ \t]*((?:Área|Area)\s+de\s+[A-ZÁÉÍÓÚÑ][^\n\r]*)',
+            re.MULTILINE
+        )
+        regex_end_sections = re.compile(
+            r"(?m)^(?:\d+\s*\r?\n\s*)?Los\s+aprendizajes\s+esperados\s+o\s+estándares\b"
+        )
+
+        body_search_start = content.rfind("Desarrollo de las")
+        if body_search_start == -1:
+            body_search_start = 0
+
+        body_text = content[body_search_start:]
+
+        matches = []
+        for m in regex_header_area.finditer(body_text):
+            title = m.group(1).strip()
+            if re.search(r'(?<!L)(?<!L\s)\b\d{2,}\b$', title):
+                continue
+            abs_pos = body_search_start + m.start()
+            matches.append((title, abs_pos))
+
+        areas_meta_alt = []
+        for title, pos in matches:
+            file_name = slugify(title)
+            if file_name == "comunicacion_y_lenguaje.md":
+                continue
+            if not areas_meta_alt or areas_meta_alt[-1]['file'] != file_name:
+                areas_meta_alt.append({
+                    'title': title,
+                    'file': file_name,
+                    'start_pos': pos
+                })
+
+        if areas_meta_alt:
+            end_match = regex_end_sections.search(content, areas_meta_alt[-1]['start_pos'])
+            end_global_pos = end_match.start() if end_match else len(content)
+
+            for i, area in enumerate(areas_meta_alt, 1):
+                start_idx = area['start_pos']
+                end_idx = areas_meta_alt[i]['start_pos'] if i < len(areas_meta_alt) else end_global_pos
+
+                area_raw_content = content[start_idx:end_idx].strip()
+                full_title = area['title']
+                clean_name = re.sub(r'^(?:Área|Area)\s+de\s+', '', full_title, flags=re.IGNORECASE).strip()
+
+                header = f"# {career_name}\n## {full_title}\n\n" if career_name != "Unidentified" else f"## {full_title}\n\n"
+                full_area_content = header + area_raw_content
+
+                areas_list.append({
+                    'index': i,
+                    'career_name': career_name,
+                    'area_title': full_title,
+                    'clean_name': clean_name,
+                    'content': full_area_content
+                })
+
+    if not areas_list:
+        return "Unidentified"
 
     return areas_list

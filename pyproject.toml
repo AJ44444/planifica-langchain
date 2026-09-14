@@ -26,6 +26,7 @@ dependencies = [
     "pyyaml>=6.0",
     "python-dotenv>=1.0.0",
     "requests>=2.31.0",
+    "httpx2>=0.1.0",
     "pytest>=8.0.0"
 ]
 

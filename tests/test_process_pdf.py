@@ -129,3 +129,48 @@ Contenido del área...
     assert "Tabla No. 1" in table1_fallback
     assert "2. Matemáticas" in table1_fallback
     assert "Área Curricular de Comunicación y Lenguaje" not in table1_fallback
+
+    # Test returning 'Unidentified' when pattern is absent
+    doc_without_table1 = "Este es un documento sin tabla de estructura curricular."
+    assert extract_curricular_structure_table(doc_without_table1) == "Unidentified"
+
+
+def test_slugify_and_fallback_parse():
+    """
+    Verifies slugify Unicode NFD normalization and alternative area extraction flow.
+    """
+    from tools.parser_tool import slugify
+
+    assert slugify("Área de Comunicación y Lenguaje L 1") == "comunicacion_y_lenguaje_l1.md"
+    assert slugify("Área de Matemáticas") == "matematicas.md"
+    assert slugify("Área de Medio Social y Natural") == "medio_social_y_natural.md"
+
+    # Simulated Primaria document with sub-areas (no career, no structure table)
+    sample_primaria_md = """
+Desarrollo de las Áreas
+Área de Comunicación y Lenguaje
+Introducción al área general...
+
+Área de Comunicación y Lenguaje L 1
+Contenido de Lengua Materna...
+
+Área de Comunicación y Lenguaje L 2
+Contenido de Segunda Lengua...
+
+Área de Matemáticas
+Contenido de Matemáticas...
+
+Los aprendizajes esperados o estándares
+Estándares finales...
+"""
+    b64_str = base64.b64encode(sample_primaria_md.encode("utf-8")).decode("utf-8")
+    parsed = parse_curricular_areas.invoke({"pdf_base64": b64_str})
+
+    assert isinstance(parsed, list)
+    assert len(parsed) == 3
+    names = [item["clean_name"] for item in parsed]
+    assert "Comunicación y Lenguaje L 1" in names
+    assert "Comunicación y Lenguaje L 2" in names
+    assert "Matemáticas" in names
+    assert "Comunicación y Lenguaje" not in names  # skipped generic intro header
+
