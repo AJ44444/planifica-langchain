@@ -174,3 +174,39 @@ Estándares finales...
     assert "Matemáticas" in names
     assert "Comunicación y Lenguaje" not in names  # skipped generic intro header
 
+
+def test_malla_curricular_basico_parse():
+    """
+    Verifies dynamic parsing of Ciclo Básico Malla Curricular + Grade headers.
+    """
+    sample_basico_md = """
+Desarrollo de las Áreas
+Malla curricular
+ Área de Matemáticas
+Primero Básico
+Contenido del primer grado...
+
+Malla curricular
+ Área de Matemáticas
+Segundo Básico
+Contenido del segundo grado...
+
+Malla curricular
+ Área de Matemáticas
+Tercero Básico
+Contenido del tercer grado...
+
+Bibliografía
+1. Referencia...
+"""
+    b64_str = base64.b64encode(sample_basico_md.encode("utf-8")).decode("utf-8")
+    parsed = parse_curricular_areas.invoke({"pdf_base64": b64_str})
+
+    assert isinstance(parsed, list)
+    assert len(parsed) == 3
+    names = [item["clean_name"] for item in parsed]
+    assert "Matemáticas Primero Básico" in names
+    assert "Matemáticas Segundo Básico" in names
+    assert "Matemáticas Tercero Básico" in names
+
+

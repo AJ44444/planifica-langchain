@@ -142,7 +142,7 @@ def parse_curricular_areas(pdf_base64: str) -> Union[List[Dict[str, str]], str]:
 
     areas_list = []
 
-    # Primary flow: Diversificado (requires identified career and structure table)
+    # 1. Primary flow: Diversificado (requires identified career and structure table)
     if career_name != "Unidentified" and structure_table != "Unidentified":
         lines = content.splitlines(keepends=True)
         n_lines = len(lines)
@@ -251,13 +251,69 @@ def parse_curricular_areas(pdf_base64: str) -> Union[List[Dict[str, str]], str]:
                     'content': full_area_content
                 })
 
-    # Alternative flow: Fallback for Primaria / non-Diversificado structures
+    # 2. Alternative flow 1: Ciclo Básico (Malla curricular\n Área de ...\n <Grado>)
+    if not areas_list:
+        regex_malla_grade = re.compile(
+            r'^[ \t]*#*[ \t]*Malla\s+curricular\s*\r?\n[ \t]*((?:Área|Area)\s+de\s+[^\n\r]+)\r?\n[ \t]*([^\n\r]+)',
+            re.MULTILINE
+        )
+        regex_end_sections_basico = re.compile(
+            r"(?m)^[ \t]*(?:Bibliograf|\d+\s*\r?\n\s*Bibliograf|Los\s+aprendizajes\s+esperados\s+o\s+estándares)",
+            re.IGNORECASE
+        )
+
+        body_search_start = content.rfind("Desarrollo de las")
+        if body_search_start == -1:
+            body_search_start = 0
+
+        body_text = content[body_search_start:]
+
+        malla_matches = list(regex_malla_grade.finditer(body_text))
+        if malla_matches:
+            areas_meta_alt = []
+            for m in malla_matches:
+                area_name = m.group(1).strip()
+                grade_name = m.group(2).strip()
+                full_title = f"{area_name} {grade_name}"
+                clean_area = re.sub(r'^(?:Área|Area)\s+de\s+', '', area_name, flags=re.IGNORECASE).strip()
+                clean_name = f"{clean_area} {grade_name}"
+                file_name = slugify(full_title)
+                abs_pos = body_search_start + m.start()
+
+                areas_meta_alt.append({
+                    'title': full_title,
+                    'clean_name': clean_name,
+                    'file_name': file_name,
+                    'start_pos': abs_pos
+                })
+
+            end_match = regex_end_sections_basico.search(content, areas_meta_alt[-1]['start_pos'])
+            end_global_pos = end_match.start() if end_match else len(content)
+
+            for i, area in enumerate(areas_meta_alt, 1):
+                start_idx = area['start_pos']
+                end_idx = areas_meta_alt[i]['start_pos'] if i < len(areas_meta_alt) else end_global_pos
+
+                area_raw_content = content[start_idx:end_idx].strip()
+                title_str = area['title']
+                header = f"# {career_name}\n## {title_str}\n\n" if career_name != "Unidentified" else f"## {title_str}\n\n"
+                full_area_content = header + area_raw_content
+
+                areas_list.append({
+                    'index': i,
+                    'career_name': career_name,
+                    'area_title': title_str,
+                    'clean_name': area['clean_name'],
+                    'content': full_area_content
+                })
+
+    # 3. Alternative flow 2: Primaria (Área de ...)
     if not areas_list:
         regex_header_area = re.compile(
             r'^[ \t]*#*[ \t]*((?:Área|Area)\s+de\s+[A-ZÁÉÍÓÚÑ][^\n\r]*)',
             re.MULTILINE
         )
-        regex_end_sections = re.compile(
+        regex_end_sections_primaria = re.compile(
             r"(?m)^(?:\d+\s*\r?\n\s*)?Los\s+aprendizajes\s+esperados\s+o\s+estándares\b"
         )
 
@@ -277,18 +333,20 @@ def parse_curricular_areas(pdf_base64: str) -> Union[List[Dict[str, str]], str]:
 
         areas_meta_alt = []
         for title, pos in matches:
+            clean_name = re.sub(r'^(?:Área|Area)\s+de\s+', '', title, flags=re.IGNORECASE).strip()
             file_name = slugify(title)
             if file_name == "comunicacion_y_lenguaje.md":
                 continue
-            if not areas_meta_alt or areas_meta_alt[-1]['file'] != file_name:
+            if not areas_meta_alt or areas_meta_alt[-1]['clean_name'] != clean_name:
                 areas_meta_alt.append({
                     'title': title,
-                    'file': file_name,
-                    'start_pos': pos
+                    'clean_name': clean_name,
+                    'file_name': file_name,
+                    'start_pos': abs_pos
                 })
 
         if areas_meta_alt:
-            end_match = regex_end_sections.search(content, areas_meta_alt[-1]['start_pos'])
+            end_match = regex_end_sections_primaria.search(content, areas_meta_alt[-1]['start_pos'])
             end_global_pos = end_match.start() if end_match else len(content)
 
             for i, area in enumerate(areas_meta_alt, 1):
@@ -296,17 +354,15 @@ def parse_curricular_areas(pdf_base64: str) -> Union[List[Dict[str, str]], str]:
                 end_idx = areas_meta_alt[i]['start_pos'] if i < len(areas_meta_alt) else end_global_pos
 
                 area_raw_content = content[start_idx:end_idx].strip()
-                full_title = area['title']
-                clean_name = re.sub(r'^(?:Área|Area)\s+de\s+', '', full_title, flags=re.IGNORECASE).strip()
-
-                header = f"# {career_name}\n## {full_title}\n\n" if career_name != "Unidentified" else f"## {full_title}\n\n"
+                title_str = area['title']
+                header = f"# {career_name}\n## {title_str}\n\n" if career_name != "Unidentified" else f"## {title_str}\n\n"
                 full_area_content = header + area_raw_content
 
                 areas_list.append({
                     'index': i,
                     'career_name': career_name,
-                    'area_title': full_title,
-                    'clean_name': clean_name,
+                    'area_title': title_str,
+                    'clean_name': area['clean_name'],
                     'content': full_area_content
                 })
 
