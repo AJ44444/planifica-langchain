@@ -282,6 +282,9 @@ def parse_curricular_areas(pdf_base64: str) -> Union[List[Dict[str, str]], str]:
 
                 areas_meta_alt.append({
                     'title': full_title,
+                    'area_name': area_name,
+                    'grade_name': grade_name,
+                    'clean_area': clean_area,
                     'clean_name': clean_name,
                     'file_name': file_name,
                     'start_pos': abs_pos
@@ -296,12 +299,14 @@ def parse_curricular_areas(pdf_base64: str) -> Union[List[Dict[str, str]], str]:
 
                 area_raw_content = content[start_idx:end_idx].strip()
                 title_str = area['title']
-                header = f"# {career_name}\n## {title_str}\n\n" if career_name != "Unidentified" else f"## {title_str}\n\n"
+                item_career_name = area['grade_name'] if career_name == "Unidentified" else career_name
+                header = f"# {item_career_name}\n## {title_str}\n\n"
+
                 full_area_content = header + area_raw_content
 
                 areas_list.append({
                     'index': i,
-                    'career_name': career_name,
+                    'career_name': item_career_name,
                     'area_title': title_str,
                     'clean_name': area['clean_name'],
                     'content': full_area_content
