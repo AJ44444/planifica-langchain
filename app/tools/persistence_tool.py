@@ -246,7 +246,7 @@ def insert_cnb_area_doc(data: dict) -> ObjectId:
         "nombre_carrera": carrera,
         "nombre_area": str(data.get("nombre_area", "")).strip(),
         "actividades_sugeridas": _format_items(data.get("actividades_sugeridas")),
-        "criterios_evaluacion": _format_items(data.get("criterios_evaluacion_sugeridos"))
+        "criterios_evaluacion_sugeridos": _format_items(data.get("criterios_evaluacion_sugeridos"))
     }
     res = db[AREAS].insert_one(doc)
     return res.inserted_id
