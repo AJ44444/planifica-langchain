@@ -21,11 +21,11 @@ def test_embedding_model_dimensionality():
 
 def test_vector_search_mocked_tree():
     """
-    Verifies that vector search requires id_subarea_relacionada and returns curriculum tree.
+    Verifies that vector search requires id_subarea and returns curriculum tree.
     """
     res_str = search_curriculum_vector_db.invoke({
         "query": "comunicación",
-        "id_subarea_relacionada": "",
+        "id_subarea": "",
         "limit": 5
     })
     res_dict = json.loads(res_str)
@@ -35,7 +35,7 @@ def test_vector_search_mocked_tree():
     # Validate format with 24-character hex ObjectId
     res_str2 = search_curriculum_vector_db.invoke({
         "query": "comunicación",
-        "id_subarea_relacionada": "123_invalid_id",
+        "id_subarea": "123_invalid_id",
         "limit": 5
     })
     res_dict2 = json.loads(res_str2)
@@ -45,7 +45,7 @@ def test_vector_search_mocked_tree():
     mock_results = [
         {
             "_id": "60d5ec49f1a2c8123456789a",
-            "id_subarea_relacionada": "60d5ec49f1a2c8123456789b",
+            "id_subarea": "60d5ec49f1a2c8123456789b",
             "nombre_subarea": "Comunicación y Lenguaje L1",
             "tipo_nodo": "competencia",
             "referencia_jerarquica": "1",
@@ -57,7 +57,7 @@ def test_vector_search_mocked_tree():
     with patch("tools.vector_tool.vector_search_cnb", return_value=mock_results):
         result_json_str = search_curriculum_vector_db.invoke({
             "query": "comunicación escucha analítica",
-            "id_subarea_relacionada": "60d5ec49f1a2c8123456789b",
+            "id_subarea": "60d5ec49f1a2c8123456789b",
             "limit": 5
         })
         result_dict = json.loads(result_json_str)
@@ -79,7 +79,7 @@ def test_vector_search_live_tree():
 
     result_json_str = search_curriculum_vector_db.invoke({
         "query": "competencia comunicación y lenguaje redacción",
-        "id_subarea_relacionada": "60d5ec49f1a2c8123456789b",
+        "id_subarea": "60d5ec49f1a2c8123456789b",
         "limit": 5
     })
     result_dict = json.loads(result_json_str)
@@ -118,13 +118,13 @@ def test_tree_merging_logic():
     sample_vector_results = [
         {
             "_id": "1",
-            "id_subarea_relacionada": "60d5ec49f1a2c8123456789b",
+            "id_subarea": "60d5ec49f1a2c8123456789b",
             "tipo_nodo": "contenido",
             "texto_a_buscar": "Mecánica clásica y vectores"
         },
         {
             "_id": "2",
-            "id_subarea_relacionada": "60d5ec49f1a2c8123456789b",
+            "id_subarea": "60d5ec49f1a2c8123456789b",
             "tipo_nodo": "contenido",
             "texto_a_buscar": "Leyes de Newton y movimiento"
         }

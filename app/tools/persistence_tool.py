@@ -284,7 +284,7 @@ def insert_cnb_vector_doc(data: dict) -> ObjectId:
     """
     db = get_db()
     doc = {
-        "id_subarea_relacionada": _ensure_object_id(data.get("id_subarea_relacionada")),
+        "id_subarea": _ensure_object_id(data.get("id_subarea")),
         "nombre_subarea": str(data.get("nombre_subarea", "")).strip(),
         "tipo_nodo": str(data.get("tipo_nodo", "")).strip(),
         "referencia_jerarquica": data.get("referencia_jerarquica", []),
@@ -350,7 +350,7 @@ def save_curricular_structure(
                 comp_text = f"Competencia {comp_id}: {comp_desc}".strip()
 
                 insert_cnb_vector_doc({
-                    "id_subarea_relacionada": sub_id,
+                    "id_subarea": sub_id,
                     "nombre_subarea": nombre_subarea,
                     "tipo_nodo": "competencia",
                     "referencia_jerarquica": [f"Competencia {comp_id}"],
@@ -367,7 +367,7 @@ def save_curricular_structure(
                     ind_text = f"Indicador {ind_id}: {ind_desc}".strip()
 
                     insert_cnb_vector_doc({
-                        "id_subarea_relacionada": sub_id,
+                        "id_subarea": sub_id,
                         "nombre_subarea": nombre_subarea,
                         "tipo_nodo": "indicador",
                         "referencia_jerarquica": [f"Competencia {comp_id}", f"Indicador {ind_id}"],
@@ -384,7 +384,7 @@ def save_curricular_structure(
                         cnt_text = f"Contenido {cnt_id}: {cnt_desc}".strip()
 
                         insert_cnb_vector_doc({
-                            "id_subarea_relacionada": sub_id,
+                            "id_subarea": sub_id,
                             "nombre_subarea": nombre_subarea,
                             "tipo_nodo": "contenido",
                             "referencia_jerarquica": [f"Competencia {comp_id}", f"Indicador {ind_id}", f"Contenido {cnt_id}"],

@@ -72,22 +72,22 @@ def get_vector_store() -> MongoDBAtlasVectorSearch:
     )
 
 
-def generate_and_store_subarea_embeddings(id_subarea_relacionada: str) -> Dict[str, Any]:
+def generate_and_store_subarea_embeddings(id_subarea: str) -> Dict[str, Any]:
     """
     Generates and stores vector embeddings for the nodes of a curricular subarea.
 
     Args:
-        id_subarea_relacionada (str): Identifier of the curricular subarea.
+        id_subarea (str): Identifier of the curricular subarea.
 
     Returns:
         Dict[str, Any]: Execution result containing status and count of processed vectors.
     """
     try:
         db = get_db()
-        subarea_id = ObjectId(id_subarea_relacionada.strip())
+        subarea_id = ObjectId(id_subarea.strip())
 
         query = {
-            "id_subarea_relacionada": subarea_id,
+            "id_subarea": subarea_id,
             "vector_estado": False
         }
         docs = list(db[VECTORS].find(query))
@@ -124,7 +124,7 @@ def generate_and_store_subarea_embeddings(id_subarea_relacionada: str) -> Dict[s
 
 def vector_search_cnb(
     query: str,
-    id_subarea_relacionada: str,
+    id_subarea: str,
     limit: int = 5
 ) -> List[Dict[str, Any]]:
     """
@@ -132,22 +132,22 @@ def vector_search_cnb(
 
     Args:
         query (str): Text or semantic query to search for.
-        id_subarea_relacionada (str): Mandatory curricular subarea identifier.
+        id_subarea (str): Mandatory curricular subarea identifier.
         limit (int, optional): Maximum number of results to return. Defaults to 5.
 
     Returns:
         List[Dict[str, Any]]: List of top matching curricular nodes.
     """
-    if not id_subarea_relacionada or not str(id_subarea_relacionada).strip():
-        raise ValueError("Parameter 'id_subarea_relacionada' (24-char ObjectId) is required to perform vector search.")
+    if not id_subarea or not str(id_subarea).strip():
+        raise ValueError("Parameter 'id_subarea' (24-char ObjectId) is required to perform vector search.")
 
-    subarea_str = str(id_subarea_relacionada).strip()
+    subarea_str = str(id_subarea).strip()
     if len(subarea_str) != 24:
-        raise ValueError("Parameter 'id_subarea_relacionada' must be a valid 24-character hex MongoDB ObjectId.")
+        raise ValueError("Parameter 'id_subarea' must be a valid 24-character hex MongoDB ObjectId.")
 
     vector_store = get_vector_store()
     pre_filter = {
-        "id_subarea_relacionada": {
+        "id_subarea": {
             "$eq": ObjectId(subarea_str)
         }
     }
@@ -162,7 +162,7 @@ def vector_search_cnb(
     for doc, score in docs_and_scores:
         res_item = dict(doc.metadata)
         res_item["_id"] = str(res_item.get("_id") or doc.id)
-        res_item["id_subarea_relacionada"] = str(res_item.get("id_subarea_relacionada", ""))
+        res_item["id_subarea"] = str(res_item.get("id_subarea", ""))
         res_item["texto_a_buscar"] = doc.page_content
         res_item["score"] = float(score)
         results.append(res_item)
@@ -194,7 +194,7 @@ def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -
     subarea_docs = {}
 
     for item in vector_results:
-        sub_id_str = str(item.get("id_subarea_relacionada", "")).strip()
+        sub_id_str = str(item.get("id_subarea", "")).strip()
         tipo_nodo = str(item.get("tipo_nodo", "")).strip().lower()
         texto_a_buscar = str(item.get("texto_a_buscar", "")).strip()
 
@@ -210,7 +210,7 @@ def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -
             subarea_doc = subarea_docs.get(sub_id_str)
 
         node_data = {
-            "id_subarea_relacionada": sub_id_str,
+            "id_subarea": sub_id_str,
             "tipo_nodo": tipo_nodo,
             "texto_a_buscar": texto_a_buscar,
             "competencia": None,
@@ -422,20 +422,20 @@ def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[st
 
 
 @tool("search_curriculum_vector_db")
-def search_curriculum_vector_db(query: str, id_subarea_relacionada: str, limit: int = 5) -> str:
+def search_curriculum_vector_db(query: str, id_subarea: str, limit: int = 5) -> str:
     """
     Searches semantic information in the curriculum vector database by subarea.
 
     Args:
         query (str): Semantic query, topic, or competency to search for.
-        id_subarea_relacionada (str): Mandatory identifier of the curricular subarea.
+        id_subarea (str): Mandatory identifier of the curricular subarea.
         limit (int, optional): Limit of results to return. Defaults to 5.
 
     Returns:
         str: JSON formatted string containing the retrieved unified curricular tree.
     """
     try:
-        raw_results = vector_search_cnb(query=query, id_subarea_relacionada=id_subarea_relacionada, limit=limit)
+        raw_results = vector_search_cnb(query=query, id_subarea=id_subarea, limit=limit)
 
         db = None
         try:
@@ -449,7 +449,7 @@ def search_curriculum_vector_db(query: str, id_subarea_relacionada: str, limit: 
         return json.dumps({
             "status": "success",
             "query": query,
-            "id_subarea_relacionada": id_subarea_relacionada.strip(),
+            "id_subarea": id_subarea.strip(),
             "arbol_curricular": arbol_curricular
         }, ensure_ascii=False)
 
@@ -461,15 +461,15 @@ def search_curriculum_vector_db(query: str, id_subarea_relacionada: str, limit: 
 
 
 @tool("generate_subarea_vector_embeddings")
-def generate_subarea_vector_embeddings(id_subarea_relacionada: str) -> str:
+def generate_subarea_vector_embeddings(id_subarea: str) -> str:
     """
     Generates vector embeddings for all pending nodes of a subarea.
 
     Args:
-        id_subarea_relacionada (str): Identifier of the subarea to vectorize.
+        id_subarea (str): Identifier of the subarea to vectorize.
 
     Returns:
         str: JSON formatted string with the vectorization process report.
     """
-    res = generate_and_store_subarea_embeddings(id_subarea_relacionada)
+    res = generate_and_store_subarea_embeddings(id_subarea)
     return json.dumps(res, ensure_ascii=False, indent=2)
