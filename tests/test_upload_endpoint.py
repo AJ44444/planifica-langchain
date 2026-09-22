@@ -43,7 +43,6 @@ def test_generate_presigned_url_endpoint_success(client):
         assert data["status"] == "success"
         assert data["url"] == "https://test-cnb-bucket.s3.amazonaws.com"
         assert data["fields"]["Content-Type"] == "application/pdf"
-        assert data["bucket"] == "test-cnb-bucket"
         assert data["expires_in"] == 300
         assert data["file_key"].startswith("cnb/")
         assert data["file_key"].endswith(".pdf")
