@@ -7,7 +7,7 @@ tools: parse_curricular_areas, save_curricular_structure, generate_subarea_vecto
 ## Process PDF Workflow
 
 1. **Extraction & Parsing**
-   - Execute `parse_curricular_areas` to convert and segment the PDF document into curricular areas.
+   - Execute `parse_curricular_areas` to convert and segment the document into curricular areas.
    - If `parse_curricular_areas` returns `career_name: "Unidentified"` (or if the career/program name cannot be determined), **you must ask the user to provide the career/grade name** (e.g. *Primero Básico*, *Primer Grado*, *Bachillerato en Ciencias y Letras con Orientación en Computación*, etc.) before calling persistence tools.
 
 2. **Career & Grade Association (Ciclo Básico & Multi-grade)**
@@ -23,4 +23,4 @@ tools: parse_curricular_areas, save_curricular_structure, generate_subarea_vecto
 
 4. **Structure Flattening & Persistence**
    - Flatten each area structure into: `nombre_carrera`, `nombre_area`, `actividades_sugeridas`, `criterios_evaluacion_sugeridos`, and `subareas`.
-   - Call `save_curricular_structure` to save the complete area and subarea structure into MongoDB.
+   - Call `save_curricular_structure` to save the complete area and subarea structure.

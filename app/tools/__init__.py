@@ -3,7 +3,7 @@ System tools module for Planifica (PDF Parsing, Vector Search, SERPER Web Search
 """
 
 from .parser_tool import (
-    convert_pdf_to_markdown,
+    convert_pdf_bytes,
     extract_career_name,
     extract_curricular_structure_table,
     parse_curricular_areas,
@@ -40,7 +40,7 @@ from .persistence_tool import (
 )
 
 __all__ = [
-    "convert_pdf_to_markdown",
+    "convert_pdf_bytes",
     "extract_career_name",
     "extract_curricular_structure_table",
     "parse_curricular_areas",

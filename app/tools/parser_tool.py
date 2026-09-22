@@ -1,52 +1,57 @@
 import re
-import base64
 import unicodedata
 import pypdfium2
 from typing import List, Dict, Union
 from langchain_core.tools import tool
 from middleware.security_middleware import sanitize_external_text
+from api.upload_handler import get_s3_client
 
 
-def convert_pdf_to_markdown(pdf_base64: str) -> str:
+def fetch_pdf_bytes_from_s3(file_key: str) -> bytes:
     """
-    Converts a Base64-encoded PDF document into Markdown/Text format using pypdfium2,
+    Downloads the binary object content of a PDF file from S3 using its file_key.
+
+    Args:
+        file_key (str): S3 object key.
+
+    Returns:
+        bytes: Binary content of the PDF file.
+    """
+    s3_client, bucket_name = get_s3_client()
+    response = s3_client.get_object(Bucket=bucket_name, Key=file_key.strip())
+    return response["Body"].read()
+
+
+def convert_pdf_bytes(pdf_bytes: bytes) -> str:
+    """
+    Converts PDF binary content into text format using pypdfium2,
     removing double newlines and sanitizing external text.
 
     Args:
-        pdf_base64 (str): Base64-encoded PDF document string.
+        pdf_bytes (bytes): Binary PDF content.
 
     Returns:
-        str: Document content converted to Markdown format and sanitized.
+        str: Converted text content.
     """
-    if not isinstance(pdf_base64, str) or not pdf_base64.strip():
-        raise ValueError("The 'pdf_base64' parameter must be a valid Base64 encoded string.")
+    if not pdf_bytes:
+        raise ValueError("PDF content cannot be empty.")
 
-    clean_b64 = pdf_base64.strip()
-    if clean_b64.startswith("data:application/pdf;base64,"):
-        clean_b64 = clean_b64.split(",")[-1].strip()
-
-    try:
-        pdf_bytes = base64.b64decode(clean_b64)
-        if pdf_bytes.startswith(b"%PDF"):
-            pdf = pypdfium2.PdfDocument(pdf_bytes)
-            extracted_pages = []
-            for page_idx in range(len(pdf)):
-                page = pdf[page_idx]
-                textpage = page.get_textpage()
-                page_text = textpage.get_text_range()
-                if page_text.strip():
-                    extracted_pages.append(page_text)
-            full_text = "\n".join(extracted_pages)
-            text_normalized = full_text.replace("\r\n", "\n").replace("\r", "\n")
-            text_no_double_newlines = re.sub(r"\n{2,}", "\n", text_normalized).strip()
-            return sanitize_external_text(text_no_double_newlines, wrap_xml=True)
-        else:
-            text_content = pdf_bytes.decode("utf-8", errors="ignore")
-            text_normalized = text_content.replace("\r\n", "\n").replace("\r", "\n")
-            text_no_double_newlines = re.sub(r"\n{2,}", "\n", text_normalized).strip()
-            return sanitize_external_text(text_no_double_newlines, wrap_xml=True)
-    except Exception:
-        text_normalized = clean_b64.replace("\r\n", "\n").replace("\r", "\n")
+    if pdf_bytes.startswith(b"%PDF"):
+        pdf = pypdfium2.PdfDocument(pdf_bytes)
+        extracted_pages = []
+        for page_idx in range(len(pdf)):
+            page = pdf[page_idx]
+            textpage = page.get_textpage()
+            page_text = textpage.get_text_range()
+            if page_text.strip():
+                extracted_pages.append(page_text)
+        full_text = "\n".join(extracted_pages)
+        text_normalized = full_text.replace("\r\n", "\n").replace("\r", "\n")
+        text_no_double_newlines = re.sub(r"\n{2,}", "\n", text_normalized).strip()
+        return sanitize_external_text(text_no_double_newlines, wrap_xml=True)
+    else:
+        text_content = pdf_bytes.decode("utf-8", errors="ignore")
+        text_normalized = text_content.replace("\r\n", "\n").replace("\r", "\n")
         text_no_double_newlines = re.sub(r"\n{2,}", "\n", text_normalized).strip()
         return sanitize_external_text(text_no_double_newlines, wrap_xml=True)
 
@@ -56,7 +61,7 @@ def extract_career_name(document: str) -> str:
     Extracts the academic career or program name from the document.
 
     Args:
-        document (str): Document content in Markdown format.
+        document (str): Document content text format.
 
     Returns:
         str: Identified career name or 'Unidentified'.
@@ -79,10 +84,10 @@ def extract_curricular_structure_table(document: str) -> str:
     Extracts the general curricular structure table for the career strictly matching 'Tabla No. 1: Estructura de ...'.
 
     Args:
-        document (str): Document content in Markdown format.
+        document (str): Document content text format.
 
     Returns:
-        str: Markdown block corresponding to the curricular structure table or 'Unidentified'.
+        str: Text block corresponding to the curricular structure table or 'Unidentified'.
     """
     if not document or not isinstance(document, str):
         return "Unidentified"
@@ -113,8 +118,8 @@ def extract_curricular_structure_table(document: str) -> str:
 
 def slugify(title: str) -> str:
     """
-    Generates a clean, dynamic .md filename from an area title.
-    Example: 'Área de Comunicación y Lenguaje L 1' -> 'comunicacion_y_lenguaje_l1.md'
+    Generates a clean, dynamic filename from an area title.
+    Example: 'Área de Comunicación y Lenguaje L 1' -> 'comunicacion_y_lenguaje_l1'
     """
     clean = re.sub(r'^(?:Área|Area)\s+de\s+', '', title, flags=re.IGNORECASE).strip()
     clean = re.sub(r'\s*\([^)]*\)', '', clean).strip()
@@ -122,21 +127,22 @@ def slugify(title: str) -> str:
     ascii_str = ''.join([c for c in nfkd if not unicodedata.combining(c)])
     slug = re.sub(r'[^a-zA-Z0-9]+', '_', ascii_str).strip('_').lower()
     slug = re.sub(r'_l_(\d+)$', r'_l\1', slug)
-    return f"{slug}.md"
+    return slug
 
 
 @tool("parse_curricular_areas")
-def parse_curricular_areas(pdf_base64: str) -> Union[List[Dict[str, str]], str]:
+def parse_curricular_areas(file_key: str) -> Union[List[Dict[str, str]], str]:
     """
-    Parses and segmentates a PDF document into its corresponding curricular areas.
+    Parses and segmentates a CNB PDF document into its corresponding curricular areas by fetching the binary object from S3 using file_key.
 
     Args:
-        pdf_base64 (str): Base64 encoded string of the PDF document.
+        file_key (str): S3 object key of the uploaded PDF document (e.g. 'cnb/abc123_document.pdf').
 
     Returns:
-        Union[List[Dict[str, str]], str]: List of dictionaries containing the structure and Markdown content of each curricular area, or 'Unidentified' if no areas/structure found.
+        Union[List[Dict[str, str]], str]: List of dictionaries containing the structure and content of each curricular area, or 'Unidentified' if no areas/structure found.
     """
-    content = convert_pdf_to_markdown(pdf_base64)
+    pdf_bytes = fetch_pdf_bytes_from_s3(file_key)
+    content = convert_pdf_bytes(pdf_bytes)
     career_name = extract_career_name(content)
     structure_table = extract_curricular_structure_table(content)
 
@@ -340,7 +346,7 @@ def parse_curricular_areas(pdf_base64: str) -> Union[List[Dict[str, str]], str]:
         for title, pos in matches:
             clean_name = re.sub(r'^(?:Área|Area)\s+de\s+', '', title, flags=re.IGNORECASE).strip()
             file_name = slugify(title)
-            if file_name == "comunicacion_y_lenguaje.md":
+            if file_name == "comunicacion_y_lenguaje":
                 continue
             if not areas_meta_alt or areas_meta_alt[-1]['clean_name'] != clean_name:
                 areas_meta_alt.append({
