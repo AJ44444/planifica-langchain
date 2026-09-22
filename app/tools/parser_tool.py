@@ -338,7 +338,7 @@ def parse_curricular_areas(file_key: str) -> Union[List[Dict[str, str]], str]:
         for m in regex_header_area.finditer(body_text):
             title = m.group(1).strip()
             is_subarea = bool(re.search(r'(?i)\bL\s*\d+$', title))
-            is_toc = bool(re.search(r'\.{2,}\s*\d+$', title)) or (not is_subarea and bool(re.search(r'\b\d{2,3}$', title)))
+            is_toc = bool(re.search(r'\.{2,}\s*\d+$', title)) or (not is_subarea and bool(re.search(r'\b\d{1,3}$', title)))
             if is_toc:
                 continue
             abs_pos = body_search_start + m.start()
