@@ -355,7 +355,7 @@ def parse_curricular_areas(file_key: str) -> Union[List[Dict[str, str]], str]:
                     'title': title,
                     'clean_name': clean_name,
                     'file_name': file_name,
-                    'start_pos': abs_pos
+                    'start_pos': pos
                 })
 
         if areas_meta_alt:
