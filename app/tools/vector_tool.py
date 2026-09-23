@@ -72,7 +72,8 @@ def get_vector_store() -> MongoDBAtlasVectorSearch:
     )
 
 
-def generate_and_store_subarea_embeddings(id_subarea: str) -> Dict[str, Any]:
+@tool("generate_and_store_subarea_embeddings")
+def generate_and_store_subarea_embeddings(id_subarea: str) -> str:
     """
     Generates and stores vector embeddings for the nodes of a curricular subarea.
 
@@ -80,7 +81,7 @@ def generate_and_store_subarea_embeddings(id_subarea: str) -> Dict[str, Any]:
         id_subarea (str): Identifier of the curricular subarea.
 
     Returns:
-        Dict[str, Any]: Execution result containing status and count of processed vectors.
+        str: JSON formatted string containing execution result with status and count of processed vectors.
     """
     try:
         db = get_db()
@@ -93,7 +94,7 @@ def generate_and_store_subarea_embeddings(id_subarea: str) -> Dict[str, Any]:
         docs = list(db[VECTORS].find(query))
 
         if not docs:
-            return {"status": "info", "message": "No pending nodes to vectorize found for this subarea."}
+            return json.dumps({"status": "info", "message": "No pending nodes to vectorize found for this subarea."}, ensure_ascii=False)
 
         embeddings_model = get_embedding_model()
         texts = [doc["texto_a_buscar"] for doc in docs]
@@ -112,14 +113,14 @@ def generate_and_store_subarea_embeddings(id_subarea: str) -> Dict[str, Any]:
             )
             updated_count += 1
 
-        return {
+        return json.dumps({
             "status": "success",
             "message": f"Successfully vectorized {updated_count} subarea nodes.",
             "vectores_actualizados": updated_count
-        }
+        }, ensure_ascii=False, indent=2)
 
     except Exception as e:
-        return {"status": "error", "message": f"Error generating embeddings: {str(e)}"}
+        return json.dumps({"status": "error", "message": f"Error generating embeddings: {str(e)}"}, ensure_ascii=False)
 
 
 def vector_search_cnb(
@@ -458,18 +459,3 @@ def search_curriculum_vector_db(query: str, id_subarea: str, limit: int = 5) -> 
             "status": "error",
             "message": f"Error in MongoDB vector search: {str(e)}"
         }, ensure_ascii=False)
-
-
-@tool("generate_subarea_vector_embeddings")
-def generate_subarea_vector_embeddings(id_subarea: str) -> str:
-    """
-    Generates vector embeddings for all pending nodes of a subarea.
-
-    Args:
-        id_subarea (str): Identifier of the subarea to vectorize.
-
-    Returns:
-        str: JSON formatted string with the vectorization process report.
-    """
-    res = generate_and_store_subarea_embeddings(id_subarea)
-    return json.dumps(res, ensure_ascii=False, indent=2)

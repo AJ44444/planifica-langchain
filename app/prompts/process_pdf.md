@@ -1,7 +1,7 @@
 ---
 name: process-pdf
 description: Processes PDF documents from Guatemala's National Basic Curriculum.
-tools: parse_curricular_areas, save_curricular_structure, generate_subarea_vector_embeddings
+tools: parse_curricular_areas, save_curricular_structure, generate_and_store_subarea_embeddings
 ---
 
 ## Process PDF Workflow
