@@ -1,6 +1,6 @@
 import asyncio
 import json
-from starlette.responses import StreamingResponse
+from starlette.responses import JSONResponse, StreamingResponse, Response
 from starlette.requests import Request
 from redis.asyncio import from_url
 from core.config import get_env_variable
@@ -8,7 +8,10 @@ from core.config import get_env_variable
 NOTIFICATION_CHANNEL = "channel:notifications"
 
 
-async def notifications_sse_endpoint(request: Request) -> StreamingResponse:
+async def notifications_sse_endpoint(request: Request) -> Response:
+    if request.method == "OPTIONS":
+        return JSONResponse({"status": "ok"}, status_code=200)
+
     redis_uri = get_env_variable("REDIS_URI")
     redis_client = from_url(redis_uri, decode_responses=True)
 

@@ -123,3 +123,11 @@ def test_get_lesson_plan_details_endpoint_success(client):
         data = response.json()
         assert data["status"] == "success"
         assert data["planificacion"]["_id"] == plan_id
+
+
+def test_notifications_endpoint_options(client):
+    """Verifies that OPTIONS /api/notifications returns 200 OK preflight response."""
+    response = client.options("/api/notifications")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
