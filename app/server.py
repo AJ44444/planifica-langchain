@@ -3,6 +3,7 @@ from starlette.routing import Route
 from api.auth_handler import login_with_google, logout, verify_session
 from api.lesson_plan_handler import get_paginated_lesson_plans_endpoint, get_lesson_plan_details_endpoint
 from api.upload_handler import generate_presigned_url_endpoint
+from api.notifications_handler import notifications_sse_endpoint
 
 
 routes = [
@@ -12,6 +13,7 @@ routes = [
     Route("/api/lesson-plans", endpoint=get_paginated_lesson_plans_endpoint, methods=["GET", "OPTIONS"]),
     Route("/api/lesson-plans/{id_planificacion}", endpoint=get_lesson_plan_details_endpoint, methods=["GET", "OPTIONS"]),
     Route("/api/generate-url", endpoint=generate_presigned_url_endpoint, methods=["GET", "OPTIONS"]),
+    Route("/api/notifications", endpoint=notifications_sse_endpoint, methods=["GET", "OPTIONS"]),
 ]
 
 app = Starlette(debug=False, routes=routes)

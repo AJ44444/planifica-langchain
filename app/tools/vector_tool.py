@@ -5,6 +5,7 @@ from pymongo import MongoClient
 from langchain_core.tools import tool
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
+import redis
 from core.config import get_env_variable
 from core.collections import VECTORS, SUB_AREAS
 
@@ -72,7 +73,37 @@ def get_vector_store() -> MongoDBAtlasVectorSearch:
     )
 
 
-@tool("generate_and_store_subarea_embeddings")
+@tool("dispatch_subarea_vectorization")
+def dispatch_subarea_vectorization(id_subarea: str) -> str:
+    """
+    Dispatches a Redis Stream event to trigger background vector embeddings generation for a subarea.
+
+    Args:
+        id_subarea (str): Identifier of the curricular subarea.
+
+    Returns:
+        str: JSON formatted string containing event dispatch status.
+    """
+    try:
+        redis_uri = get_env_variable("REDIS_URI")
+        client = redis.Redis.from_url(redis_uri)
+        sub_id = str(id_subarea).strip()
+        msg_id = client.xadd("stream:vectorization", {"id_subarea": sub_id})
+        client.close()
+
+        return json.dumps({
+            "status": "success",
+            "message": f"Subarea vectorization event dispatched successfully for id_subarea '{sub_id}'.",
+            "id_subarea": sub_id,
+            "message_id": str(msg_id)
+        }, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({
+            "status": "error",
+            "message": f"Error dispatching subarea vectorization event: {str(e)}"
+        }, ensure_ascii=False)
+
+
 def generate_and_store_subarea_embeddings(id_subarea: str) -> str:
     """
     Generates and stores vector embeddings for the nodes of a curricular subarea.

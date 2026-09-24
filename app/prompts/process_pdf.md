@@ -1,7 +1,7 @@
 ---
 name: process-pdf
 description: Processes PDF documents from Guatemala's National Basic Curriculum.
-tools: parse_curricular_areas, save_curricular_structure, generate_and_store_subarea_embeddings
+tools: parse_curricular_areas, save_curricular_structure, dispatch_subarea_vectorization
 ---
 
 ## Process PDF Workflow
@@ -23,4 +23,8 @@ tools: parse_curricular_areas, save_curricular_structure, generate_and_store_sub
 
 4. **Structure Flattening & Persistence**
    - Flatten each area structure into: `nombre_carrera`, `nombre_area`, `actividades_sugeridas`, `criterios_evaluacion_sugeridos`, and `subareas`.
-   - Call `save_curricular_structure` to save the complete area and subarea structure.
+   - Call `save_curricular_structure` to save the complete area and subarea structure first.
+
+5. **Vectorization Event Dispatch**
+   - After `save_curricular_structure` has persisted the structure, obtain the subarea IDs (`id_subarea`) returned by `save_curricular_structure`.
+   - Call `dispatch_subarea_vectorization` for each `id_subarea` to trigger background vector embeddings generation.
