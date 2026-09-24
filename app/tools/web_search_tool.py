@@ -6,16 +6,6 @@ from middleware.security_middleware import sanitize_external_text
 
 
 def get_serper_wrapper(search_type: str = "search", k: int = 5) -> GoogleSerperAPIWrapper:
-    """
-    Creates an instance of the GoogleSerperAPIWrapper search client.
-
-    Args:
-        search_type (str): Type of search ('search', 'videos', 'images').
-        k (int): Number of desired results.
-
-    Returns:
-        GoogleSerperAPIWrapper: Configured search client instance.
-    """
     serper_key = get_env_variable("SERPER_API_KEY")
     return GoogleSerperAPIWrapper(
         serper_api_key=serper_key,
@@ -26,19 +16,8 @@ def get_serper_wrapper(search_type: str = "search", k: int = 5) -> GoogleSerperA
     )
 
 
-@tool("serper_web_search")
+@tool("serper_web_search", description="Performs a web search using Google Serper API.")
 def serper_web_search(query: str, search_type: str = "search", num_results: int = 5) -> str:
-    """
-    Performs web searches using the Serper Google Search engine.
-
-    Args:
-        query (str): Search query or keywords.
-        search_type (str, optional): Search type ('search', 'videos', 'images'). Defaults to 'search'.
-        num_results (int, optional): Number of results to return. Defaults to 5.
-
-    Returns:
-        str: JSON formatted string containing the list of search results (title, link, snippet, type).
-    """
     try:
         wrapper = get_serper_wrapper(search_type=search_type, k=num_results)
         raw_results = wrapper.results(query)

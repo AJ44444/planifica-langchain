@@ -1,7 +1,3 @@
-"""
-System tools module for Planifica (PDF Parsing, Vector Search, SERPER Web Search, and MongoDB Persistence).
-"""
-
 from .parser_tool import (
     convert_pdf_bytes,
     extract_career_name,

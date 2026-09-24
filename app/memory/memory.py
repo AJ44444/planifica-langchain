@@ -11,11 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 def get_checkpointer() -> BaseCheckpointSaver:
-    """
-    Returns the appropriate Checkpointer based on the execution environment:
-    - In production (DATABASE_URI configured): Instantiates PostgresSaver and automatically initializes checkpointing and storage tables with setup().
-    - In local development/testing (without DATABASE_URI): Instantiates MemorySaver.
-    """
     if DATABASE_URI:
         try:
             pool = ConnectionPool(

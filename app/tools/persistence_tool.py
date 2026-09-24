@@ -3,7 +3,7 @@ import hmac
 import hashlib
 import bson
 from datetime import datetime, timezone, timedelta
-from typing import Union, Dict, Any, List, Optional
+from typing import Union, Dict, List, Optional
 from bson import ObjectId
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
@@ -37,15 +37,6 @@ from core.tool_inputs import (
 
 
 def get_mongo_client(timeout_ms: Optional[int] = None) -> MongoClient:
-    """
-    Creates a MongoClient instance using the configured connection URI.
-
-    Args:
-        timeout_ms (int, optional): Maximum timeout in milliseconds.
-
-    Returns:
-        MongoClient: Configured MongoDB client instance.
-    """
     mongodb_uri = get_env_variable("MONGODB_URI")
     if timeout_ms:
         return MongoClient(mongodb_uri, serverSelectionTimeoutMS=timeout_ms, connectTimeoutMS=timeout_ms)
@@ -53,27 +44,12 @@ def get_mongo_client(timeout_ms: Optional[int] = None) -> MongoClient:
 
 
 def get_db():
-    """
-    Obtains the MongoDB database instance.
-
-    Returns:
-        Database: Application database instance.
-    """
     client = get_mongo_client()
     db_name = get_env_variable("DB_NAME")
     return client[db_name]
 
 
 def check_db_connection(timeout_ms: int = 2000) -> bool:
-    """
-    Verifies active connectivity with the MongoDB database.
-
-    Args:
-        timeout_ms (int, optional): Timeout limit in milliseconds. Defaults to 2000.
-
-    Returns:
-        bool: True if the database responds to ping, False otherwise.
-    """
     try:
         client = get_mongo_client(timeout_ms=timeout_ms)
         client.admin.command("ping")
@@ -82,16 +58,7 @@ def check_db_connection(timeout_ms: int = 2000) -> bool:
         return False
 
 
-def extract_user_id_from_config(config: Optional[Any] = None) -> str:
-    """
-    Extracts the user identifier from the LangGraph execution configuration.
-
-    Args:
-        config (optional): RunnableConfig object or configuration dictionary.
-
-    Returns:
-        str: Extracted user ID or empty string if not found.
-    """
+def extract_user_id_from_config(config: Optional[Union[RunnableConfig, dict, object]] = None) -> str:
     if not config:
         return ""
 
@@ -114,17 +81,7 @@ def extract_user_id_from_config(config: Optional[Any] = None) -> str:
     return str(configurable.get("id_usuario", ""))
 
 
-def extract_teacher_name_from_config(config: Optional[Any] = None, user_id: str = "") -> str:
-    """
-    Obtains the authenticated teacher's full name from configuration or user ID.
-
-    Args:
-        config (optional): RunnableConfig object or configuration dictionary.
-        user_id (str, optional): User identifier.
-
-    Returns:
-        str: Teacher name or 'Docente' by default.
-    """
+def extract_teacher_name_from_config(config: Optional[Union[RunnableConfig, dict, object]] = None, user_id: str = "") -> str:
     if config:
         configurable = {}
         if isinstance(config, dict):
@@ -157,16 +114,7 @@ def extract_teacher_name_from_config(config: Optional[Any] = None, user_id: str 
     return "Docente"
 
 
-def _to_dict(obj: Any) -> dict:
-    """
-    Converts a Pydantic model or dictionary object into a standard Python dictionary.
-
-    Args:
-        obj (Any): Pydantic BaseModel instance or dictionary.
-
-    Returns:
-        dict: Resulting Python dictionary.
-    """
+def _to_dict(obj: Union[dict, object]) -> dict:
     if hasattr(obj, "model_dump"):
         return obj.model_dump()
     if hasattr(obj, "dict"):
@@ -176,16 +124,7 @@ def _to_dict(obj: Any) -> dict:
     return {}
 
 
-def _ensure_object_id(val: Any) -> ObjectId:
-    """
-    Converts an input value into a MongoDB ObjectId.
-
-    Args:
-        val (Any): 24-character hex string or existing ObjectId.
-
-    Returns:
-        ObjectId: ObjectId instance.
-    """
+def _ensure_object_id(val: Union[str, ObjectId, bytes, object]) -> ObjectId:
     if isinstance(val, ObjectId):
         return val
     val_str = str(val).strip()
@@ -195,15 +134,6 @@ def _ensure_object_id(val: Any) -> ObjectId:
 
 
 def _clean_updates(updates: dict) -> dict:
-    """
-    Cleans an update dictionary omitting uneditable fields and null identifiers.
-
-    Args:
-        updates (dict): Dictionary of fields to update.
-
-    Returns:
-        dict: Cleaned update dictionary.
-    """
     clean = {}
     for k, v in updates.items():
         if k in ["_id", "fecha_creacion"]:
@@ -220,15 +150,6 @@ def _clean_updates(updates: dict) -> dict:
 
 
 def insert_cnb_area_doc(data: dict) -> ObjectId:
-    """
-    Inserts a new curricular area document.
-
-    Args:
-        data (dict): Curricular area information dictionary.
-
-    Returns:
-        ObjectId: Inserted document identifier.
-    """
     db = get_db()
     carrera = str(data.get("nombre_carrera", "")).strip()
 
@@ -253,15 +174,6 @@ def insert_cnb_area_doc(data: dict) -> ObjectId:
 
 
 def insert_cnb_subarea_doc(data: dict) -> ObjectId:
-    """
-    Inserts a curricular subarea into the database.
-
-    Args:
-        data (dict): Curricular subarea information dictionary.
-
-    Returns:
-        ObjectId: Inserted document identifier.
-    """
     db = get_db()
     doc = {
         "id_area": _ensure_object_id(data.get("id_area")),
@@ -273,15 +185,6 @@ def insert_cnb_subarea_doc(data: dict) -> ObjectId:
 
 
 def insert_cnb_vector_doc(data: dict) -> ObjectId:
-    """
-    Inserts a node for vector indexing.
-
-    Args:
-        data (dict): Vector node information.
-
-    Returns:
-        ObjectId: Inserted document identifier.
-    """
     db = get_db()
     doc = {
         "id_subarea": _ensure_object_id(data.get("id_subarea")),
@@ -296,7 +199,7 @@ def insert_cnb_vector_doc(data: dict) -> ObjectId:
     return res.inserted_id
 
 
-@tool("save_curricular_structure", args_schema=SaveCurricularStructureInput)
+@tool("save_curricular_structure", description="Saves complete curricular area and subarea structure.", args_schema=SaveCurricularStructureInput)
 def save_curricular_structure(
     nombre_carrera: str,
     nombre_area: str,
@@ -304,19 +207,6 @@ def save_curricular_structure(
     criterios_evaluacion_sugeridos: List[str],
     subareas: List[Union[dict, Subarea]]
 ) -> str:
-    """
-    Saves the CNB curricular structure with its areas and subareas.
-
-    Args:
-        nombre_carrera (str): Official career name.
-        nombre_area (str): Curricular area name.
-        actividades_sugeridas (List[str]): Suggested area activities.
-        criterios_evaluacion_sugeridos (List[str]): Suggested evaluation criteria.
-        subareas (List[Union[dict, Subarea]]): Subareas belonging to the area.
-
-    Returns:
-        str: JSON formatted response with operation status and created area ID.
-    """
     try:
         subareas_dicts = [_to_dict(s) for s in subareas]
         area_data = {
@@ -407,7 +297,7 @@ def save_curricular_structure(
         return json.dumps({"status": "error", "message": f"Error saving curricular structure: {str(e)}"})
 
 
-@tool("save_lesson_plan", args_schema=SaveLessonPlanInput)
+@tool("save_lesson_plan", description="Saves a generated lesson plan into the database.", args_schema=SaveLessonPlanInput)
 def save_lesson_plan(
     metadatos: Union[dict, MetadatosPlanInput],
     encabezado: Union[dict, EncabezadoPlan],
@@ -415,19 +305,6 @@ def save_lesson_plan(
     config: RunnableConfig = None,
     id_usuario: str = ""
 ) -> str:
-    """
-    Saves a teacher's lesson plan in the database.
-
-    Args:
-        metadatos (Union[dict, MetadatosPlanInput]): Metadata of the lesson plan.
-        encabezado (Union[dict, EncabezadoPlan]): General header data.
-        desarrollo_curricular (List[Union[dict, FilaCurricularPlan]]): Curricular development rows.
-        config (RunnableConfig, optional): Execution configuration context.
-        id_usuario (str, optional): User identifier.
-
-    Returns:
-        str: JSON formatted response with the saved lesson plan ID.
-    """
     try:
         db = get_db()
         effective_id = extract_user_id_from_config(config) or id_usuario
@@ -487,19 +364,8 @@ def save_lesson_plan(
         return json.dumps({"status": "error", "message": f"Error creating lesson plan: {str(e)}"})
 
 
-@tool("get_planification_by_id")
+@tool("get_planification_by_id", description="Retrieves a lesson plan by its unique ID.")
 def get_planification_by_id(id_planificacion: str, config: RunnableConfig = None, id_usuario: str = "") -> str:
-    """
-    Retrieves a teacher's lesson plan by its identifier.
-
-    Args:
-        id_planificacion (str): Unique lesson plan identifier.
-        config (RunnableConfig, optional): Execution configuration context.
-        id_usuario (str, optional): User identifier.
-
-    Returns:
-        str: JSON formatted response with details of the retrieved lesson plan.
-    """
     try:
         db = get_db()
         obj_id = ObjectId(id_planificacion.strip())
@@ -519,17 +385,8 @@ def get_planification_by_id(id_planificacion: str, config: RunnableConfig = None
         return json.dumps({"status": "error", "message": f"Error retrieving lesson plan: {str(e)}"})
 
 
-@tool("get_learning_activity_by_id")
+@tool("get_learning_activity_by_id", description="Retrieves a learning activity by activity ID.")
 def get_learning_activity_by_id(id_actividad: str) -> str:
-    """
-    Retrieves a specific learning activity by its identifier using pipeline destructuring.
-
-    Args:
-        id_actividad (str): Unique learning activity identifier.
-
-    Returns:
-        str: JSON formatted response with destructured learning activity data.
-    """
     try:
         db = get_db()
         act_obj_id = ObjectId(id_actividad.strip())
@@ -556,7 +413,7 @@ def get_learning_activity_by_id(id_actividad: str) -> str:
         return json.dumps({"status": "error", "message": f"Error retrieving learning activity: {str(e)}"})
 
 
-@tool("update_lesson_plan", args_schema=UpdateLessonPlanInput)
+@tool("update_lesson_plan", description="Updates an existing lesson plan.", args_schema=UpdateLessonPlanInput)
 def update_lesson_plan(
     id_planificacion: str,
     metadatos: Optional[Union[dict, MetadatosPlanInput]] = None,
@@ -565,20 +422,6 @@ def update_lesson_plan(
     config: RunnableConfig = None,
     id_usuario: str = ""
 ) -> str:
-    """
-    Updates specified fields of an existing teacher's lesson plan.
-
-    Args:
-        id_planificacion (str): Unique identifier of the lesson plan to update.
-        metadatos (Union[dict, MetadatosPlanInput], optional): Updated metadata.
-        encabezado (Union[dict, EncabezadoPlan], optional): Updated header data.
-        desarrollo_curricular (List[Union[dict, FilaCurricularPlan]], optional): Updated curricular development.
-        config (RunnableConfig, optional): Execution configuration context.
-        id_usuario (str, optional): User identifier.
-
-    Returns:
-        str: JSON formatted response with the update execution status.
-    """
     try:
         db = get_db()
         obj_id = ObjectId(id_planificacion.strip())
@@ -624,20 +467,8 @@ def update_lesson_plan(
         return json.dumps({"status": "error", "message": f"Error updating lesson plan: {str(e)}"})
 
 
-@tool("delete_lesson_plan")
+@tool("delete_lesson_plan", description="Deletes a lesson plan by ID.")
 def delete_lesson_plan(id_planificacion: str, config: RunnableConfig = None, id_usuario: str = "", confirm: bool = True) -> str:
-    """
-    Deletes a teacher's lesson plan by its identifier.
-
-    Args:
-        id_planificacion (str): Unique identifier of the lesson plan to delete.
-        config (RunnableConfig, optional): Execution configuration context.
-        id_usuario (str, optional): User identifier.
-        confirm (bool, optional): Prior confirmation required for deletion. Defaults to True.
-
-    Returns:
-        str: JSON formatted response with deletion status.
-    """
     try:
         if not confirm:
             return json.dumps({
@@ -682,17 +513,8 @@ def delete_lesson_plan(id_planificacion: str, config: RunnableConfig = None, id_
         return json.dumps({"status": "error", "message": f"Error deleting lesson plan: {str(e)}"})
 
 
-@tool("get_cnb_area_by_id")
+@tool("get_cnb_area_by_id", description="Retrieves a CNB area document by ID.")
 def get_cnb_area_by_id(id_area: str) -> str:
-    """
-    Retrieves curricular area data by its identifier.
-
-    Args:
-        id_area (str): Curricular area identifier.
-
-    Returns:
-        str: JSON formatted response with curricular area information.
-    """
     try:
         db = get_db()
         obj_id = ObjectId(id_area.strip())
@@ -704,17 +526,8 @@ def get_cnb_area_by_id(id_area: str) -> str:
         return json.dumps({"status": "error", "message": f"Error retrieving curricular area: {str(e)}"})
 
 
-@tool("get_cnb_subarea_by_id")
+@tool("get_cnb_subarea_by_id", description="Retrieves a CNB subarea document by ID.")
 def get_cnb_subarea_by_id(id_subarea: str) -> str:
-    """
-    Retrieves curricular subarea data by its identifier.
-
-    Args:
-        id_subarea (str): Curricular subarea identifier.
-
-    Returns:
-        str: JSON formatted response with curricular subarea information.
-    """
     try:
         db = get_db()
         obj_id = ObjectId(id_subarea.strip())
@@ -726,17 +539,8 @@ def get_cnb_subarea_by_id(id_subarea: str) -> str:
         return json.dumps({"status": "error", "message": f"Error retrieving curricular subarea: {str(e)}"})
 
 
-@tool("get_cnb_vector_by_id")
+@tool("get_cnb_vector_by_id", description="Retrieves a CNB vector document by ID.")
 def get_cnb_vector_by_id(id_vector: str) -> str:
-    """
-    Retrieves a vector indexing node by its identifier.
-
-    Args:
-        id_vector (str): Vector node identifier.
-
-    Returns:
-        str: JSON formatted response with vector node information.
-    """
     try:
         db = get_db()
         obj_id = ObjectId(id_vector.strip())
@@ -748,17 +552,7 @@ def get_cnb_vector_by_id(id_vector: str) -> str:
         return json.dumps({"status": "error", "message": f"Error retrieving vector record: {str(e)}"})
 
 
-def update_cnb_vector(id_vector: str, update_data: Dict[str, Any]) -> str:
-    """
-    Updates information for an existing vector node.
-
-    Args:
-        id_vector (str): Identifier of the vector node to update.
-        update_data (Dict[str, Any]): Update fields dictionary.
-
-    Returns:
-        str: JSON formatted response with update execution status.
-    """
+def update_cnb_vector(id_vector: str, update_data: Dict[str, Union[str, int, float, bool, List[float], List[str]]]) -> str:
     try:
         db = get_db()
         obj_id = ObjectId(id_vector.strip())
@@ -774,16 +568,6 @@ def update_cnb_vector(id_vector: str, update_data: Dict[str, Any]) -> str:
 
 
 def delete_cnb_vector(id_vector: str, confirm: bool = True) -> str:
-    """
-    Deletes a vector node by its identifier.
-
-    Args:
-        id_vector (str): Identifier of the node to delete.
-        confirm (bool, optional): Prior confirmation required for deletion. Defaults to True.
-
-    Returns:
-        str: JSON formatted response with deletion result.
-    """
     try:
         if not confirm:
             return json.dumps({"status": "pending_confirmation", "message": f"CONFIRMATION REQUIRED: Delete vector '{id_vector}'?"}, ensure_ascii=False)
@@ -799,25 +583,13 @@ def delete_cnb_vector(id_vector: str, confirm: bool = True) -> str:
         return json.dumps({"status": "error", "message": f"Error deleting vector record: {str(e)}"})
 
 
-@tool("save_assessment_instrument", args_schema=SaveAssessmentInstrumentInput)
+@tool("save_assessment_instrument", description="Saves an evaluation assessment instrument.", args_schema=SaveAssessmentInstrumentInput)
 def save_assessment_instrument(
     id_actividad: str,
     tipo: str,
     titulo: str,
     instrumento_generado: Union[dict, InstrumentoGeneradoDetail]
 ) -> str:
-    """
-    Saves an assessment instrument linked to a learning activity.
-
-    Args:
-        id_actividad (str): Identifier of the evaluated learning activity.
-        tipo (str): Instrument type (rubrica, lista_cotejo, escala_rango).
-        titulo (str): Instrument title.
-        instrumento_generado (Union[dict, InstrumentoGeneradoDetail]): Generated instrument structure.
-
-    Returns:
-        str: JSON formatted response with saved instrument ID.
-    """
     try:
         db = get_db()
         act_obj_id = _ensure_object_id(id_actividad)
@@ -841,17 +613,8 @@ def save_assessment_instrument(
         return json.dumps({"status": "error", "message": f"Error saving assessment instrument: {str(e)}"})
 
 
-@tool("get_assessment_instrument_by_id")
+@tool("get_assessment_instrument_by_id", description="Retrieves an assessment instrument by ID.")
 def get_assessment_instrument_by_id(id_instrumento: str) -> str:
-    """
-    Retrieves an assessment instrument by its identifier.
-
-    Args:
-        id_instrumento (str): Unique instrument identifier.
-
-    Returns:
-        str: JSON formatted response with instrument data.
-    """
     try:
         db = get_db()
         obj_id = ObjectId(id_instrumento.strip())
@@ -863,7 +626,7 @@ def get_assessment_instrument_by_id(id_instrumento: str) -> str:
         return json.dumps({"status": "error", "message": f"Error retrieving assessment instrument: {str(e)}"})
 
 
-@tool("update_assessment_instrument", args_schema=UpdateAssessmentInstrumentInput)
+@tool("update_assessment_instrument", description="Updates an evaluation instrument.", args_schema=UpdateAssessmentInstrumentInput)
 def update_assessment_instrument(
     id_instrumento: str,
     id_actividad: Optional[str] = None,
@@ -871,19 +634,6 @@ def update_assessment_instrument(
     titulo: Optional[str] = None,
     instrumento_generado: Optional[Union[dict, InstrumentoGeneradoDetail]] = None
 ) -> str:
-    """
-    Updates data for an existing assessment instrument.
-
-    Args:
-        id_instrumento (str): Unique identifier of the instrument to update.
-        id_actividad (str, optional): Updated activity identifier.
-        tipo (str, optional): Updated instrument type.
-        titulo (str, optional): Updated instrument title.
-        instrumento_generado (Union[dict, InstrumentoGeneradoDetail], optional): Updated instrument structure.
-
-    Returns:
-        str: JSON formatted response with update execution status.
-    """
     try:
         db = get_db()
         obj_id = ObjectId(id_instrumento.strip())
@@ -912,18 +662,8 @@ def update_assessment_instrument(
         return json.dumps({"status": "error", "message": f"Error updating assessment instrument: {str(e)}"})
 
 
-@tool("delete_assessment_instrument")
+@tool("delete_assessment_instrument", description="Deletes an assessment instrument by ID.")
 def delete_assessment_instrument(id_instrumento: str, confirm: bool = True) -> str:
-    """
-    Deletes an assessment instrument by its identifier.
-
-    Args:
-        id_instrumento (str): Unique identifier of the instrument to delete.
-        confirm (bool, optional): Prior confirmation required for deletion. Defaults to True.
-
-    Returns:
-        str: JSON formatted response with deletion result.
-    """
     try:
         if not confirm:
             return json.dumps({"status": "pending_confirmation", "message": f"CONFIRMATION REQUIRED: Delete instrument '{id_instrumento}'?"}, ensure_ascii=False)
@@ -939,25 +679,13 @@ def delete_assessment_instrument(id_instrumento: str, confirm: bool = True) -> s
         return json.dumps({"status": "error", "message": f"Error deleting assessment instrument: {str(e)}"})
 
 
-@tool("save_multimodal_resource", args_schema=SaveMultimodalResourceInput)
+@tool("save_multimodal_resource", description="Saves a multimodal educational resource.", args_schema=SaveMultimodalResourceInput)
 def save_multimodal_resource(
     id_actividad: str,
     tipo: str,
     titulo: str,
     url: str
 ) -> str:
-    """
-    Saves a multimodal educational resource linked to a learning activity.
-
-    Args:
-        id_actividad (str): Identifier of the learning activity.
-        tipo (str): Resource type (video, imagen, documento, simulacion, lectura).
-        titulo (str): Resource title.
-        url (str): Resource URL link.
-
-    Returns:
-        str: JSON formatted response with saved resource ID.
-    """
     try:
         db = get_db()
         act_obj_id = _ensure_object_id(id_actividad)
@@ -980,17 +708,8 @@ def save_multimodal_resource(
         return json.dumps({"status": "error", "message": f"Error saving multimodal resource: {str(e)}"})
 
 
-@tool("get_multimodal_resource_by_id")
+@tool("get_multimodal_resource_by_id", description="Retrieves a multimodal resource by ID.")
 def get_multimodal_resource_by_id(id_recurso: str) -> str:
-    """
-    Retrieves a multimodal resource by its identifier.
-
-    Args:
-        id_recurso (str): Unique multimodal resource identifier.
-
-    Returns:
-        str: JSON formatted response with resource information.
-    """
     try:
         db = get_db()
         obj_id = ObjectId(id_recurso.strip())
@@ -1002,7 +721,7 @@ def get_multimodal_resource_by_id(id_recurso: str) -> str:
         return json.dumps({"status": "error", "message": f"Error reading multimodal resource: {str(e)}"})
 
 
-@tool("update_multimodal_resource", args_schema=UpdateMultimodalResourceInput)
+@tool("update_multimodal_resource", description="Updates a multimodal resource.", args_schema=UpdateMultimodalResourceInput)
 def update_multimodal_resource(
     id_recurso: str,
     id_actividad: Optional[str] = None,
@@ -1010,19 +729,6 @@ def update_multimodal_resource(
     titulo: Optional[str] = None,
     url: Optional[str] = None
 ) -> str:
-    """
-    Updates information for an existing multimodal resource.
-
-    Args:
-        id_recurso (str): Unique identifier of the resource to update.
-        id_actividad (str, optional): Updated activity identifier.
-        tipo (str, optional): Updated resource type.
-        titulo (str, optional): Updated resource title.
-        url (str, optional): Updated resource URL.
-
-    Returns:
-        str: JSON formatted response with update execution status.
-    """
     try:
         db = get_db()
         obj_id = ObjectId(id_recurso.strip())
@@ -1051,18 +757,8 @@ def update_multimodal_resource(
         return json.dumps({"status": "error", "message": f"Error updating multimodal resource: {str(e)}"})
 
 
-@tool("delete_multimodal_resource")
+@tool("delete_multimodal_resource", description="Deletes a multimodal resource by ID.")
 def delete_multimodal_resource(id_recurso: str, confirm: bool = True) -> str:
-    """
-    Deletes a multimodal resource by its identifier.
-
-    Args:
-        id_recurso (str): Unique identifier of the resource to delete.
-        confirm (bool, optional): Prior confirmation required for deletion. Defaults to True.
-
-    Returns:
-        str: JSON formatted response with deletion result.
-    """
     try:
         if not confirm:
             return json.dumps({"status": "pending_confirmation", "message": f"CONFIRMATION REQUIRED: Delete resource '{id_recurso}'?"}, ensure_ascii=False)
@@ -1078,19 +774,8 @@ def delete_multimodal_resource(id_recurso: str, confirm: bool = True) -> str:
         return json.dumps({"status": "error", "message": f"Error deleting multimodal resource: {str(e)}"})
 
 
-@tool("get_top_frequent_courses")
+@tool("get_top_frequent_courses", description="Retrieves top most frequent courses for the user.")
 def get_top_frequent_courses(config: RunnableConfig = None, id_usuario: str = "", limit: int = 4) -> str:
-    """
-    Obtains the most frequently used subareas or subjects in teacher lesson plans.
-
-    Args:
-        config (RunnableConfig, optional): Execution configuration context.
-        id_usuario (str, optional): User identifier.
-        limit (int, optional): Maximum count of records to retrieve. Defaults to 4.
-
-    Returns:
-        str: JSON formatted response with the list of top subareas.
-    """
     try:
         db = get_db()
         effective_id = extract_user_id_from_config(config) or id_usuario
@@ -1113,20 +798,8 @@ def get_top_frequent_courses(config: RunnableConfig = None, id_usuario: str = ""
         return json.dumps({"status": "error", "message": f"Error querying top courses: {str(e)}"})
 
 
-@tool("get_paginated_lesson_plans")
+@tool("get_paginated_lesson_plans", description="Retrieves paginated lesson plans for the user.")
 def get_paginated_lesson_plans(config: RunnableConfig = None, id_usuario: str = "", page: int = 1, limit: int = 10) -> str:
-    """
-    Retrieves a paginated list of teacher lesson plans belonging to the user.
-
-    Args:
-        config (RunnableConfig, optional): Execution configuration context.
-        id_usuario (str, optional): User identifier.
-        page (int, optional): Page number (starting at 1). Defaults to 1.
-        limit (int, optional): Number of records per page. Defaults to 10.
-
-    Returns:
-        str: JSON formatted response with paginated lesson plans and pagination metadata.
-    """
     try:
         db = get_db()
         effective_id = extract_user_id_from_config(config) or id_usuario
@@ -1170,19 +843,8 @@ def get_paginated_lesson_plans(config: RunnableConfig = None, id_usuario: str = 
         return json.dumps({"status": "error", "message": f"Error in paginated history: {str(e)}"})
 
 
-@tool("get_lesson_plan_details")
+@tool("get_lesson_plan_details", description="Retrieves full details of a lesson plan by ID.")
 def get_lesson_plan_details(id_planificacion: str, config: RunnableConfig = None, id_usuario: str = "") -> str:
-    """
-    Retrieves full details of a teacher's lesson plan along with associated instruments and resources.
-
-    Args:
-        id_planificacion (str): Unique lesson plan identifier.
-        config (RunnableConfig, optional): Execution configuration context.
-        id_usuario (str, optional): User identifier.
-
-    Returns:
-        str: JSON formatted response with detailed lesson plan information.
-    """
     try:
         db = get_db()
         plan_obj_id = ObjectId(id_planificacion.strip())
@@ -1217,14 +879,8 @@ def get_lesson_plan_details(id_planificacion: str, config: RunnableConfig = None
         return json.dumps({"status": "error", "message": f"Error retrieving full lesson plan details: {str(e)}"})
 
 
-@tool("get_cnb_careers_list")
+@tool("get_cnb_careers_list", description="Retrieves list of available CNB careers catalog.")
 def get_cnb_careers_list() -> str:
-    """
-    Retrieves the list of available academic careers in the curriculum catalog.
-
-    Returns:
-        str: JSON formatted response with the list of career names.
-    """
     try:
         db = get_db()
         raw_careers = db[AREAS].distinct("nombre_carrera")
@@ -1234,19 +890,8 @@ def get_cnb_careers_list() -> str:
         return json.dumps({"status": "error", "message": f"Error obtaining careers catalog: {str(e)}"})
 
 
-@tool("get_cnb_areas_by_career")
+@tool("get_cnb_areas_by_career", description="Retrieves CNB areas for a given career.")
 def get_cnb_areas_by_career(carrera: str, page: int = 1, limit: int = 10) -> str:
-    """
-    Retrieves curricular areas belonging to a specific career in the curriculum.
-
-    Args:
-        carrera (str): Career name to query.
-        page (int, optional): Page number. Defaults to 1.
-        limit (int, optional): Number of records per page. Defaults to 10.
-
-    Returns:
-        str: JSON formatted response with paginated list of curricular areas.
-    """
     try:
         db = get_db()
         query = {"nombre_carrera": carrera.strip()}
@@ -1281,19 +926,8 @@ def get_cnb_areas_by_career(carrera: str, page: int = 1, limit: int = 10) -> str
         return json.dumps({"status": "error", "message": f"Error obtaining areas by career: {str(e)}"})
 
 
-@tool("get_cnb_subareas_by_area_id")
+@tool("get_cnb_subareas_by_area_id", description="Retrieves CNB subareas by area ID.")
 def get_cnb_subareas_by_area_id(id_area: str, page: int = 1, limit: int = 10) -> str:
-    """
-    Retrieves curricular subareas belonging to a specific area in the curriculum.
-
-    Args:
-        id_area (str): Curricular area identifier.
-        page (int, optional): Page number. Defaults to 1.
-        limit (int, optional): Number of records per page. Defaults to 10.
-
-    Returns:
-        str: JSON formatted response with paginated list of curricular subareas.
-    """
     try:
         db = get_db()
         area_obj_id = ObjectId(id_area.strip())
@@ -1330,15 +964,6 @@ def get_cnb_subareas_by_area_id(id_area: str, page: int = 1, limit: int = 10) ->
 
 
 def create_user_doc(data: dict) -> dict:
-    """
-    Creates a new user document in the system from authenticated data.
-
-    Args:
-        data (dict): Authenticated user information dictionary.
-
-    Returns:
-        dict: Operation result dictionary containing user ID.
-    """
     try:
         db = get_db()
         google_id = str(data.get("google_id", "")).strip()
@@ -1377,15 +1002,6 @@ def create_user_doc(data: dict) -> dict:
 
 
 def get_user_by_google_id(google_id: str) -> Optional[dict]:
-    """
-    Retrieves user profile document by Google ID.
-
-    Args:
-        google_id (str): Unique Google OAuth identifier.
-
-    Returns:
-        Optional[dict]: User information or None if not found.
-    """
     try:
         db = get_db()
         gid = str(google_id).strip()
@@ -1400,15 +1016,6 @@ def get_user_by_google_id(google_id: str) -> Optional[dict]:
 
 
 def get_user_profile_doc(id_usuario: str) -> Optional[dict]:
-    """
-    Retrieves user profile document by user ID.
-
-    Args:
-        id_usuario (str): Unique user identifier.
-
-    Returns:
-        Optional[dict]: Profile information or None if not found.
-    """
     try:
         db = get_db()
         obj_id = ObjectId(id_usuario.strip())
@@ -1421,16 +1028,6 @@ def get_user_profile_doc(id_usuario: str) -> Optional[dict]:
 
 
 def update_user_profile_doc(id_usuario: str, update_data: dict) -> bool:
-    """
-    Updates profile data of a user.
-
-    Args:
-        id_usuario (str): Unique user identifier.
-        update_data (dict): Profile fields to update.
-
-    Returns:
-        bool: True if update succeeded, False otherwise.
-    """
     try:
         db = get_db()
         obj_id = ObjectId(id_usuario.strip())
@@ -1444,15 +1041,6 @@ def update_user_profile_doc(id_usuario: str, update_data: dict) -> bool:
 
 
 def delete_user_profile_doc(id_usuario: str) -> bool:
-    """
-    Deletes user account from the system.
-
-    Args:
-        id_usuario (str): Unique user identifier to delete.
-
-    Returns:
-        bool: True if deleted, False otherwise.
-    """
     try:
         db = get_db()
         obj_id = ObjectId(id_usuario.strip())
@@ -1463,20 +1051,12 @@ def delete_user_profile_doc(id_usuario: str) -> bool:
 
 
 def hash_session_id(session_id_hex: str) -> bson.Binary:
-    """
-    Computes HMAC-SHA256 binary digest of session_id_hex using SESSION_SECRET.
-    Returns BSON Binary object for MongoDB storage and querying.
-    """
     secret = get_env_variable("SESSION_SECRET").encode("utf-8")
     digest = hmac.new(secret, str(session_id_hex).strip().encode("utf-8"), hashlib.sha256).digest()
     return bson.Binary(digest)
 
 
 def hash_refresh_token(refresh_token_hex: str) -> bson.Binary:
-    """
-    Computes HMAC-SHA256 binary digest of refresh_token_hex using REFRESH_SECRET.
-    Returns BSON Binary object for MongoDB storage and querying.
-    """
     secret = get_env_variable("REFRESH_SECRET").encode("utf-8")
     digest = hmac.new(secret, str(refresh_token_hex).strip().encode("utf-8"), hashlib.sha256).digest()
     return bson.Binary(digest)
@@ -1489,20 +1069,6 @@ def save_session_doc(
     refresh_token: str,
     expires_in_days: int = 7
 ) -> bool:
-    """
-    Saves or updates a user session document in the refresh_tokens collection.
-    Stores session_id and refresh_token as HMAC binary digests (BSON Binary).
-
-    Args:
-        id_usuario (str): Unique user identifier.
-        session_id (str): Unique session identifier hex string (cookie).
-        access_token (str): Signed access token string.
-        refresh_token (str): Session refresh token hex string.
-        expires_in_days (int, optional): Expiration validity in days. Defaults to 7.
-
-    Returns:
-        bool: True if stored successfully, False otherwise.
-    """
     try:
         db = get_db()
         user_obj_id = _ensure_object_id(id_usuario)
@@ -1529,16 +1095,6 @@ def save_session_doc(
 
 
 def get_session_by_session_id(session_id: str) -> Optional[dict]:
-    """
-    Retrieves and validates an active session document by session_id hex.
-    Computes HMAC binary digest of incoming session_id hex and queries DB.
-
-    Args:
-        session_id (str): Unique session identifier cookie hex value.
-
-    Returns:
-        Optional[dict]: Active session document data or None if missing/expired.
-    """
     try:
         db = get_db()
         sid_str = str(session_id).strip()
@@ -1570,18 +1126,6 @@ def update_session_tokens(
     new_access_token: str,
     new_refresh_token: str
 ) -> bool:
-    """
-    Updates access_token and rotates refresh_token for session_id without extending session expiration.
-    Computes HMAC binary digest of new_refresh_token.
-
-    Args:
-        session_id (str): Session identifier hex.
-        new_access_token (str): Freshly generated access token.
-        new_refresh_token (str): Newly rotated refresh token hex.
-
-    Returns:
-        bool: True if updated successfully, False otherwise.
-    """
     try:
         db = get_db()
         sid_str = str(session_id).strip()
@@ -1605,15 +1149,6 @@ def update_session_tokens(
 
 
 def delete_session_by_session_id(session_id: str) -> bool:
-    """
-    Deletes the session document matching session_id hex from refresh_tokens collection.
-
-    Args:
-        session_id (str): Unique session identifier hex.
-
-    Returns:
-        bool: True if deleted successfully, False otherwise.
-    """
     try:
         db = get_db()
         sid_str = str(session_id).strip()

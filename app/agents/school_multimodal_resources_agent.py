@@ -1,6 +1,3 @@
-"""
-Sub-agent responsible for searching and managing multimodal resources.
-"""
 from langchain.agents import create_agent
 from langchain.agents.middleware import SummarizationMiddleware
 from core.llm import llm

@@ -2,13 +2,18 @@ import jwt
 import secrets
 import asyncio
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
 import time
 from collections import defaultdict
 from google.oauth2 import id_token as google_id_token_verifier
 from google.auth.transport import requests as google_requests
 from langgraph_sdk import Auth
 from core.config import get_env_variable
+from core import (
+    GoogleIdTokenPayload,
+    JWTAccessTokenPayload,
+    SessionResponseDict,
+)
 from tools.persistence_tool import (
     create_user_doc,
     get_user_profile_doc,
@@ -29,27 +34,17 @@ _LOCKS_GUARD = asyncio.Lock()
 
 
 async def _get_session_lock(session_id: str) -> asyncio.Lock:
-    """Retrieves or creates a dedicated async lock per session_id."""
     async with _LOCKS_GUARD:
         if session_id not in _SESSION_LOCKS:
             _SESSION_LOCKS[session_id] = asyncio.Lock()
         return _SESSION_LOCKS[session_id]
 
 
-def verify_google_id_token(id_token: str) -> Dict[str, Any]:
-    """
-    Verifies the authenticity and validity of a Google OAuth ID token.
-
-    Args:
-        id_token (str): Google OAuth ID token string.
-
-    Returns:
-        Dict[str, Any]: Verified token payload containing user details.
-    """
+def verify_google_id_token(id_token: str) -> GoogleIdTokenPayload:
     try:
         client_id = get_env_variable("GOOGLE_CLIENT_ID")
         req = google_requests.Request()
-        payload = google_id_token_verifier.verify_oauth2_token(
+        payload: GoogleIdTokenPayload = google_id_token_verifier.verify_oauth2_token(
             id_token,
             req,
             audience=client_id
@@ -65,22 +60,9 @@ def verify_google_id_token(id_token: str) -> Dict[str, Any]:
 
 
 def create_access_token(user_id: str, email: str, nombres: str = "", rol: str = "docente", expires_in_seconds: int = 300) -> str:
-    """
-    Generates a signed JWT access token for the user.
-
-    Args:
-        user_id (str): Unique user identifier.
-        email (str): User email address.
-        nombres (str, optional): User first names.
-        rol (str, optional): Assigned role. Defaults to 'docente'.
-        expires_in_seconds (int, optional): Expiration time in seconds. Defaults to 300.
-
-    Returns:
-        str: Encoded JWT access token string.
-    """
     jwt_secret = get_env_variable("JWT_SECRET")
     now = datetime.now(timezone.utc)
-    payload = {
+    payload: JWTAccessTokenPayload = {
         "sub": str(user_id).strip(),
         "email": str(email).strip(),
         "nombres": str(nombres).strip(),
@@ -92,19 +74,10 @@ def create_access_token(user_id: str, email: str, nombres: str = "", rol: str = 
     return jwt.encode(payload, jwt_secret, algorithm="HS256")
 
 
-def verify_project_access_token(token: str) -> Dict[str, Any]:
-    """
-    Verifies the signature and expiration of a JWT access token.
-
-    Args:
-        token (str): JWT access token to validate.
-
-    Returns:
-        Dict[str, Any]: Payload of the verified token.
-    """
+def verify_project_access_token(token: str) -> JWTAccessTokenPayload:
     jwt_secret = get_env_variable("JWT_SECRET")
     try:
-        payload = jwt.decode(token, jwt_secret, algorithms=["HS256"])
+        payload: JWTAccessTokenPayload = jwt.decode(token, jwt_secret, algorithms=["HS256"])
         if payload.get("type") != "access":
             raise ValueError("The provided token is not a valid session Access Token.")
         return payload
@@ -114,16 +87,7 @@ def verify_project_access_token(token: str) -> Dict[str, Any]:
         raise ValueError(f"Invalid Access Token: {str(e)}")
 
 
-def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any]:
-    """
-    Exchanges a Google OAuth token for a user session with session_id, access and refresh tokens.
-
-    Args:
-        google_id_token_str (str): Google OAuth ID token.
-
-    Returns:
-        Dict[str, Any]: Dictionary containing session_id, tokens, and user data.
-    """
+def exchange_google_token_for_session(google_id_token_str: str) -> SessionResponseDict:
     if not check_db_connection():
         raise ValueError("Access Denied: Database connection is not active.")
 
@@ -148,7 +112,7 @@ def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any
         "rol": "docente",
         "estado": "activo"
     }
-    
+
     res = create_user_doc(user_payload)
     user = res.get("user")
 
@@ -189,18 +153,7 @@ def exchange_google_token_for_session(google_id_token_str: str) -> Dict[str, Any
     }
 
 
-async def get_or_refresh_session(session_id: str) -> Dict[str, Any]:
-    """
-    Retrieves and validates active session for session_id.
-    If access_token is expired but refresh_token is valid (7 days),
-    locks concurrent requests, generates fresh access_token, and rotates refresh_token.
-
-    Args:
-        session_id (str): Unique session identifier cookie.
-
-    Returns:
-        Dict[str, Any]: Verified JWT payload of active/refreshed access_token.
-    """
+async def get_or_refresh_session(session_id: str) -> JWTAccessTokenPayload:
     sid = str(session_id).strip()
     if not sid:
         raise ValueError("Access Denied: 'session_id' cookie not provided.")
@@ -252,9 +205,6 @@ async def authenticate(
     headers: Optional[dict] = None,
     path: Optional[str] = None
 ) -> Auth.types.MinimalUserDict:
-    """
-    Authenticates requests by extracting and validating the session_id cookie.
-    """
     path_str = path.decode("utf-8") if isinstance(path, bytes) else (path or "")
     if path_str.rstrip("/") in {"/auth/login", "/auth/logout", "/auth/verify"}:
         return {"identity": "anonymous", "is_authenticated": False}
@@ -293,17 +243,7 @@ async def authenticate(
 
 
 @auth.on.threads
-async def authorize_threads(ctx: Auth.types.AuthContext, value: dict = None):
-    """
-    Validates thread access permissions by filtering by owner.
-
-    Args:
-        ctx (Auth.types.AuthContext): User authentication context.
-        value (dict, optional): Conversation thread data.
-
-    Returns:
-        dict: Ownership filter containing user ID.
-    """
+async def authorize_threads(ctx: Auth.types.AuthContext, value: Optional[dict] = None) -> Dict[str, str]:
     if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
         raise Auth.exceptions.HTTPException(status_code=401, detail="Access Denied: User not authenticated.")
 
@@ -316,17 +256,7 @@ async def authorize_threads(ctx: Auth.types.AuthContext, value: dict = None):
 
 
 @auth.on.threads.create
-async def limit_thread_creation_rate(ctx: Auth.types.AuthContext, value: dict):
-    """
-    Applies thread creation rate limiting and assigns thread ownership to the user.
-
-    Args:
-        ctx (Auth.types.AuthContext): User authentication context.
-        value (dict): New thread data.
-
-    Returns:
-        dict: Ownership filter assigned to thread.
-    """
+async def limit_thread_creation_rate(ctx: Auth.types.AuthContext, value: dict) -> Dict[str, str]:
     if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
         raise Auth.exceptions.HTTPException(status_code=401, detail="Access Denied: User not authenticated.")
 
@@ -352,14 +282,7 @@ async def limit_thread_creation_rate(ctx: Auth.types.AuthContext, value: dict):
 
 
 @auth.on.store
-async def authorize_store(ctx: Auth.types.AuthContext, value: dict):
-    """
-    Restricts persistent store access by namespacing by user ID.
-
-    Args:
-        ctx (Auth.types.AuthContext): Authentication context.
-        value (dict): Store item data and namespace.
-    """
+async def authorize_store(ctx: Auth.types.AuthContext, value: dict) -> None:
     if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
         raise Auth.exceptions.HTTPException(status_code=401, detail="Access Denied: User not authenticated.")
 
@@ -370,17 +293,7 @@ async def authorize_store(ctx: Auth.types.AuthContext, value: dict):
 
 
 @auth.on
-async def default_authorization_policy(ctx: Auth.types.AuthContext, value: dict = None):
-    """
-    Evaluates global authorization policy for incoming requests.
-
-    Args:
-        ctx (Auth.types.AuthContext): Authentication context.
-        value (dict, optional): Additional request data.
-
-    Returns:
-        bool: True if authorized, False otherwise.
-    """
+async def default_authorization_policy(ctx: Auth.types.AuthContext, value: Optional[dict] = None) -> bool:
     if not ctx.user or not getattr(ctx.user, "is_authenticated", False):
         return False
     return True

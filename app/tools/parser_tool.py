@@ -8,31 +8,12 @@ from api.upload_handler import get_s3_client
 
 
 def fetch_pdf_bytes_from_s3(file_key: str) -> bytes:
-    """
-    Downloads the binary object content of a PDF file from S3 using its file_key.
-
-    Args:
-        file_key (str): S3 object key.
-
-    Returns:
-        bytes: Binary content of the PDF file.
-    """
     s3_client, bucket_name = get_s3_client()
     response = s3_client.get_object(Bucket=bucket_name, Key=file_key.strip())
     return response["Body"].read()
 
 
 def convert_pdf_bytes(pdf_bytes: bytes) -> str:
-    """
-    Converts PDF binary content into text format using pypdfium2,
-    removing double newlines and sanitizing external text.
-
-    Args:
-        pdf_bytes (bytes): Binary PDF content.
-
-    Returns:
-        str: Converted text content.
-    """
     if not pdf_bytes:
         raise ValueError("PDF content cannot be empty.")
 
@@ -57,15 +38,6 @@ def convert_pdf_bytes(pdf_bytes: bytes) -> str:
 
 
 def extract_career_name(document: str) -> str:
-    """
-    Extracts the academic career or program name from the document.
-
-    Args:
-        document (str): Document content text format.
-
-    Returns:
-        str: Identified career name or 'Unidentified'.
-    """
     lines = document.splitlines()
 
     for line in lines[:500]:
@@ -80,15 +52,6 @@ def extract_career_name(document: str) -> str:
 
 
 def extract_curricular_structure_table(document: str) -> str:
-    """
-    Extracts the general curricular structure table for the career strictly matching 'Tabla No. 1: Estructura de ...'.
-
-    Args:
-        document (str): Document content text format.
-
-    Returns:
-        str: Text block corresponding to the curricular structure table or 'Unidentified'.
-    """
     if not document or not isinstance(document, str):
         return "Unidentified"
 
@@ -117,10 +80,6 @@ def extract_curricular_structure_table(document: str) -> str:
 
 
 def slugify(title: str) -> str:
-    """
-    Generates a clean, dynamic filename from an area title.
-    Example: 'Área de Comunicación y Lenguaje L 1' -> 'comunicacion_y_lenguaje_l1'
-    """
     clean = re.sub(r'^(?:Área|Area)\s+de\s+', '', title, flags=re.IGNORECASE).strip()
     clean = re.sub(r'\s*\([^)]*\)', '', clean).strip()
     nfkd = unicodedata.normalize('NFD', clean)
@@ -130,17 +89,8 @@ def slugify(title: str) -> str:
     return slug
 
 
-@tool("parse_curricular_areas")
+@tool("parse_curricular_areas", description="Parses and segments a PDF document from Guatemala's National Basic Curriculum into curricular areas.")
 def parse_curricular_areas(file_key: str) -> Union[List[Dict[str, str]], str]:
-    """
-    Parses and segmentates a CNB PDF document into its corresponding curricular areas by fetching the binary object from S3 using file_key.
-
-    Args:
-        file_key (str): S3 object key of the uploaded PDF document (e.g. 'cnb/abc123_document.pdf').
-
-    Returns:
-        Union[List[Dict[str, str]], str]: List of dictionaries containing the structure and content of each curricular area, or 'Unidentified' if no areas/structure found.
-    """
     pdf_bytes = fetch_pdf_bytes_from_s3(file_key)
     content = convert_pdf_bytes(pdf_bytes)
     career_name = extract_career_name(content)
@@ -148,7 +98,6 @@ def parse_curricular_areas(file_key: str) -> Union[List[Dict[str, str]], str]:
 
     areas_list = []
 
-    # 1. Primary flow: Diversificado (requires identified career and structure table)
     if career_name != "Unidentified" and structure_table != "Unidentified":
         lines = content.splitlines(keepends=True)
         n_lines = len(lines)
@@ -257,7 +206,6 @@ def parse_curricular_areas(file_key: str) -> Union[List[Dict[str, str]], str]:
                     'content': full_area_content
                 })
 
-    # 2. Alternative flow 1: Ciclo Básico (Malla curricular\n Área de ...\n <Grado>)
     if not areas_list:
         regex_malla_grade = re.compile(
             r'^[ \t]*#*[ \t]*Malla\s+curricular\s*\r?\n[ \t]*((?:Área|Area)\s+de\s+[^\n\r]+)\r?\n[ \t]*([^\n\r]+)',
@@ -318,7 +266,6 @@ def parse_curricular_areas(file_key: str) -> Union[List[Dict[str, str]], str]:
                     'content': full_area_content
                 })
 
-    # 3. Alternative flow 2: Primaria (Área de ...)
     if not areas_list:
         regex_header_area = re.compile(
             r'^[ \t]*#*[ \t]*((?:Área|Area)\s+de\s+[A-ZÁÉÍÓÚÑ][^\n\r]*)',

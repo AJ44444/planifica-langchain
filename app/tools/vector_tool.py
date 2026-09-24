@@ -11,12 +11,6 @@ from core.collections import VECTORS, SUB_AREAS
 
 
 def get_db():
-    """
-    Obtains the MongoDB database connection.
-
-    Returns:
-        Database: MongoDB database instance.
-    """
     mongodb_uri = get_env_variable("MONGODB_URI")
     db_name = get_env_variable("DB_NAME")
     client = MongoClient(mongodb_uri)
@@ -24,12 +18,6 @@ def get_db():
 
 
 def get_embedding_model() -> GoogleGenerativeAIEmbeddings:
-    """
-    Instantiates the Google Generative AI Embeddings model.
-
-    Returns:
-        GoogleGenerativeAIEmbeddings: Configured embeddings model.
-    """
     google_api_key = get_env_variable("GOOGLE_API_KEY")
     return GoogleGenerativeAIEmbeddings(
         model="models/gemini-embedding-2",
@@ -39,26 +27,11 @@ def get_embedding_model() -> GoogleGenerativeAIEmbeddings:
 
 
 def generate_embedding(text: str) -> List[float]:
-    """
-    Generates the embedding vector for a given text.
-
-    Args:
-        text (str): Text to vectorize.
-
-    Returns:
-        List[float]: Numerical embedding vector.
-    """
     embeddings_model = get_embedding_model()
     return embeddings_model.embed_query(text)
 
 
 def get_vector_store() -> MongoDBAtlasVectorSearch:
-    """
-    Obtains the vector search instance over the vectors collection.
-
-    Returns:
-        MongoDBAtlasVectorSearch: Configured vector store.
-    """
     db = get_db()
     collection = db[VECTORS]
     embeddings_model = get_embedding_model()
@@ -73,17 +46,8 @@ def get_vector_store() -> MongoDBAtlasVectorSearch:
     )
 
 
-@tool("dispatch_subarea_vectorization")
+@tool("dispatch_subarea_vectorization", description="Dispatches a Redis Stream event to trigger background vector embeddings generation for a subarea.")
 def dispatch_subarea_vectorization(id_subarea: str) -> str:
-    """
-    Dispatches a Redis Stream event to trigger background vector embeddings generation for a subarea.
-
-    Args:
-        id_subarea (str): Identifier of the curricular subarea.
-
-    Returns:
-        str: JSON formatted string containing event dispatch status.
-    """
     try:
         redis_uri = get_env_variable("REDIS_URI")
         client = redis.Redis.from_url(redis_uri)
@@ -105,15 +69,6 @@ def dispatch_subarea_vectorization(id_subarea: str) -> str:
 
 
 def generate_and_store_subarea_embeddings(id_subarea: str) -> str:
-    """
-    Generates and stores vector embeddings for the nodes of a curricular subarea.
-
-    Args:
-        id_subarea (str): Identifier of the curricular subarea.
-
-    Returns:
-        str: JSON formatted string containing execution result with status and count of processed vectors.
-    """
     try:
         db = get_db()
         subarea_id = ObjectId(id_subarea.strip())
@@ -159,17 +114,6 @@ def vector_search_cnb(
     id_subarea: str,
     limit: int = 5
 ) -> List[Dict[str, Any]]:
-    """
-    Performs a semantic vector search filtered by curricular subarea.
-
-    Args:
-        query (str): Text or semantic query to search for.
-        id_subarea (str): Mandatory curricular subarea identifier.
-        limit (int, optional): Maximum number of results to return. Defaults to 5.
-
-    Returns:
-        List[Dict[str, Any]]: List of top matching curricular nodes.
-    """
     if not id_subarea or not str(id_subarea).strip():
         raise ValueError("Parameter 'id_subarea' (24-char ObjectId) is required to perform vector search.")
 
@@ -203,16 +147,6 @@ def vector_search_cnb(
 
 
 def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -> List[Dict[str, Any]]:
-    """
-    Retrieves full hierarchical subarea nodes from database based on vector search results.
-
-    Args:
-        vector_results (List[Dict[str, Any]]): Results obtained from vector search.
-        db (optional): MongoDB database instance.
-
-    Returns:
-        List[Dict[str, Any]]: List of mapped nodes with competency, indicator, and content.
-    """
     if not vector_results:
         return []
 
@@ -342,15 +276,6 @@ def fetch_subarea_nodes_from_db(vector_results: List[Dict[str, Any]], db=None) -
 
 
 def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Builds a unified tree structure from a list of curricular nodes.
-
-    Args:
-        elements (List[Dict[str, Any]]): List of curricular nodes.
-
-    Returns:
-        List[Dict[str, Any]]: Unified hierarchical tree structure for the subarea.
-    """
     if not elements:
         return []
 
@@ -453,19 +378,8 @@ def build_merged_curriculum_tree(elements: List[Dict[str, Any]]) -> List[Dict[st
     return arbol_final
 
 
-@tool("search_curriculum_vector_db")
+@tool("search_curriculum_vector_db", description="Searches semantic information in the curriculum vector database by subarea.")
 def search_curriculum_vector_db(query: str, id_subarea: str, limit: int = 5) -> str:
-    """
-    Searches semantic information in the curriculum vector database by subarea.
-
-    Args:
-        query (str): Semantic query, topic, or competency to search for.
-        id_subarea (str): Mandatory identifier of the curricular subarea.
-        limit (int, optional): Limit of results to return. Defaults to 5.
-
-    Returns:
-        str: JSON formatted string containing the retrieved unified curricular tree.
-    """
     try:
         raw_results = vector_search_cnb(query=query, id_subarea=id_subarea, limit=limit)
 

@@ -5,18 +5,6 @@ load_dotenv()
 
 
 def get_env_variable(var_name: str) -> str:
-    """
-    Retrieves and validates an environment variable value.
-
-    Args:
-        var_name (str): Name of the environment variable.
-
-    Returns:
-        str: Validated non-empty string value of the environment variable.
-
-    Raises:
-        ValueError: If the environment variable is not configured or is empty.
-    """
     value = os.getenv(var_name)
     if value is None or not str(value).strip():
         raise ValueError(f"Environment variable '{var_name}' is not configured in the .env file.")

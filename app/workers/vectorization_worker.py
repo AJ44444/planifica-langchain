@@ -15,27 +15,22 @@ NOTIFICATION_CHANNEL = "channel:notifications"
 
 
 class VectorizationWorker:
-    """
-    Worker processing vectorization stream events asynchronously.
-    """
+
     def __init__(self):
         self.redis_uri = get_env_variable("REDIS_URI")
         self.redis: Optional[Redis] = None
         self.running = False
 
     async def connect(self):
-        """Initializes async Redis client inside worker."""
         if not self.redis:
             self.redis = from_url(self.redis_uri, decode_responses=True)
 
     async def disconnect(self):
-        """Closes async Redis client connection."""
         if self.redis:
             await self.redis.aclose()
             self.redis = None
 
     async def init_consumer_group(self):
-        """Creates Redis stream consumer group if it does not already exist."""
         await self.connect()
         try:
             await self.redis.xgroup_create(
@@ -48,10 +43,6 @@ class VectorizationWorker:
             logger.info(f"Consumer group '{GROUP_NAME}' existing or note: {e}")
 
     async def publish_status(self, id_subarea: str, status: str):
-        """
-        Persists task status in Redis and publishes status update to notification channel.
-        Includes only status/state without result data.
-        """
         await self.connect()
         payload = {
             "id_subarea": id_subarea,
@@ -64,9 +55,6 @@ class VectorizationWorker:
         await self.redis.publish(NOTIFICATION_CHANNEL, json_msg)
 
     async def process_message(self, message_id: str, message_fields: dict):
-        """
-        Processes a single Redis stream vectorization event.
-        """
         id_subarea = message_fields.get("id_subarea")
         if not id_subarea:
             await self.redis.xack(STREAM_KEY, GROUP_NAME, message_id)
@@ -85,10 +73,6 @@ class VectorizationWorker:
             await self.redis.xack(STREAM_KEY, GROUP_NAME, message_id)
 
     async def run_once(self) -> int:
-        """
-        Runs a single consumption loop pass for processing pending stream messages.
-        Returns count of processed messages.
-        """
         await self.init_consumer_group()
         count = 0
         streams = await self.redis.xreadgroup(
@@ -106,9 +90,6 @@ class VectorizationWorker:
         return count
 
     async def run(self):
-        """
-        Main worker execution loop listening on Redis stream.
-        """
         await self.init_consumer_group()
         self.running = True
         logger.info(f"VectorizationWorker active, consuming from stream '{STREAM_KEY}'...")
@@ -139,7 +120,6 @@ class VectorizationWorker:
         await self.disconnect()
 
     def stop(self):
-        """Stops worker execution loop."""
         self.running = False
 
 

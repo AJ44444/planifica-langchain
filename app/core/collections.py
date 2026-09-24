@@ -1,6 +1,3 @@
-"""
-MongoDB collection name constants for the Planifica application.
-"""
 AREAS = "cnb_areas"
 SUB_AREAS = "cnb_subareas"
 VECTORS = "cnb_vectores"

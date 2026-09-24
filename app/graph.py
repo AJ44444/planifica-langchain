@@ -7,17 +7,6 @@ supervisor_graph = main_agent
 
 
 def run_workflow(query: str, thread_id: str, id_usuario: str = "") -> str:
-    """
-    Executes a query through the supervisor workflow and its sub-agents.
-
-    Args:
-        query (str): User request or instruction in natural language.
-        thread_id (str): Thread identifier to maintain conversation context.
-        id_usuario (str, optional): User identifier.
-
-    Returns:
-        str: Textual response produced by the supervisor or sub-agents.
-    """
     config = {"configurable": {"thread_id": thread_id, "id_usuario": id_usuario}}
     initial_input = {"messages": [HumanMessage(content=query)]}
 
@@ -34,17 +23,6 @@ def run_workflow(query: str, thread_id: str, id_usuario: str = "") -> str:
 
 
 def stream_workflow(query: str, thread_id: str, id_usuario: str = "") -> Generator[Dict[str, Any], None, None]:
-    """
-    Streams real-time events from the execution of the supervisor workflow and its sub-agents.
-
-    Args:
-        query (str): User request or instruction.
-        thread_id (str): Conversation thread identifier.
-        id_usuario (str, optional): User identifier.
-
-    Yields:
-        Dict[str, Any]: Events streamed by the workflow during execution.
-    """
     config = {"configurable": {"thread_id": thread_id, "id_usuario": id_usuario}}
     initial_input = {"messages": [HumanMessage(content=query)]}
 

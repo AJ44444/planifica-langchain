@@ -1,7 +1,3 @@
-"""
-Módulo de agentes y subagentes del Sistema Multiagente Planifica.
-"""
-
 from .main_agent import main_agent
 from .process_pdf_agent import agent as process_pdf_agent
 from .school_lesson_plans_agent import agent as school_lesson_plans_agent

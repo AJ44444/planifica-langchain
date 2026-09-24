@@ -1,3 +1,3 @@
 """
-Paquete principal del Sistema Multiagente Planifica (LangChain / LangGraph Server).
+Paquete principal del Sistema Planifica.
 """

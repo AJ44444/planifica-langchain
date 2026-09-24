@@ -1,7 +1,3 @@
-"""
-Core module for configuration, LLM model setup, collection names, input schemas, and prompt loader.
-"""
-
 from .config import (
     get_env_variable,
     DATABASE_URI,
@@ -44,6 +40,12 @@ from .tool_inputs import (
     UpdateAssessmentInstrumentInput,
     UpdateMultimodalResourceInput,
 )
+from .auth_types import (
+    GoogleIdTokenPayload,
+    JWTAccessTokenPayload,
+    SessionUserDict,
+    SessionResponseDict,
+)
 
 __all__ = [
     "get_env_variable",
@@ -82,4 +84,8 @@ __all__ = [
     "UpdateLessonPlanInput",
     "UpdateAssessmentInstrumentInput",
     "UpdateMultimodalResourceInput",
+    "GoogleIdTokenPayload",
+    "JWTAccessTokenPayload",
+    "SessionUserDict",
+    "SessionResponseDict",
 ]

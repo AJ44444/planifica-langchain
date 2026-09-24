@@ -20,17 +20,6 @@ FORBIDDEN_INJECTION_PATTERNS: List[str] = [
 
 
 def sanitize_external_text(text: str, wrap_xml: bool = False) -> str:
-    """
-    Sanitizes content returned by external sources (web search, PDF parsing, etc.)
-    neutralizing indirect instruction injection attempts and optionally wrapping in XML tags.
-
-    Args:
-        text (str): Raw text obtained from a tool or external source.
-        wrap_xml (bool): If True, wraps text in <untrusted_external_content>.
-
-    Returns:
-        str: Sanitized text.
-    """
     if not text:
         return text
 
@@ -45,17 +34,8 @@ def sanitize_external_text(text: str, wrap_xml: bool = False) -> str:
 
 
 class SecurityGuardrailMiddleware(AgentMiddleware):
-    """
-    Deterministic security middleware for LangChain agents.
-    Intercepts user requests and tool responses to detect:
-    1. Direct and indirect Prompt Injection attempts.
-    2. Security policy bypass and jailbreak attempts.
-    """
 
     def before_agent(self, state: Dict[str, Any], *args, **kwargs) -> Any:
-        """
-        Validates user input before agent execution begins.
-        """
         messages = state.get("messages", [])
         if not messages:
             return state
@@ -79,7 +59,4 @@ class SecurityGuardrailMiddleware(AgentMiddleware):
         return state
 
     def before_model(self, state: Dict[str, Any], *args, **kwargs) -> Any:
-        """
-        Ensures wrapping and sanitization before LLM invocation.
-        """
         return state
