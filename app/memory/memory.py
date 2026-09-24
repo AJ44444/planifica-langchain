@@ -18,21 +18,13 @@ def get_checkpointer() -> BaseCheckpointSaver:
                 max_size=20,
                 kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row}
             )
-
             checkpointer = PostgresSaver(pool)
             checkpointer.setup()
-
-            try:
-                store = PostgresStore(pool)
-                store.setup()
-            except Exception as store_err:
-                logger.warning(f"Warning initializing PostgresStore: {store_err}")
-
-            logger.info("PostgreSQL Checkpointer and Store successfully initialized.")
+            PostgresStore(pool).setup()
+            logger.info("PostgreSQL Checkpointer successfully initialized.")
             return checkpointer
         except Exception as e:
-            logger.warning(f"Could not initialize PostgresSaver ({e}). Using MemorySaver as fallback.")
-            return MemorySaver()
+            logger.warning(f"Could not initialize PostgresSaver ({e}). Using MemorySaver.")
 
     return MemorySaver()
 
