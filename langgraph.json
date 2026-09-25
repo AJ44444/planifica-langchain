@@ -31,7 +31,7 @@
     "cors": {
       "allow_origins": ["https://app.planifica.study"],
       "allow_methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      "allow_headers": ["Content-Type", "Authorization", "Cookie", "Accept", "Cache-Control", "Last-Event-ID", "X-Accel-Buffering", "X-Requested-With"],
+      "allow_headers": ["Content-Type", "Cookie", "Accept", "Cache-Control", "Last-Event-ID", "X-Accel-Buffering", "X-Requested-With"],
       "allow_credentials": true,
       "max_age": 600
     }
