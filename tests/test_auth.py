@@ -422,3 +422,11 @@ async def test_auth_on_resource_isolation_between_users():
     assert store_val_b["namespace"] == ("user_id_B_456", "memories", "pref")
 
     assert store_val_a["namespace"] != store_val_b["namespace"]
+
+
+@pytest.mark.asyncio
+async def test_authenticate_allows_options_requests():
+    """Verifies that authenticate handler allows CORS OPTIONS preflight requests without requiring a session cookie."""
+    result = await authenticate(method="OPTIONS", path="/api/notifications")
+    assert result == {"identity": "anonymous", "is_authenticated": False}
+
