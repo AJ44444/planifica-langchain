@@ -203,13 +203,8 @@ async def get_or_refresh_session(session_id: str) -> JWTAccessTokenPayload:
 async def authenticate(
     authorization: Optional[str] = None,
     headers: Optional[dict] = None,
-    path: Optional[str] = None,
-    method: Optional[str] = None
+    path: Optional[str] = None
 ) -> Auth.types.MinimalUserDict:
-    req_method = str(method or "").strip().upper()
-    if req_method == "OPTIONS":
-        return {"identity": "anonymous", "is_authenticated": False}
-
     path_str = path.decode("utf-8") if isinstance(path, bytes) else (path or "")
     if path_str.rstrip("/") in {"/auth/login", "/auth/logout", "/auth/verify"}:
         return {"identity": "anonymous", "is_authenticated": False}
