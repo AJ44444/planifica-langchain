@@ -1,7 +1,7 @@
 ---
 name: supervisor
 description: Coordinate user interaction and delegate tasks to sub-agents.
-tools: process_pdf, school_lesson_plans, school_assessment_instruments, school_multimodal_resources, specialized_queries
+tools: school_lesson_plans, school_assessment_instruments, school_multimodal_resources, specialized_queries
 ---
 
 ## Supervisor

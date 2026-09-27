@@ -48,7 +48,7 @@ async def get_paginated_lesson_plans_endpoint(request: Request) -> JSONResponse:
         if res_data.get("status") == "error":
             return JSONResponse({"detail": res_data.get("message", "Error querying history.")}, status_code=400)
 
-        return JSONResponse(res_data, status_code=200)
+        return JSONResponse(res_data, status_code=200, headers={"Cache-Control": "max-age=60"})
     except Exception as e:
         return JSONResponse({"detail": f"Internal server error: {str(e)}"}, status_code=500)
 

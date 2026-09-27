@@ -87,6 +87,7 @@ def test_get_paginated_lesson_plans_endpoint_success(client):
         client.cookies.set("session_id", "valid_session_cookie_123")
         response = client.get("/api/lesson-plans?page=1&limit=10")
         assert response.status_code == 200
+        assert response.headers.get("cache-control") == "max-age=60"
         data = response.json()
         assert data["status"] == "success"
         assert len(data["planificaciones"]) == 1
