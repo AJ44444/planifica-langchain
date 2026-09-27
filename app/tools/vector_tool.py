@@ -5,7 +5,6 @@ from pymongo import MongoClient
 from langchain_core.tools import tool
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-import redis
 from core.config import get_env_variable
 from core.collections import VECTORS, SUB_AREAS
 
@@ -46,26 +45,22 @@ def get_vector_store() -> MongoDBAtlasVectorSearch:
     )
 
 
-@tool("dispatch_subarea_vectorization", description="Dispatches a Redis Stream event to trigger background vector embeddings generation for a subarea.")
-def dispatch_subarea_vectorization(id_subarea: str) -> str:
-    try:
-        redis_uri = get_env_variable("REDIS_URI")
-        client = redis.Redis.from_url(redis_uri)
-        sub_id = str(id_subarea).strip()
-        msg_id = client.xadd("stream:vectorization", {"id_subarea": sub_id})
-        client.close()
-
-        return json.dumps({
-            "status": "success",
-            "message": f"Subarea vectorization event dispatched successfully for id_subarea '{sub_id}'.",
-            "id_subarea": sub_id,
-            "message_id": str(msg_id)
-        }, ensure_ascii=False)
-    except Exception as e:
-        return json.dumps({
-            "status": "error",
-            "message": f"Error dispatching subarea vectorization event: {str(e)}"
-        }, ensure_ascii=False)
+def is_google_rate_limit_error(e: Exception) -> bool:
+    if not isinstance(e, Exception):
+        return False
+    msg = str(e).lower()
+    err_type = type(e).__name__.lower()
+    indicators = [
+        "429",
+        "resourceexhausted",
+        "resource_exhausted",
+        "quota",
+        "rate limit",
+        "ratelimit",
+        "too many requests",
+        "exceeded your current quota"
+    ]
+    return any(ind in msg or ind in err_type for ind in indicators)
 
 
 def generate_and_store_subarea_embeddings(id_subarea: str) -> str:
@@ -106,6 +101,8 @@ def generate_and_store_subarea_embeddings(id_subarea: str) -> str:
         }, ensure_ascii=False, indent=2)
 
     except Exception as e:
+        if is_google_rate_limit_error(e):
+            raise e
         return json.dumps({"status": "error", "message": f"Error generating embeddings: {str(e)}"}, ensure_ascii=False)
 
 

@@ -5,7 +5,6 @@ from langchain_core.runnables import RunnableConfig
 from app.memory.memory import checkpointer
 from core.llm import llm
 from core import load_prompt
-from agents.process_pdf_agent import agent as pdf_agent
 from agents.school_lesson_plans_agent import agent as lesson_plans_agent
 from agents.school_assessment_instruments_agent import agent as assessment_agent
 from agents.school_multimodal_resources_agent import agent as multimodal_agent
@@ -13,37 +12,11 @@ from agents.specialized_queries_agent import agent as specialized_queries_agent
 from middleware.security_middleware import SecurityGuardrailMiddleware
 
 
-@tool("process_pdf")
-def process_pdf(request: str, config: RunnableConfig) -> str:
-    """
-    Processes and analyzes school PDF documents to extract their curricular structure.
-
-    Args:
-        request (str): Instruction containing details of the PDF document to process.
-        config (RunnableConfig): Execution configuration and LangGraph context.
-
-    Returns:
-        str: Processing result containing status and extracted curricular structure.
-    """
-    try:
-        res = pdf_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
-        return res["messages"][-1].content if res.get("messages") else "No response obtained."
-    except Exception as e:
-        return f"Error processing PDF: {str(e)}"
-
-
-@tool("school_lesson_plans")
+@tool(
+    "school_lesson_plans",
+    description="Delegates requests related to creating, searching, updating, deleting, or managing school lesson plans (planes de clase) based on CNB."
+)
 def school_lesson_plans(request: str, config: RunnableConfig) -> str:
-    """
-    Manages creation, query by ID, updating, or deletion of lesson plans.
-
-    Args:
-        request (str): Instruction to create, query, update, or delete lesson plans.
-        config (RunnableConfig): Execution configuration and LangGraph context.
-
-    Returns:
-        str: Result of the requested lesson plan management operation.
-    """
     try:
         res = lesson_plans_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
         return res["messages"][-1].content if res.get("messages") else "No response obtained."
@@ -51,18 +24,11 @@ def school_lesson_plans(request: str, config: RunnableConfig) -> str:
         return f"Error managing lesson plans: {str(e)}"
 
 
-@tool("school_assessment_instruments")
+@tool(
+    "school_assessment_instruments",
+    description="Delegates requests related to generating, querying, or managing school assessment instruments (rubrics, checklists, tests, evaluation criteria)."
+)
 def school_assessment_instruments(request: str, config: RunnableConfig) -> str:
-    """
-    Designs, queries, updates, or deletes independent assessment instruments (rubrics, checklists, rating scales).
-
-    Args:
-        request (str): Instruction with details of the assessment instrument to manage or create.
-        config (RunnableConfig): Execution configuration and LangGraph context.
-
-    Returns:
-        str: Result with information about the processed assessment instrument.
-    """
     try:
         res = assessment_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
         return res["messages"][-1].content if res.get("messages") else "No response obtained."
@@ -70,18 +36,11 @@ def school_assessment_instruments(request: str, config: RunnableConfig) -> str:
         return f"Error in assessment instruments: {str(e)}"
 
 
-@tool("school_multimodal_resources")
+@tool(
+    "school_multimodal_resources",
+    description="Delegates requests related to generating, searching, or suggesting educational multimodal resources (videos, images, audio, interactive materials)."
+)
 def school_multimodal_resources(request: str, config: RunnableConfig) -> str:
-    """
-    Searches, queries, updates, or deletes independent multimodal resources (videos, documents, images).
-
-    Args:
-        request (str): Instruction with resource requirements to search or manage.
-        config (RunnableConfig): Execution configuration and LangGraph context.
-
-    Returns:
-        str: Result with found or processed multimodal resources.
-    """
     try:
         res = multimodal_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
         return res["messages"][-1].content if res.get("messages") else "No response obtained."
@@ -89,18 +48,11 @@ def school_multimodal_resources(request: str, config: RunnableConfig) -> str:
         return f"Error in multimodal resources: {str(e)}"
 
 
-@tool("specialized_queries")
+@tool(
+    "specialized_queries",
+    description="Delegates requests related to specialized queries about CNB structure, careers, areas, subareas, and frequent courses."
+)
 def specialized_queries(request: str, config: RunnableConfig) -> str:
-    """
-    Handles teacher dashboard queries, metrics, CNB catalog, and paginated lesson plan history.
-
-    Args:
-        request (str): Instruction or query regarding catalog or metrics.
-        config (RunnableConfig): Execution configuration and LangGraph context.
-
-    Returns:
-        str: Detailed response to the requested query.
-    """
     try:
         res = specialized_queries_agent.invoke({"messages": [{"role": "user", "content": request.strip()}]}, config=config)
         return res["messages"][-1].content if res.get("messages") else "No response obtained."
@@ -111,7 +63,6 @@ def specialized_queries(request: str, config: RunnableConfig) -> str:
 main_agent = create_agent(
     model=llm,
     tools=[
-        process_pdf,
         school_lesson_plans,
         school_assessment_instruments,
         school_multimodal_resources,

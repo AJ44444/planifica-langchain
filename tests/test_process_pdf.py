@@ -7,11 +7,12 @@ import pypdfium2 as pdfium
 # Ensure app package is accessible in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app")))
 
-from tools.parser_tool import (
+from workers.pdf_worker import (
     convert_pdf_bytes,
     extract_career_name,
     extract_curricular_structure_table,
     parse_curricular_areas,
+    slugify,
 )
 
 
@@ -53,7 +54,7 @@ def test_extract_career_name():
 
 def test_parse_curricular_areas():
     """
-    Verifies correct parsing into curricular areas by fetching PDF bytes from S3 using file_key.
+    Verifies correct parsing into curricular areas using text content.
     """
     assert os.path.exists(REAL_CNB_FILE), f"Real test file {REAL_CNB_FILE} does not exist."
 
@@ -71,15 +72,12 @@ def test_parse_curricular_areas():
     assert any("Matemáticas" in a for a in areas_found), "Missing Curricular Area of Mathematics."
     assert any("Contabilidad" in a for a in areas_found), "Missing Curricular Area of Accounting."
 
-    with open(REAL_CNB_FILE, "rb") as f:
-        raw_bytes = f.read()
-
-    with patch("tools.parser_tool.fetch_pdf_bytes_from_s3", return_value=raw_bytes):
-        parsed_result = parse_curricular_areas.invoke({"file_key": "cnb/test_document.pdf"})
-        assert len(parsed_result) > 0
-        assert parsed_result[0]["clean_name"] == "Estructura Curricular"
-        assert parsed_result[0]["index"] == 0
-        assert "Tabla No. 1" in parsed_result[0]["content"]
+    table = extract_curricular_structure_table(content)
+    parsed_result = parse_curricular_areas(content, career_name=career, structure_table=table)
+    assert isinstance(parsed_result, list)
+    assert len(parsed_result) > 0
+    assert parsed_result[0]["clean_name"] != "Estructura Curricular"
+    assert parsed_result[0]["index"] == 1
 
 
 def test_in_memory_pdf_processing():
@@ -124,22 +122,18 @@ Contenido del área...
     assert "2. Matemáticas" in table1_fallback
     assert "Área Curricular de Comunicación y Lenguaje" not in table1_fallback
 
-    # Test returning 'Unidentified' when pattern is absent
     doc_without_table1 = "Este es un documento sin tabla de estructura curricular."
     assert extract_curricular_structure_table(doc_without_table1) == "Unidentified"
 
 
 def test_slugify_and_fallback_parse():
     """
-    Verifies slugify Unicode NFD normalization and alternative area extraction flow using file_key.
+    Verifies slugify Unicode NFD normalization and alternative area extraction flow using text content.
     """
-    from tools.parser_tool import slugify
-
     assert slugify("Área de Comunicación y Lenguaje L 1") == "comunicacion_y_lenguaje_l1"
     assert slugify("Área de Matemáticas") == "matematicas"
     assert slugify("Área de Medio Social y Natural") == "medio_social_y_natural"
 
-    # Simulated Primaria document with sub-areas (no career, no structure table)
     sample_primaria_md = """
 Desarrollo de las Áreas
 Área de Comunicación y Lenguaje
@@ -157,23 +151,20 @@ Contenido de Matemáticas...
 Los aprendizajes esperados o estándares
 Estándares finales...
 """
-    raw_bytes = sample_primaria_md.encode("utf-8")
+    parsed = parse_curricular_areas(sample_primaria_md)
 
-    with patch("tools.parser_tool.fetch_pdf_bytes_from_s3", return_value=raw_bytes):
-        parsed = parse_curricular_areas.invoke({"file_key": "cnb/primaria.pdf"})
-
-        assert isinstance(parsed, list)
-        assert len(parsed) == 3
-        names = [item["clean_name"] for item in parsed]
-        assert "Comunicación y Lenguaje L 1" in names
-        assert "Comunicación y Lenguaje L 2" in names
-        assert "Matemáticas" in names
-        assert "Comunicación y Lenguaje" not in names  # skipped generic intro header
+    assert isinstance(parsed, list)
+    assert len(parsed) == 3
+    names = [item["clean_name"] for item in parsed]
+    assert "Comunicación y Lenguaje L 1" in names
+    assert "Comunicación y Lenguaje L 2" in names
+    assert "Matemáticas" in names
+    assert "Comunicación y Lenguaje" not in names
 
 
 def test_malla_curricular_basico_parse():
     """
-    Verifies dynamic parsing of Ciclo Básico Malla Curricular + Grade headers using file_key.
+    Verifies dynamic parsing of Ciclo Básico Malla Curricular + Grade headers using text content.
     """
     sample_basico_md = """
 Desarrollo de las Áreas
@@ -195,14 +186,72 @@ Contenido del tercer grado...
 Bibliografía
 1. Referencia...
 """
-    raw_bytes = sample_basico_md.encode("utf-8")
+    parsed = parse_curricular_areas(sample_basico_md)
 
-    with patch("tools.parser_tool.fetch_pdf_bytes_from_s3", return_value=raw_bytes):
-        parsed = parse_curricular_areas.invoke({"file_key": "cnb/basico_matematicas.pdf"})
+    assert isinstance(parsed, list)
+    assert len(parsed) == 3
+    names = [item["clean_name"] for item in parsed]
+    assert "Matemáticas Primero Básico" in names
+    assert "Matemáticas Segundo Básico" in names
+    assert "Matemáticas Tercero Básico" in names
 
-        assert isinstance(parsed, list)
-        assert len(parsed) == 3
-        names = [item["clean_name"] for item in parsed]
-        assert "Matemáticas Primero Básico" in names
-        assert "Matemáticas Segundo Básico" in names
-        assert "Matemáticas Tercero Básico" in names
+
+def test_process_pdf_job_uses_user_nombre_carrera_fallback():
+    """
+    Verifies that when extract_career_name returns Unidentified, user_nombre_carrera is used as fallback.
+    """
+    import asyncio
+    from unittest.mock import MagicMock
+    from workers.pdf_worker import PdfProcessingWorker
+
+    async def run_test():
+        with patch("workers.pdf_worker.get_env_variable", return_value="redis://localhost:6379"):
+            worker = PdfProcessingWorker()
+        mock_redis = MagicMock()
+
+        async def mock_set(key, val):
+            pass
+
+        async def mock_publish(channel, msg):
+            pass
+
+        mock_redis.set = MagicMock(side_effect=mock_set)
+        mock_redis.publish = MagicMock(side_effect=mock_publish)
+        worker.redis = mock_redis
+
+        fake_areas = [{"clean_name": "Matemáticas", "content": "Contenido del área"}]
+        mock_llm_res = MagicMock()
+        mock_llm_res.nombre_carrera = "Perito Contador"
+        mock_llm_res.nombre_area = "Matemáticas"
+        mock_llm_res.actividades_sugeridas = []
+        mock_llm_res.criterios_evaluacion_sugeridos = []
+        mock_llm_res.subareas = []
+
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = mock_llm_res
+        worker._llm = mock_llm
+
+        mock_subareas_extractor = MagicMock()
+        mock_subareas_extractor.invoke.return_value = {"subareas": ["Matemáticas Cuarto Grado"]}
+        worker._subarea_extractor = mock_subareas_extractor
+
+        with patch("workers.pdf_worker.fetch_pdf_bytes_from_s3", return_value=b"%PDF-fake"), \
+             patch("workers.pdf_worker.convert_pdf_bytes", return_value="Documento sin titulo"), \
+             patch("workers.pdf_worker.extract_career_name", return_value="Unidentified"), \
+             patch("workers.pdf_worker.extract_curricular_structure_table", return_value="Tabla No. 1: Estructura de Perito Contador"), \
+             patch("workers.pdf_worker.parse_curricular_areas", return_value=fake_areas), \
+             patch("workers.pdf_worker.save_curricular_structure", return_value='{"status": "success", "subareas_inserted": []}'):
+
+            await worker.process_pdf_job(
+                job_id="job_carrera_test",
+                file_key="cnb/test.pdf",
+                file_hash="hash123",
+                user_nombre_carrera="Perito Contador"
+            )
+
+            assert mock_llm.invoke.call_count == 1
+            invoked_user_msg = mock_llm.invoke.call_args[0][0][1]["content"]
+            assert "Perito Contador" in invoked_user_msg
+            assert "Matemáticas Cuarto Grado" in invoked_user_msg
+
+    asyncio.run(run_test())
