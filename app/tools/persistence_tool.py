@@ -199,7 +199,6 @@ def insert_cnb_vector_doc(data: dict) -> ObjectId:
     return res.inserted_id
 
 
-@tool("save_curricular_structure", description="Saves complete curricular area and subarea structure.", args_schema=SaveCurricularStructureInput)
 def save_curricular_structure(
     nombre_carrera: str,
     nombre_area: str,

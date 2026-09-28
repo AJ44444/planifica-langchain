@@ -90,7 +90,8 @@ async def process_pdf_endpoint(request: Request) -> JSONResponse:
         return JSONResponse(
             {
                 "status": "success",
-                "message": "Trabajo de procesamiento de PDF iniciado exitosamente."
+                "message": "Trabajo de procesamiento de PDF iniciado exitosamente.",
+                "job": job_data
             },
             status_code=200
         )

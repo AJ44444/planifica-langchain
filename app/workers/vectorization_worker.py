@@ -63,6 +63,7 @@ class VectorizationWorker:
     async def process_vectorization_job(self, job_id: str, file_key: str, file_hash: str, id_subarea: str, nombre_subarea: str):
         main_task = "Procesar Currículum"
         subtask_desc = f"Generando vectores de la subárea de {nombre_subarea}"
+        print(f"[VEC_WORKER] Petición recibida para vectorizar subárea. job_id={job_id}, id_subarea={id_subarea}, nombre={nombre_subarea}", flush=True)
 
         await self.publish_job_status(
             job_id=job_id,
@@ -74,6 +75,7 @@ class VectorizationWorker:
         )
 
         try:
+            print(f"[VEC_WORKER] Invocando generate_and_store_subarea_embeddings para id_subarea={id_subarea}...", flush=True)
             res_str = await asyncio.to_thread(generate_and_store_subarea_embeddings, id_subarea)
             if isinstance(res_str, str):
                 try:
@@ -83,6 +85,7 @@ class VectorizationWorker:
                 except json.JSONDecodeError:
                     pass
 
+            print(f"[VEC_WORKER] Vectorización exitosa para subárea '{nombre_subarea}' (id={id_subarea}).", flush=True)
             await self.publish_job_status(
                 job_id=job_id,
                 file_key=file_key,
@@ -92,6 +95,7 @@ class VectorizationWorker:
                 status="finish"
             )
         except Exception as err:
+            print(f"[VEC_WORKER_ERROR] Error al vectorizar subárea '{nombre_subarea}' (id={id_subarea}): {err}", flush=True)
             if is_google_rate_limit_error(err):
                 logger.warning(f"Límite de cuota alcanzado en API de Google para subárea {id_subarea} ({nombre_subarea}): {err}")
                 await self.publish_job_status(
