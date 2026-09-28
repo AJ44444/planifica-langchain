@@ -393,7 +393,7 @@ class PdfProcessingWorker:
                 mkstream=True
             )
         except Exception as e:
-            logger.info(f"Consumer group '{GROUP_NAME}' status: {e}")
+            logger.warning(f"Consumer group '{GROUP_NAME}' status: {e}")
 
     async def publish_job_status(self, job_id: str, file_key: str, file_hash: str, main_task: str, subtask: str, status: str) -> Dict[str, Any]:
         await self.connect()
@@ -619,7 +619,7 @@ class PdfProcessingWorker:
                     )
 
         except ValidationError as val_err:
-            logger.error(f"Error de validación Pydantic para job {job_id}: {val_err}")
+            logger.warning(f"Error de validación Pydantic para job {job_id}: {val_err}")
             await self.publish_job_status(
                 job_id=job_id,
                 file_key=file_key,
@@ -641,7 +641,7 @@ class PdfProcessingWorker:
                 )
                 self.stop()
             else:
-                logger.error(f"Error procesando PDF job {job_id}: {e}")
+                logger.warning(f"Error procesando PDF job {job_id}: {e}")
                 await self.publish_job_status(
                     job_id=job_id,
                     file_key=file_key,
@@ -678,7 +678,7 @@ class PdfProcessingWorker:
     async def run(self):
         await self.init_consumer_group()
         self.running = True
-        logger.info(f"PdfProcessingWorker activo, escuchando en el stream '{STREAM_KEY}'...")
+        logger.warning(f"PdfProcessingWorker activo, escuchando en el stream '{STREAM_KEY}'...")
 
         while self.running:
             try:
@@ -700,7 +700,7 @@ class PdfProcessingWorker:
                 self.running = False
                 break
             except Exception as e:
-                logger.error(f"Error en bucle de PdfProcessingWorker: {e}")
+                logger.warning(f"Error en bucle de PdfProcessingWorker: {e}")
                 await asyncio.sleep(1)
 
         await self.disconnect()
