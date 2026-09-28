@@ -52,11 +52,7 @@ def test_process_pdf_endpoint_success_and_idempotency(client):
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
-        assert data["job"]["id"] == job_id
-        assert data["job"]["file_key"] == file_key
-        assert data["job"]["file_hash"] == expected_hash
-        assert data["job"]["main_task"] == "Procesar Currículum"
-        assert data["job"]["status"] == "progress"
+        assert data["job_id"] == job_id
 
         # Verify Redis calls
         mock_redis.xadd.assert_called_once()
@@ -90,7 +86,7 @@ def test_process_pdf_endpoint_success_and_idempotency(client):
         assert response_idempotent.status_code == 200
         data_idempotent = response_idempotent.json()
         assert data_idempotent["status"] == "success"
-        assert data_idempotent["job"]["id"] == job_id
+        assert data_idempotent["job_id"] == job_id
         assert "ya fue procesado" in data_idempotent["message"]
 
         # Redis xadd should NOT be called on idempotent request

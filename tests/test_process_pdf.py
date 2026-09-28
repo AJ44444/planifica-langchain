@@ -1,6 +1,7 @@
 import pytest
 import os
 import sys
+import json
 from unittest.mock import patch
 import pypdfium2 as pdfium
 
@@ -219,13 +220,16 @@ def test_process_pdf_job_uses_user_nombre_carrera_fallback():
         mock_redis.publish = MagicMock(side_effect=mock_publish)
         worker.redis = mock_redis
 
+        from core.tool_inputs import SaveCurricularStructureInput
+
         fake_areas = [{"clean_name": "Matemáticas", "content": "Contenido del área"}]
-        mock_llm_res = MagicMock()
-        mock_llm_res.nombre_carrera = "Perito Contador"
-        mock_llm_res.nombre_area = "Matemáticas"
-        mock_llm_res.actividades_sugeridas = []
-        mock_llm_res.criterios_evaluacion_sugeridos = []
-        mock_llm_res.subareas = []
+        mock_llm_res = SaveCurricularStructureInput(
+            nombre_carrera="Perito Contador",
+            nombre_area="Matemáticas",
+            actividades_sugeridas=[],
+            criterios_evaluacion_sugeridos=[],
+            subareas=[]
+        )
 
         mock_llm = MagicMock()
         mock_llm.invoke.return_value = mock_llm_res
@@ -255,3 +259,82 @@ def test_process_pdf_job_uses_user_nombre_carrera_fallback():
             assert "Matemáticas Cuarto Grado" in invoked_user_msg
 
     asyncio.run(run_test())
+
+
+def test_process_pdf_job_when_structure_table_is_unidentified():
+    """
+    Verifies that when extract_curricular_structure_table returns 'Unidentified',
+    the worker continues parsing, structuring, storing in DB, and triggering Redis vectorization events.
+    """
+    import asyncio
+    from unittest.mock import MagicMock, AsyncMock
+    from workers.pdf_worker import PdfProcessingWorker
+
+    async def run_test():
+        with patch("workers.pdf_worker.get_env_variable", return_value="redis://localhost:6379"):
+            worker = PdfProcessingWorker()
+        
+        mock_redis = MagicMock()
+        mock_redis.set = AsyncMock()
+        mock_redis.publish = AsyncMock()
+        mock_redis.xadd = AsyncMock()
+        worker.redis = mock_redis
+
+        from core.tool_inputs import SaveCurricularStructureInput
+
+        fake_areas = [{
+            "clean_name": "Matemáticas",
+            "content": "Contenido de Matemáticas de la Malla Curricular"
+        }]
+
+        mock_llm_res = SaveCurricularStructureInput(
+            nombre_carrera="Educación Primaria",
+            nombre_area="Matemáticas",
+            actividades_sugeridas=["Resolver sumas"],
+            criterios_evaluacion_sugeridos=["Aplica adición"],
+            subareas=[]
+        )
+
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = mock_llm_res
+        worker._llm = mock_llm
+
+        mock_subareas_extractor = MagicMock()
+        worker._subarea_extractor = mock_subareas_extractor
+
+        save_db_response = json.dumps({
+            "status": "success",
+            "id_area": "60d5ec49f1a2c81234567810",
+            "subareas_inserted": [{"id_subarea": "60d5ec49f1a2c81234567820", "nombre_subarea": "Matemáticas 1"}]
+        })
+
+        with patch("workers.pdf_worker.fetch_pdf_bytes_from_s3", return_value=b"%PDF-fake"), \
+             patch("workers.pdf_worker.convert_pdf_bytes", return_value="Malla curricular Área de Matemáticas Primero Básico"), \
+             patch("workers.pdf_worker.extract_career_name", return_value="Educación Primaria"), \
+             patch("workers.pdf_worker.extract_curricular_structure_table", return_value="Unidentified"), \
+             patch("workers.pdf_worker.parse_curricular_areas", return_value=fake_areas), \
+             patch("workers.pdf_worker.save_curricular_structure", return_value=save_db_response):
+
+            await worker.process_pdf_job(
+                job_id="job_unidentified_table_test",
+                file_key="cnb/primaria.pdf",
+                file_hash="hash456",
+                user_nombre_carrera="Educación Primaria"
+            )
+
+            # 1. Subareas extractor was NOT called because structure table was Unidentified
+            assert mock_subareas_extractor.invoke.call_count == 0
+
+            # 2. LLM was invoked for structuring the area
+            assert mock_llm.invoke.call_count == 1
+
+            # 3. Vectorization action event was queued in Redis Stream
+            assert mock_redis.xadd.call_count == 1
+            xadd_call_args = mock_redis.xadd.call_args[0]
+            assert xadd_call_args[0] == "stream:jobs"
+            assert xadd_call_args[1]["action"] == "vectorize"
+            assert xadd_call_args[1]["id_subarea"] == "60d5ec49f1a2c81234567820"
+            assert xadd_call_args[1]["nombre_subarea"] == "Matemáticas 1"
+
+    asyncio.run(run_test())
+

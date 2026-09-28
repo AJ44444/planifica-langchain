@@ -413,7 +413,6 @@ class PdfProcessingWorker:
 
     async def process_pdf_job(self, job_id: str, file_key: str, file_hash: str, user_nombre_carrera: str = ""):
         main_task = "Procesar Currículum"
-        print(f"[PDF_WORKER] Petición recibida para procesar PDF. job_id={job_id}, file_key={file_key}, user_carrera={user_nombre_carrera}", flush=True)
 
         await self.publish_job_status(
             job_id=job_id,
@@ -427,22 +426,18 @@ class PdfProcessingWorker:
         try:
             pdf_bytes = fetch_pdf_bytes_from_s3(file_key)
             pdf_text = convert_pdf_bytes(pdf_bytes)
-            print(f"[PDF_WORKER] PDF descargado ({len(pdf_bytes)} bytes) y convertido a texto ({len(pdf_text)} caracteres).", flush=True)
 
             # 1. extract_career_name
             carrera_name = extract_career_name(pdf_text)
             if (carrera_name == "Unidentified" or not carrera_name) and user_nombre_carrera:
                 carrera_name = user_nombre_carrera
-            print(f"[PDF_WORKER] Carrera determinada: '{carrera_name}'", flush=True)
 
             # 2. extract_curricular_structure_table
             structure_table = extract_curricular_structure_table(pdf_text)
-            print(f"[PDF_WORKER] Tabla de estructura extraída: '{structure_table[:120]}...'" if len(structure_table) > 120 else f"[PDF_WORKER] Tabla de estructura extraída: '{structure_table}'", flush=True)
 
             # 3. Extraer nombres oficiales de subáreas de la tabla si no es Unidentified
             official_subareas: List[str] = []
             if structure_table != "Unidentified":
-                print("[PDF_WORKER] Invocando LLM para extraer subáreas oficiales de la tabla...", flush=True)
                 await self.publish_job_status(
                     job_id=job_id,
                     file_key=file_key,
@@ -456,7 +451,7 @@ class PdfProcessingWorker:
                     "Eres un experto en currículos educativos. Analiza la siguiente tabla de estructura curricular "
                     "y extrae un listado plano de los nombres oficiales de todas las subáreas curriculares, "
                     "incluyendo el grado correspondiente si aplica (por ejemplo: 'Matemáticas Cuarto Grado', "
-                    "'Estadística Quinto Grado')."
+                    "'Estadística Quinto Grado', 'Comunicación y Lenguaje L1 Tercer Grado', 'Matemáticas Primero Básico')."
                 )
                 try:
                     subareas_res = await asyncio.to_thread(
@@ -470,9 +465,7 @@ class PdfProcessingWorker:
                         official_subareas = subareas_res.subareas
                     elif isinstance(subareas_res, dict):
                         official_subareas = subareas_res.get("subareas", [])
-                    print(f"[PDF_WORKER] Listado de subáreas oficiales obtenidas ({len(official_subareas)}): {official_subareas}", flush=True)
                 except Exception as sub_err:
-                    print(f"[PDF_WORKER_WARN] Error extrayendo subáreas oficiales con LLM: {sub_err}", flush=True)
                     if is_google_rate_limit_error(sub_err):
                         logger.warning(f"Límite de cuota en API de Google alcanzado al extraer subáreas para job {job_id}: {sub_err}")
                         await self.publish_job_status(
@@ -489,10 +482,8 @@ class PdfProcessingWorker:
 
             # 4. parse_curricular_areas
             areas_data = parse_curricular_areas(content=pdf_text, career_name=carrera_name, structure_table=structure_table)
-            print(f"[PDF_WORKER] Áreas curriculares parseadas del texto: {[a.get('clean_name') for a in areas_data] if isinstance(areas_data, list) else areas_data}", flush=True)
 
             if not areas_data or areas_data == "Unidentified":
-                print("[PDF_WORKER_ERROR] No se pudieron extraer áreas curriculares del documento PDF", flush=True)
                 await self.publish_job_status(
                     job_id=job_id,
                     file_key=file_key,
@@ -508,7 +499,6 @@ class PdfProcessingWorker:
             # Iterar todos los elementos devueltos por parse_curricular_areas
             for idx, area_item in enumerate(areas_data, start=1):
                 area_name = area_item.get("clean_name", area_item.get("nombre_area", f"Área {idx}"))
-                print(f"[PDF_WORKER] [{idx}/{len(areas_data)}] Estructurando área: '{area_name}'...", flush=True)
                 await self.publish_job_status(
                     job_id=job_id,
                     file_key=file_key,
@@ -519,16 +509,28 @@ class PdfProcessingWorker:
                 )
 
                 prompt_user = (
-                    f"Nombre de la carrera: {carrera_name}\n"
+                    f"Nombre de la carrera / grado: {carrera_name}\n"
                     f"Listado de nombres oficiales de subáreas curriculares (utiliza estos nombres oficiales al estructurar las subáreas): {json.dumps(official_subareas, ensure_ascii=False)}\n\n"
                     f"Información del área curricular a estructurar:\n"
                     f"{json.dumps(area_item, ensure_ascii=False)}"
                 )
 
                 system_prompt = (
-                    "Eres un asistente experto en estructuración de diseños curriculares educativos. "
-                    "Tu única tarea es estructurar la información proporcionada únicamente en el formato de SaveCurricularStructureInput. "
-                    "Asegúrate de asignar a cada subárea su nombre oficial correspondiente utilizando la lista de nombres oficiales proporcionada cuando aplique."
+                    "Eres un asistente experto en estructuración de diseños curriculares educativos (CNB de Guatemala).\n"
+                    "Tu única tarea es estructurar la información proporcionada únicamente en el formato del esquema SaveCurricularStructureInput cumpliendo estrictamente las siguientes reglas:\n\n"
+                    "1. FIDELIDAD TEXTUAL:\n"
+                    "   - Mantén las descripciones de competencias, indicadores de logro y contenidos TEXTUALMENTE IDÉNTICAS a como aparecen en la información proporcionada.\n\n"
+                    "2. MANEJO DE NIVELES Y ESTRUCTURA:\n"
+                    "   - NIVEL PRIMARIA: El documento se divide en Áreas (ej. 'Área de Comunicación y Lenguaje L1', 'Área de Comunicación y Lenguaje L2', 'Área de Matemáticas'). Identifica lo que corresponde a la estructura de Área ('nombre_area') y asigna el árbol de competencias a la Subárea correspondiente ('nombre_subarea').\n"
+                    "   - CICLO BÁSICO: Para currículos de Ciclo Básico (ej. Matemáticas con secciones de 1ro, 2do y 3er grado), cada grado se trata como un ámbito de carrera distinto ('nombre_carrera', ej. 'Primero Básico', 'Segundo Básico', 'Tercero Básico'). Cada sección de grado debe guardarse bajo su nombre de carrera/grado correspondiente.\n"
+                    "   - CRITERIOS DE EVALUACIÓN EN CICLO BÁSICO: En Ciclo Básico, los Criterios de Evaluación suelen encontrarse dentro de la tabla junto a competencias, indicadores y contenidos. Debes EXTRAER estos criterios de evaluación de la tabla de competencias y agruparlos en el arreglo 'criterios_evaluacion_sugeridos' del área, separándolos del árbol de competencias de la subárea.\n\n"
+                    "3. NOMBRES OFICIALES DE SUBÁREAS Y GRADOS:\n"
+                    "   - Asigna a cada subárea su nombre oficial utilizando la lista de nombres oficiales proporcionada cuando aplique.\n"
+                    "   - Incluye siempre el nombre del grado en el nombre de la subárea cuando aplique (ej. 'Matemáticas Primero Básico', 'Comunicación y Lenguaje L1 Tercer Grado', 'Matemáticas Tercer Grado').\n\n"
+                    "4. IDENTIFICADORES JERÁRQUICOS:\n"
+                    "   - Asigna identificadores numéricos simples según el texto (ej. id_competencia: '1', id_indicador: '1.1', id_contenido: '1.1.1').\n\n"
+                    "5. ESTRUCTURA DE SALIDA:\n"
+                    "   - Retorna únicamente el objeto estructurado con: nombre_carrera, nombre_area, actividades_sugeridas, criterios_evaluacion_sugeridos y subareas."
                 )
 
                 # Instancia del agente Google con estructuración
@@ -540,9 +542,7 @@ class PdfProcessingWorker:
                             {"role": "user", "content": prompt_user}
                         ]
                     )
-                    print(f"[PDF_WORKER] [{idx}/{len(areas_data)}] Respuesta estructurada recibida de LLM para '{area_name}'.", flush=True)
                 except Exception as llm_err:
-                    print(f"[PDF_WORKER_ERROR] [{idx}/{len(areas_data)}] Error al invocar LLM para el área '{area_name}': {llm_err}", flush=True)
                     if is_google_rate_limit_error(llm_err):
                         logger.warning(f"Límite de cuota en API de Google alcanzado para job {job_id} al estructurar área {area_name}: {llm_err}")
                         await self.publish_job_status(
@@ -573,12 +573,10 @@ class PdfProcessingWorker:
                     criterios_evaluacion_sugeridos=validated_input.criterios_evaluacion_sugeridos,
                     subareas=validated_input.subareas
                 )
-                print(f"[PDF_WORKER] Resultado save_curricular_structure para '{area_name}': {save_result_str}", flush=True)
 
                 save_result = json.loads(save_result_str)
                 if save_result.get("status") == "success":
                     inserted_subareas = save_result.get("subareas_inserted") or save_result.get("subareas_insertadas") or []
-                    print(f"[PDF_WORKER] Subáreas insertadas para vectorización ({len(inserted_subareas)}): {inserted_subareas}", flush=True)
                     for sub_info in inserted_subareas:
                         subareas_to_vectorize.append({
                             "id_subarea": sub_info.get("id_subarea", ""),
@@ -595,7 +593,6 @@ class PdfProcessingWorker:
                 )
 
             # Al finalizar de procesar todos los elementos, informar y disparar worker de vectores
-            print(f"[PDF_WORKER] Procesamiento de áreas completado. Total subáreas a vectorizar: {len(subareas_to_vectorize)}", flush=True)
             await self.publish_job_status(
                 job_id=job_id,
                 file_key=file_key,
@@ -609,7 +606,6 @@ class PdfProcessingWorker:
                 id_subarea = sub_data["id_subarea"]
                 nombre_subarea = sub_data["nombre_subarea"]
                 if id_subarea:
-                    print(f"[PDF_WORKER] Encolando subárea en Redis Stream: id_subarea={id_subarea}, nombre={nombre_subarea}", flush=True)
                     await self.redis.xadd(
                         STREAM_KEY,
                         {
@@ -623,7 +619,6 @@ class PdfProcessingWorker:
                     )
 
         except ValidationError as val_err:
-            print(f"[PDF_WORKER_ERROR] Error de validación Pydantic para job {job_id}: {val_err}", flush=True)
             logger.error(f"Error de validación Pydantic para job {job_id}: {val_err}")
             await self.publish_job_status(
                 job_id=job_id,
@@ -634,7 +629,6 @@ class PdfProcessingWorker:
                 status="error"
             )
         except Exception as e:
-            print(f"[PDF_WORKER_ERROR] Excepción no controlada en job {job_id}: {e}", flush=True)
             if is_google_rate_limit_error(e):
                 logger.warning(f"Límite de cuota en API de Google alcanzado para job {job_id}: {e}")
                 await self.publish_job_status(

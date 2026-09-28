@@ -53,7 +53,7 @@ async def process_pdf_endpoint(request: Request) -> JSONResponse:
                         {
                             "status": "success",
                             "message": "El archivo PDF ya fue procesado o se encuentra en proceso.",
-                            "job": existing_job
+                            "job_id": existing_job_id
                         },
                         status_code=200
                     )
@@ -91,7 +91,7 @@ async def process_pdf_endpoint(request: Request) -> JSONResponse:
             {
                 "status": "success",
                 "message": "Trabajo de procesamiento de PDF iniciado exitosamente.",
-                "job": job_data
+                "job_id": job_id
             },
             status_code=200
         )

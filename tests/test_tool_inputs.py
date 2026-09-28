@@ -188,3 +188,74 @@ def test_update_tools_schema_validation():
     assert update_lesson_plan.args_schema == UpdateLessonPlanInput
     assert update_assessment_instrument.args_schema == UpdateAssessmentInstrumentInput
     assert update_multimodal_resource.args_schema == UpdateMultimodalResourceInput
+
+
+def test_save_curricular_structure_with_pydantic_objects():
+    """Verifies save_curricular_structure with Pydantic SaveCurricularStructureInput objects."""
+    from tools.persistence_tool import save_curricular_structure
+    from core.tool_inputs import (
+        SaveCurricularStructureInput,
+        Subarea,
+        CompetenciaEspecifica,
+        IndicadorLogro,
+        Contenido,
+    )
+
+    pydantic_input = SaveCurricularStructureInput(
+        nombre_carrera="Bachillerato en Ciencias y Letras con Orientación en Computación",
+        nombre_area="Matemáticas",
+        actividades_sugeridas=["Resolución de problemas de álgebra"],
+        criterios_evaluacion_sugeridos=["Aplica fórmulas algebraicas correctamente"],
+        subareas=[
+            Subarea(
+                nombre_subarea="Matemáticas Cuarto Grado",
+                competencias=[
+                    CompetenciaEspecifica(
+                        id_competencia="1",
+                        descripcion="Aplica propiedades matemáticas",
+                        indicadores_logro=[
+                            IndicadorLogro(
+                                id_indicador="1.1",
+                                descripcion="Resuelve operaciones complejas",
+                                contenidos=[
+                                    Contenido(id_contenido="1.1.1", descripcion="Ecuaciones de segundo grado")
+                                ]
+                            )
+                        ]
+                    )
+                ]
+            )
+        ]
+    )
+
+    mock_areas = MagicMock()
+    mock_areas.insert_one.return_value.inserted_id = ObjectId("60d5ec49f1a2c81234567810")
+    mock_subareas = MagicMock()
+    mock_subareas.insert_one.return_value.inserted_id = ObjectId("60d5ec49f1a2c81234567820")
+    mock_vectores = MagicMock()
+    mock_vectores.insert_one.return_value.inserted_id = ObjectId("60d5ec49f1a2c81234567830")
+
+    mock_db = {
+        "cnb_areas": mock_areas,
+        "cnb_subareas": mock_subareas,
+        "cnb_vectores": mock_vectores
+    }
+
+    with patch("tools.persistence_tool.get_db", return_value=mock_db):
+        res_str = save_curricular_structure(
+            nombre_carrera=pydantic_input.nombre_carrera,
+            nombre_area=pydantic_input.nombre_area,
+            actividades_sugeridas=pydantic_input.actividades_sugeridas,
+            criterios_evaluacion_sugeridos=pydantic_input.criterios_evaluacion_sugeridos,
+            subareas=pydantic_input.subareas
+        )
+
+        res = json.loads(res_str)
+        assert res["status"] == "success"
+        assert res["id_area"] == "60d5ec49f1a2c81234567810"
+        assert len(res["subareas_inserted"]) == 1
+        assert res["subareas_inserted"][0]["nombre_subarea"] == "Matemáticas Cuarto Grado"
+        assert res["subareas_inserted"][0]["id_subarea"] == "60d5ec49f1a2c81234567820"
+        # 1 competencia + 1 indicador + 1 contenido = 3 vector nodes
+        assert res["nodos_vectoriales_creados"] == 3
+
