@@ -253,9 +253,9 @@ def test_save_curricular_structure_with_pydantic_objects():
         res = json.loads(res_str)
         assert res["status"] == "success"
         assert res["id_area"] == "60d5ec49f1a2c81234567810"
-        assert len(res["subareas_inserted"]) == 1
-        assert res["subareas_inserted"][0]["nombre_subarea"] == "Matemáticas Cuarto Grado"
-        assert res["subareas_inserted"][0]["id_subarea"] == "60d5ec49f1a2c81234567820"
+        assert len(res["subareas_insertadas"]) == 1
+        assert res["subareas_insertadas"][0]["nombre_subarea"] == "Matemáticas Cuarto Grado"
+        assert res["subareas_insertadas"][0]["id_subarea"] == "60d5ec49f1a2c81234567820"
         # 1 competencia + 1 indicador + 1 contenido = 3 vector nodes
         assert res["nodos_vectoriales_creados"] == 3
 

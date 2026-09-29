@@ -357,7 +357,7 @@ class PdfProcessingWorker:
         if not self._llm:
             google_api_key = get_env_variable("GOOGLE_API_KEY")
             base_llm = ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash",
+                model="gemini-3.8-flash",
                 google_api_key=google_api_key,
                 temperature=0.0
             )
@@ -369,7 +369,7 @@ class PdfProcessingWorker:
         if not self._subarea_extractor:
             google_api_key = get_env_variable("GOOGLE_API_KEY")
             base_llm = ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash",
+                model="gemini-3.8-flash",
                 google_api_key=google_api_key,
                 temperature=0.0
             )
@@ -395,7 +395,7 @@ class PdfProcessingWorker:
                 mkstream=True
             )
         except Exception as e:
-            logger.warning(f"Consumer group '{GROUP_NAME}' status: {e}")
+            logger.info(f"Consumer group '{GROUP_NAME}' status: {e}")
 
     async def claim_pending_messages(self, min_idle_time_ms: int = 0):
         try:
@@ -414,7 +414,7 @@ class PdfProcessingWorker:
                         logger.info(f"Reclamando mensaje pendiente de XPENDING en '{STREAM_PDF}': {msg_id}")
                         await self.process_message(msg_id, fields)
         except Exception as e:
-            logger.warning(f"No se pudieron reclamar mensajes pendientes con XAUTOCLAIM en '{STREAM_PDF}': {e}")
+            logger.info(f"No se pudieron reclamar mensajes pendientes con XAUTOCLAIM en '{STREAM_PDF}': {e}")
 
     async def publish_job_status(self, job_id: str, file_key: str, file_hash: str, main_task: str, subtask: str, status: str, notify: bool = False) -> Dict[str, Any]:
         await self.connect()
@@ -494,7 +494,7 @@ class PdfProcessingWorker:
                         official_subareas = subareas_res.get("subareas", [])
                 except Exception as sub_err:
                     if is_google_rate_limit_error(sub_err):
-                        logger.warning(f"Límite de cuota en API de Google alcanzado al extraer subáreas para job {job_id}: {sub_err}")
+                        logger.info(f"Límite de cuota en API de Google alcanzado al extraer subáreas para job {job_id}: {sub_err}")
                         await self.publish_job_status(
                             job_id=job_id,
                             file_key=file_key,
@@ -505,7 +505,7 @@ class PdfProcessingWorker:
                         )
                         self.stop()
                         return
-                    logger.warning(f"No se pudieron extraer nombres oficiales de subáreas con LLM: {sub_err}")
+                    logger.info(f"No se pudieron extraer nombres oficiales de subáreas con LLM: {sub_err}")
 
             # 4. parse_curricular_areas
             areas_data = parse_curricular_areas(content=pdf_text, career_name=carrera_name, structure_table=structure_table)
@@ -571,7 +571,7 @@ class PdfProcessingWorker:
                     )
                 except Exception as llm_err:
                     if is_google_rate_limit_error(llm_err):
-                        logger.warning(f"Límite de cuota en API de Google alcanzado para job {job_id} al estructurar área {area_name}: {llm_err}")
+                        logger.info(f"Límite de cuota en API de Google alcanzado para job {job_id} al estructurar área {area_name}: {llm_err}")
                         await self.publish_job_status(
                             job_id=job_id,
                             file_key=file_key,
@@ -603,7 +603,7 @@ class PdfProcessingWorker:
 
                 save_result = json.loads(save_result_str)
                 if save_result.get("status") == "success":
-                    inserted_subareas = save_result.get("subareas_inserted") or save_result.get("subareas_insertadas") or []
+                    inserted_subareas = save_result.get("subareas_insertadas", [])
                     for sub_info in inserted_subareas:
                         subareas_to_vectorize.append({
                             "id_subarea": sub_info.get("id_subarea", ""),
@@ -648,7 +648,7 @@ class PdfProcessingWorker:
             )
 
         except ValidationError as val_err:
-            logger.warning(f"Error de validación Pydantic para job {job_id}: {val_err}")
+            logger.info(f"Error de validación Pydantic para job {job_id}: {val_err}")
             await self.publish_job_status(
                 job_id=job_id,
                 file_key=file_key,
@@ -660,7 +660,7 @@ class PdfProcessingWorker:
             )
         except Exception as e:
             if is_google_rate_limit_error(e):
-                logger.warning(f"Límite de cuota en API de Google alcanzado para job {job_id}: {e}")
+                logger.info(f"Límite de cuota en API de Google alcanzado para job {job_id}: {e}")
                 await self.publish_job_status(
                     job_id=job_id,
                     file_key=file_key,
@@ -672,7 +672,7 @@ class PdfProcessingWorker:
                 )
                 self.stop()
             else:
-                logger.warning(f"Error procesando PDF job {job_id}: {e}")
+                logger.info(f"Error procesando PDF job {job_id}: {e}")
                 await self.publish_job_status(
                     job_id=job_id,
                     file_key=file_key,
@@ -753,7 +753,7 @@ class PdfProcessingWorker:
                 self.running = False
                 break
             except Exception as e:
-                logger.warning(f"Error en bucle de PdfProcessingWorker: {e}")
+                logger.info(f"Error en bucle de PdfProcessingWorker: {e}")
                 await asyncio.sleep(1)
 
         await self.disconnect()

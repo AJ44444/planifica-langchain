@@ -60,7 +60,7 @@ class VectorizationWorker:
                         logger.info(f"Reclamando mensaje pendiente de XPENDING en '{STREAM_VECTORIZE}': {msg_id}")
                         await self.process_message(msg_id, fields)
         except Exception as e:
-            logger.warning(f"No se pudieron reclamar mensajes pendientes con XAUTOCLAIM en '{STREAM_VECTORIZE}': {e}")
+            logger.info(f"No se pudieron reclamar mensajes pendientes con XAUTOCLAIM en '{STREAM_VECTORIZE}': {e}")
 
     async def publish_job_status(self, job_id: str, file_key: str, file_hash: str, main_task: str, subtask: str, status: str, notify: bool = False) -> Dict[str, Any]:
         await self.connect()
@@ -118,7 +118,7 @@ class VectorizationWorker:
             )
         except Exception as err:
             if is_google_rate_limit_error(err):
-                logger.warning(f"Límite de cuota alcanzado en API de Google para subárea {id_subarea} ({nombre_subarea}): {err}")
+                logger.info(f"Límite de cuota alcanzado en API de Google para subárea {id_subarea} ({nombre_subarea}): {err}")
                 await self.publish_job_status(
                     job_id=job_id,
                     file_key=file_key,
@@ -130,7 +130,7 @@ class VectorizationWorker:
                 )
                 self.stop()
             else:
-                logger.error(f"Error vectorizando subárea {id_subarea} ({nombre_subarea}): {err}")
+                logger.info(f"Error vectorizando subárea {id_subarea} ({nombre_subarea}): {err}")
                 await self.publish_job_status(
                     job_id=job_id,
                     file_key=file_key,
@@ -214,7 +214,7 @@ class VectorizationWorker:
                 self.running = False
                 break
             except Exception as e:
-                logger.error(f"Error en bucle de VectorizationWorker: {e}")
+                logger.info(f"Error en bucle de VectorizationWorker: {e}")
                 await asyncio.sleep(1)
 
         await self.disconnect()

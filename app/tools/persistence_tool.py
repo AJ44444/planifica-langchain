@@ -287,7 +287,6 @@ def save_curricular_structure(
             "status": "success",
             "message": "Curricular structure saved successfully.",
             "id_area": str(area_id),
-            "subareas_inserted": subareas_inserted,
             "subareas_insertadas": subareas_inserted,
             "nodos_vectoriales_creados": vectores_nodes_created
         }

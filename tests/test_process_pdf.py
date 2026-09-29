@@ -244,7 +244,7 @@ def test_process_pdf_job_uses_user_nombre_carrera_fallback():
              patch("workers.pdf_worker.extract_career_name", return_value="Unidentified"), \
              patch("workers.pdf_worker.extract_curricular_structure_table", return_value="Tabla No. 1: Estructura de Perito Contador"), \
              patch("workers.pdf_worker.parse_curricular_areas", return_value=fake_areas), \
-             patch("workers.pdf_worker.save_curricular_structure", return_value='{"status": "success", "subareas_inserted": []}'):
+             patch("workers.pdf_worker.save_curricular_structure", return_value='{"status": "success", "subareas_insertadas": []}'):
 
             await worker.process_pdf_job(
                 job_id="job_carrera_test",
@@ -305,7 +305,7 @@ def test_process_pdf_job_when_structure_table_is_unidentified():
         save_db_response = json.dumps({
             "status": "success",
             "id_area": "60d5ec49f1a2c81234567810",
-            "subareas_inserted": [{"id_subarea": "60d5ec49f1a2c81234567820", "nombre_subarea": "Matemáticas 1"}]
+            "subareas_insertadas": [{"id_subarea": "60d5ec49f1a2c81234567820", "nombre_subarea": "Matemáticas 1"}]
         })
 
         with patch("workers.pdf_worker.fetch_pdf_bytes_from_s3", return_value=b"%PDF-fake"), \
