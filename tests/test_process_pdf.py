@@ -331,7 +331,7 @@ def test_process_pdf_job_when_structure_table_is_unidentified():
             # 3. Vectorization action event was queued in Redis Stream
             assert mock_redis.xadd.call_count == 1
             xadd_call_args = mock_redis.xadd.call_args[0]
-            assert xadd_call_args[0] == "stream:jobs"
+            assert xadd_call_args[0] == "stream:vectorize"
             assert xadd_call_args[1]["action"] == "vectorize"
             assert xadd_call_args[1]["id_subarea"] == "60d5ec49f1a2c81234567820"
             assert xadd_call_args[1]["nombre_subarea"] == "Matemáticas 1"

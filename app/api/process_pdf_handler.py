@@ -6,7 +6,8 @@ from redis.asyncio import from_url
 from core.config import get_env_variable
 from workers.pdf_worker import fetch_pdf_bytes_from_s3
 
-STREAM_KEY = "stream:jobs"
+STREAM_PDF = "stream:process_pdf"
+STREAM_KEY = STREAM_PDF
 NOTIFICATION_CHANNEL = "channel:notifications"
 
 

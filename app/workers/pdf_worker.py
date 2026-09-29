@@ -17,7 +17,9 @@ from tools.vector_tool import is_google_rate_limit_error
 
 logger = logging.getLogger(__name__)
 
-STREAM_KEY = "stream:jobs"
+STREAM_PDF = "stream:process_pdf"
+STREAM_VECTORIZE = "stream:vectorize"
+STREAM_KEY = STREAM_PDF
 GROUP_NAME = "group:pdf_workers"
 CONSUMER_NAME = "pdf-worker-1"
 NOTIFICATION_CHANNEL = "channel:notifications"
@@ -387,7 +389,7 @@ class PdfProcessingWorker:
         await self.connect()
         try:
             await self.redis.xgroup_create(
-                name=STREAM_KEY,
+                name=STREAM_PDF,
                 groupname=GROUP_NAME,
                 id="0",
                 mkstream=True
@@ -395,7 +397,26 @@ class PdfProcessingWorker:
         except Exception as e:
             logger.warning(f"Consumer group '{GROUP_NAME}' status: {e}")
 
-    async def publish_job_status(self, job_id: str, file_key: str, file_hash: str, main_task: str, subtask: str, status: str) -> Dict[str, Any]:
+    async def claim_pending_messages(self, min_idle_time_ms: int = 0):
+        try:
+            autoclaim_res = await self.redis.xautoclaim(
+                name=STREAM_PDF,
+                groupname=GROUP_NAME,
+                consumername=CONSUMER_NAME,
+                min_idle_time=min_idle_time_ms,
+                start_id="0-0",
+                count=10
+            )
+            if autoclaim_res and len(autoclaim_res) >= 2:
+                messages = autoclaim_res[1]
+                if messages:
+                    for msg_id, fields in messages:
+                        logger.info(f"Reclamando mensaje pendiente de XPENDING en '{STREAM_PDF}': {msg_id}")
+                        await self.process_message(msg_id, fields)
+        except Exception as e:
+            logger.warning(f"No se pudieron reclamar mensajes pendientes con XAUTOCLAIM en '{STREAM_PDF}': {e}")
+
+    async def publish_job_status(self, job_id: str, file_key: str, file_hash: str, main_task: str, subtask: str, status: str, notify: bool = False) -> Dict[str, Any]:
         await self.connect()
         job_payload = {
             "id": job_id,
@@ -407,8 +428,13 @@ class PdfProcessingWorker:
         }
         json_msg = json.dumps(job_payload, ensure_ascii=False)
 
-        await self.redis.set(f"job:{job_id}:status", json_msg)
-        await self.redis.publish(NOTIFICATION_CHANNEL, json_msg)
+        if job_id:
+            await self.redis.set(f"job:{job_id}:status", json_msg)
+
+        # Notificar al canal solo en inicio (notify=True), fin (finish), error o pausa
+        if notify or status in ("finish", "error", "paused"):
+            await self.redis.publish(NOTIFICATION_CHANNEL, json_msg)
+
         return job_payload
 
     async def process_pdf_job(self, job_id: str, file_key: str, file_hash: str, user_nombre_carrera: str = ""):
@@ -420,7 +446,8 @@ class PdfProcessingWorker:
             file_hash=file_hash,
             main_task=main_task,
             subtask="Descargando archivo PDF desde almacenamiento S3",
-            status="progress"
+            status="progress",
+            notify=True
         )
 
         try:
@@ -592,22 +619,13 @@ class PdfProcessingWorker:
                     status="progress"
                 )
 
-            # Al finalizar de procesar todos los elementos, informar y disparar worker de vectores
-            await self.publish_job_status(
-                job_id=job_id,
-                file_key=file_key,
-                file_hash=file_hash,
-                main_task=main_task,
-                subtask="Estructura curricular guardada. Disparando vectorización de subáreas.",
-                status="progress"
-            )
-
+            # Al finalizar de procesar todos los elementos, encolar en el stream de vectorización
             for sub_data in subareas_to_vectorize:
                 id_subarea = sub_data["id_subarea"]
                 nombre_subarea = sub_data["nombre_subarea"]
                 if id_subarea:
                     await self.redis.xadd(
-                        STREAM_KEY,
+                        STREAM_VECTORIZE,
                         {
                             "action": "vectorize",
                             "job_id": job_id,
@@ -618,6 +636,17 @@ class PdfProcessingWorker:
                         }
                     )
 
+            # Notificar la finalización de la tarea principal de procesamiento de PDF
+            await self.publish_job_status(
+                job_id=job_id,
+                file_key=file_key,
+                file_hash=file_hash,
+                main_task=main_task,
+                subtask="Estructura curricular guardada y subáreas enviadas a vectorización.",
+                status="finish",
+                notify=True
+            )
+
         except ValidationError as val_err:
             logger.warning(f"Error de validación Pydantic para job {job_id}: {val_err}")
             await self.publish_job_status(
@@ -626,7 +655,8 @@ class PdfProcessingWorker:
                 file_hash=file_hash,
                 main_task=main_task,
                 subtask=f"Error de validación de formato: {str(val_err)}",
-                status="error"
+                status="error",
+                notify=True
             )
         except Exception as e:
             if is_google_rate_limit_error(e):
@@ -637,7 +667,8 @@ class PdfProcessingWorker:
                     file_hash=file_hash,
                     main_task=main_task,
                     subtask="Límite de cuota alcanzado en API de Google. Trabajo pausado para reanudación posterior.",
-                    status="paused"
+                    status="paused",
+                    notify=True
                 )
                 self.stop()
             else:
@@ -648,7 +679,8 @@ class PdfProcessingWorker:
                     file_hash=file_hash,
                     main_task=main_task,
                     subtask=f"Error en procesamiento: {str(e)}",
-                    status="error"
+                    status="error",
+                    notify=True
                 )
 
     async def process_message(self, message_id: str, message_fields: dict):
@@ -662,7 +694,7 @@ class PdfProcessingWorker:
         user_nombre_carrera = message_fields.get("nombre_carrera", "")
 
         if not job_id or not file_key:
-            await self.redis.xack(STREAM_KEY, GROUP_NAME, message_id)
+            await self.redis.xack(STREAM_PDF, GROUP_NAME, message_id)
             return
 
         try:
@@ -673,19 +705,40 @@ class PdfProcessingWorker:
                 user_nombre_carrera=user_nombre_carrera
             )
         finally:
-            await self.redis.xack(STREAM_KEY, GROUP_NAME, message_id)
+            await self.redis.xack(STREAM_PDF, GROUP_NAME, message_id)
+
+    async def run_once(self) -> int:
+        await self.init_consumer_group()
+        await self.claim_pending_messages(min_idle_time_ms=0)
+        count = 0
+        streams = await self.redis.xreadgroup(
+            groupname=GROUP_NAME,
+            consumername=CONSUMER_NAME,
+            streams={STREAM_PDF: ">"},
+            count=10,
+            block=500
+        )
+        if streams:
+            for _, messages in streams:
+                for msg_id, fields in messages:
+                    await self.process_message(msg_id, fields)
+                    count += 1
+        return count
 
     async def run(self):
         await self.init_consumer_group()
         self.running = True
-        logger.warning(f"PdfProcessingWorker activo, escuchando en el stream '{STREAM_KEY}'...")
+        await self.claim_pending_messages(min_idle_time_ms=0)
+        logger.info(f"PdfProcessingWorker activo, escuchando en el stream '{STREAM_PDF}'...")
 
         while self.running:
             try:
+                await self.claim_pending_messages(min_idle_time_ms=30000)
+
                 streams = await self.redis.xreadgroup(
                     groupname=GROUP_NAME,
                     consumername=CONSUMER_NAME,
-                    streams={STREAM_KEY: ">"},
+                    streams={STREAM_PDF: ">"},
                     count=1,
                     block=2000
                 )

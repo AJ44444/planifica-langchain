@@ -8,7 +8,8 @@ from tools.vector_tool import generate_and_store_subarea_embeddings, is_google_r
 
 logger = logging.getLogger(__name__)
 
-STREAM_KEY = "stream:jobs"
+STREAM_VECTORIZE = "stream:vectorize"
+STREAM_KEY = STREAM_VECTORIZE
 GROUP_NAME = "group:vectorization_workers"
 CONSUMER_NAME = "vectorization-worker-1"
 NOTIFICATION_CHANNEL = "channel:notifications"
@@ -34,7 +35,7 @@ class VectorizationWorker:
         await self.connect()
         try:
             await self.redis.xgroup_create(
-                name=STREAM_KEY,
+                name=STREAM_VECTORIZE,
                 groupname=GROUP_NAME,
                 id="0",
                 mkstream=True
@@ -42,7 +43,26 @@ class VectorizationWorker:
         except Exception as e:
             logger.info(f"Consumer group '{GROUP_NAME}' status: {e}")
 
-    async def publish_job_status(self, job_id: str, file_key: str, file_hash: str, main_task: str, subtask: str, status: str) -> Dict[str, Any]:
+    async def claim_pending_messages(self, min_idle_time_ms: int = 0):
+        try:
+            autoclaim_res = await self.redis.xautoclaim(
+                name=STREAM_VECTORIZE,
+                groupname=GROUP_NAME,
+                consumername=CONSUMER_NAME,
+                min_idle_time=min_idle_time_ms,
+                start_id="0-0",
+                count=10
+            )
+            if autoclaim_res and len(autoclaim_res) >= 2:
+                messages = autoclaim_res[1]
+                if messages:
+                    for msg_id, fields in messages:
+                        logger.info(f"Reclamando mensaje pendiente de XPENDING en '{STREAM_VECTORIZE}': {msg_id}")
+                        await self.process_message(msg_id, fields)
+        except Exception as e:
+            logger.warning(f"No se pudieron reclamar mensajes pendientes con XAUTOCLAIM en '{STREAM_VECTORIZE}': {e}")
+
+    async def publish_job_status(self, job_id: str, file_key: str, file_hash: str, main_task: str, subtask: str, status: str, notify: bool = False) -> Dict[str, Any]:
         await self.connect()
         job_payload = {
             "id": job_id,
@@ -57,7 +77,10 @@ class VectorizationWorker:
         if job_id:
             await self.redis.set(f"job:{job_id}:status", json_msg)
 
-        await self.redis.publish(NOTIFICATION_CHANNEL, json_msg)
+        # Notificar al canal solo en inicio (notify=True), final de tarea (finish), error o pausa
+        if notify or status in ("finish", "error", "paused"):
+            await self.redis.publish(NOTIFICATION_CHANNEL, json_msg)
+
         return job_payload
 
     async def process_vectorization_job(self, job_id: str, file_key: str, file_hash: str, id_subarea: str, nombre_subarea: str):
@@ -70,7 +93,8 @@ class VectorizationWorker:
             file_hash=file_hash,
             main_task=main_task,
             subtask=subtask_desc,
-            status="progress"
+            status="progress",
+            notify=True
         )
 
         try:
@@ -89,7 +113,8 @@ class VectorizationWorker:
                 file_hash=file_hash,
                 main_task=main_task,
                 subtask=f"Vectorización completada para la subárea de {nombre_subarea}",
-                status="finish"
+                status="finish",
+                notify=True
             )
         except Exception as err:
             if is_google_rate_limit_error(err):
@@ -100,7 +125,8 @@ class VectorizationWorker:
                     file_hash=file_hash,
                     main_task=main_task,
                     subtask=f"Límite de cuota alcanzado en API de Google al vectorizar {nombre_subarea}. Trabajo pausado para reanudación posterior.",
-                    status="paused"
+                    status="paused",
+                    notify=True
                 )
                 self.stop()
             else:
@@ -111,7 +137,8 @@ class VectorizationWorker:
                     file_hash=file_hash,
                     main_task=main_task,
                     subtask=f"Error al generar vectores para {nombre_subarea}: {str(err)}",
-                    status="error"
+                    status="error",
+                    notify=True
                 )
 
     async def process_message(self, message_id: str, message_fields: dict):
@@ -122,7 +149,7 @@ class VectorizationWorker:
 
         id_subarea = message_fields.get("id_subarea")
         if not id_subarea:
-            await self.redis.xack(STREAM_KEY, GROUP_NAME, message_id)
+            await self.redis.xack(STREAM_VECTORIZE, GROUP_NAME, message_id)
             return
 
         job_id = message_fields.get("job_id", f"job_vec_{id_subarea}")
@@ -139,15 +166,16 @@ class VectorizationWorker:
                 nombre_subarea=nombre_subarea
             )
         finally:
-            await self.redis.xack(STREAM_KEY, GROUP_NAME, message_id)
+            await self.redis.xack(STREAM_VECTORIZE, GROUP_NAME, message_id)
 
     async def run_once(self) -> int:
         await self.init_consumer_group()
+        await self.claim_pending_messages(min_idle_time_ms=0)
         count = 0
         streams = await self.redis.xreadgroup(
             groupname=GROUP_NAME,
             consumername=CONSUMER_NAME,
-            streams={STREAM_KEY: ">"},
+            streams={STREAM_VECTORIZE: ">"},
             count=10,
             block=500
         )
@@ -161,14 +189,17 @@ class VectorizationWorker:
     async def run(self):
         await self.init_consumer_group()
         self.running = True
-        logger.info(f"VectorizationWorker activo, escuchando en el stream '{STREAM_KEY}'...")
+        await self.claim_pending_messages(min_idle_time_ms=0)
+        logger.info(f"VectorizationWorker activo, escuchando en el stream '{STREAM_VECTORIZE}'...")
 
         while self.running:
             try:
+                await self.claim_pending_messages(min_idle_time_ms=30000)
+
                 streams = await self.redis.xreadgroup(
                     groupname=GROUP_NAME,
                     consumername=CONSUMER_NAME,
-                    streams={STREAM_KEY: ">"},
+                    streams={STREAM_VECTORIZE: ">"},
                     count=1,
                     block=2000
                 )
