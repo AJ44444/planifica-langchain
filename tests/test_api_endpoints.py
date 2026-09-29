@@ -132,3 +132,31 @@ def test_notifications_endpoint_options(client):
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
+
+@pytest.mark.anyio
+async def test_server_lifespan_starts_and_stops_workers():
+    """Verifies that Starlette lifespan initializes and cancels background workers."""
+    from server import lifespan
+    import asyncio
+    from unittest.mock import AsyncMock
+
+    mock_pdf_worker = MagicMock()
+    mock_pdf_worker.run = AsyncMock()
+    mock_pdf_worker.stop = MagicMock()
+
+    mock_vec_worker = MagicMock()
+    mock_vec_worker.run = AsyncMock()
+    mock_vec_worker.stop = MagicMock()
+
+    with patch("server.PdfProcessingWorker", return_value=mock_pdf_worker), \
+         patch("server.VectorizationWorker", return_value=mock_vec_worker):
+        async with lifespan(app):
+            # Allow task loops to start
+            await asyncio.sleep(0.01)
+            mock_pdf_worker.run.assert_called_once()
+            mock_vec_worker.run.assert_called_once()
+
+        mock_pdf_worker.stop.assert_called_once()
+        mock_vec_worker.stop.assert_called_once()
+
+
