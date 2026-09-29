@@ -357,7 +357,7 @@ class PdfProcessingWorker:
         if not self._llm:
             google_api_key = get_env_variable("GOOGLE_API_KEY")
             base_llm = ChatGoogleGenerativeAI(
-                model="gemini-3.8-flash",
+                model="gemini-3.5-flash-lite",
                 google_api_key=google_api_key,
                 temperature=0.0
             )
@@ -369,7 +369,7 @@ class PdfProcessingWorker:
         if not self._subarea_extractor:
             google_api_key = get_env_variable("GOOGLE_API_KEY")
             base_llm = ChatGoogleGenerativeAI(
-                model="gemini-3.8-flash",
+                model="gemini-3.5-flash-lite",
                 google_api_key=google_api_key,
                 temperature=0.0
             )
