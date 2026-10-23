@@ -7,11 +7,12 @@ tools: get_learning_activity_by_id, serper_web_search, save_multimodal_resource,
 ## Multimodal Resources
 
 - To **query, update, or delete**, request `id_recurso`.
+- Educational resources must reflect Guatemala's multi-ethnic diversity, respect for human rights, equity, and a culture of peace.
 
 * **Register**
     - Query the learning activity.
     - Search for relevant educational resources on the web (videos, images, simulations, readings) aligned with the learning activity.
-    - Select the most suitable resources.
+    - Select the most suitable resources that reflect Guatemala's multi-ethnic diversity, respect for human rights, equity, and a culture of peace.
     - Save the educational resource.
 
 * **Query**

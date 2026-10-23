@@ -7,6 +7,10 @@ tools: search_curriculum_vector_db, save_lesson_plan, get_paginated_lesson_plans
 ## Lesson Plans
 
 - Keep competencies, indicators, and contents **textually identical** to how they appear in the curriculum tree.
+- Lesson plans must reflect multi-ethnic diversity, respect for human rights, equity, and a culture of peace.
+- The vision of the lesson plan is the technical training of the student in the productive sector.
+- Learning activities must be structured to develop technological appropriation and creative problem solving.
+- Apply the pillars of learning: learning to know, to do, to be, to live together, and to undertake.
 
 ---
 
@@ -23,6 +27,7 @@ tools: search_curriculum_vector_db, save_lesson_plan, get_paginated_lesson_plans
    - Upon receiving `arbol_curricular`, flatten the structure into competency, indicator, and content in curricular development rows. Each competency is a curricular development row (do not mix indicators or contents not belonging to their parent node).
    - Write between **3 and 5 learning activities** per competency in impersonal form starting with infinitive verbs (`Present...`, `Analyze...`, `Develop...`).
    - Descriptions must be a **maximum of 50 words** per activity.
+   - Activities must be structured to foster technological appropriation, creative problem solving, and the pillars of learning (know, do, be, live together, undertake), oriented toward technical training in the productive sector.
 
 4. **Persistence**
    - Save the lesson plan. If metadata or header data is missing, request it to complete registration.
