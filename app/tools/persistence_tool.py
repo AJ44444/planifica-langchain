@@ -152,6 +152,11 @@ def _clean_updates(updates: dict) -> dict:
 def insert_cnb_area_doc(data: dict) -> ObjectId:
     db = get_db()
     carrera = str(data.get("nombre_carrera", "")).strip()
+    nombre_area = str(data.get("nombre_area", "")).strip()
+
+    existing = db[AREAS].find_one({"nombre_carrera": carrera, "nombre_area": nombre_area})
+    if existing:
+        return existing["_id"]
 
     def _format_items(items):
         if not isinstance(items, list):
@@ -165,7 +170,7 @@ def insert_cnb_area_doc(data: dict) -> ObjectId:
 
     doc = {
         "nombre_carrera": carrera,
-        "nombre_area": str(data.get("nombre_area", "")).strip(),
+        "nombre_area": nombre_area,
         "actividades_sugeridas": _format_items(data.get("actividades_sugeridas")),
         "criterios_evaluacion_sugeridos": _format_items(data.get("criterios_evaluacion_sugeridos"))
     }
@@ -175,28 +180,51 @@ def insert_cnb_area_doc(data: dict) -> ObjectId:
 
 def insert_cnb_subarea_doc(data: dict) -> ObjectId:
     db = get_db()
+    id_area_obj = _ensure_object_id(data.get("id_area"))
+    nombre_subarea = str(data.get("nombre_subarea", "")).strip()
+
+    existing = db[SUB_AREAS].find_one({
+        "id_area": id_area_obj,
+        "nombre_subarea": nombre_subarea
+    })
+    if existing:
+        return existing["_id"]
+
     doc = {
-        "id_area": _ensure_object_id(data.get("id_area")),
-        "nombre_subarea": str(data.get("nombre_subarea", "")).strip(),
+        "id_area": id_area_obj,
+        "nombre_subarea": nombre_subarea,
         "competencias": data.get("competencias", [])
     }
     res = db[SUB_AREAS].insert_one(doc)
     return res.inserted_id
 
 
-def insert_cnb_vector_doc(data: dict) -> ObjectId:
+def insert_cnb_vector_doc(data: dict) -> tuple[ObjectId, bool]:
     db = get_db()
+    id_subarea_obj = _ensure_object_id(data.get("id_subarea"))
+    tipo_nodo = str(data.get("tipo_nodo", "")).strip()
+    texto_a_buscar = str(data.get("texto_a_buscar", "")).strip()
+    referencia_jerarquica = data.get("referencia_jerarquica", [])
+
+    existing = db[VECTORS].find_one({
+        "id_subarea": id_subarea_obj,
+        "tipo_nodo": tipo_nodo,
+        "texto_a_buscar": texto_a_buscar
+    })
+    if existing:
+        return existing["_id"], False
+
     doc = {
-        "id_subarea": _ensure_object_id(data.get("id_subarea")),
+        "id_subarea": id_subarea_obj,
         "nombre_subarea": str(data.get("nombre_subarea", "")).strip(),
-        "tipo_nodo": str(data.get("tipo_nodo", "")).strip(),
-        "referencia_jerarquica": data.get("referencia_jerarquica", []),
-        "texto_a_buscar": str(data.get("texto_a_buscar", "")).strip(),
+        "tipo_nodo": tipo_nodo,
+        "referencia_jerarquica": referencia_jerarquica,
+        "texto_a_buscar": texto_a_buscar,
         "vector_embedding": data.get("vector_embedding", []),
         "vector_estado": bool(data.get("vector_estado", False))
     }
     res = db[VECTORS].insert_one(doc)
-    return res.inserted_id
+    return res.inserted_id, True
 
 
 def save_curricular_structure(
@@ -238,7 +266,7 @@ def save_curricular_structure(
                 comp_desc = comp_dict.get("descripcion", "")
                 comp_text = f"Competencia {comp_id}: {comp_desc}".strip()
 
-                insert_cnb_vector_doc({
+                _, created = insert_cnb_vector_doc({
                     "id_subarea": sub_id,
                     "nombre_subarea": nombre_subarea,
                     "tipo_nodo": "competencia",
@@ -247,7 +275,8 @@ def save_curricular_structure(
                     "vector_embedding": [],
                     "vector_estado": False
                 })
-                vectores_nodes_created += 1
+                if created:
+                    vectores_nodes_created += 1
 
                 for ind in comp_dict.get("indicadores_logro", []):
                     ind_dict = _to_dict(ind)
@@ -255,7 +284,7 @@ def save_curricular_structure(
                     ind_desc = ind_dict.get("descripcion", "")
                     ind_text = f"Indicador {ind_id}: {ind_desc}".strip()
 
-                    insert_cnb_vector_doc({
+                    _, created = insert_cnb_vector_doc({
                         "id_subarea": sub_id,
                         "nombre_subarea": nombre_subarea,
                         "tipo_nodo": "indicador",
@@ -264,7 +293,8 @@ def save_curricular_structure(
                         "vector_embedding": [],
                         "vector_estado": False
                     })
-                    vectores_nodes_created += 1
+                    if created:
+                        vectores_nodes_created += 1
 
                     for cnt in ind_dict.get("contenidos", []):
                         cnt_dict = _to_dict(cnt)
@@ -272,7 +302,7 @@ def save_curricular_structure(
                         cnt_desc = cnt_dict.get("descripcion", "")
                         cnt_text = f"Contenido {cnt_id}: {cnt_desc}".strip()
 
-                        insert_cnb_vector_doc({
+                        _, created = insert_cnb_vector_doc({
                             "id_subarea": sub_id,
                             "nombre_subarea": nombre_subarea,
                             "tipo_nodo": "contenido",
@@ -281,7 +311,8 @@ def save_curricular_structure(
                             "vector_embedding": [],
                             "vector_estado": False
                         })
-                        vectores_nodes_created += 1
+                        if created:
+                            vectores_nodes_created += 1
 
         response = {
             "status": "success",
